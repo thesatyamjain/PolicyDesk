@@ -5,6 +5,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
@@ -13,7 +14,8 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 
-private val AppleColorScheme = lightColorScheme(
+// Apple Light Scheme
+private val AppleLightColorScheme = lightColorScheme(
     primary = AppleSystemBlue,
     onPrimary = IosSecondaryGrouped,
     primaryContainer = AppleSystemBlueLight,
@@ -35,6 +37,29 @@ private val AppleColorScheme = lightColorScheme(
     onErrorContainer = AppleSystemRed
 )
 
+// Cupertino Dark Mode Scheme (True Black OLED & Moonlight Insets)
+private val AppleDarkColorScheme = darkColorScheme(
+    primary = AppleDarkSystemBlue,
+    onPrimary = IosDarkLabelPrimary,
+    primaryContainer = AppleDarkSystemBlueLight,
+    onPrimaryContainer = AppleDarkSystemBlue,
+    secondary = IosDarkLabelSecondary,
+    onSecondary = IosDarkSystemBackground,
+    secondaryContainer = IosDarkTertiaryGrouped,
+    onSecondaryContainer = IosDarkLabelPrimary,
+    background = IosDarkSystemBackground,
+    onBackground = IosDarkLabelPrimary,
+    surface = IosDarkSecondaryGrouped,
+    onSurface = IosDarkLabelPrimary,
+    surfaceVariant = IosDarkTertiaryGrouped,
+    onSurfaceVariant = IosDarkLabelSecondary,
+    outline = IosDarkSeparator,
+    error = AppleDarkSystemRed,
+    onError = IosDarkSystemBackground,
+    errorContainer = AppleDarkSystemRedBg,
+    onErrorContainer = AppleDarkSystemRed
+)
+
 // Apple Squircle & Capsule Geometry
 val PolicyDeskShapes = Shapes(
     small = RoundedCornerShape(10.dp),
@@ -48,16 +73,17 @@ fun PolicyDeskTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {
-    val colorScheme = AppleColorScheme
+    val colorScheme = if (darkTheme) AppleDarkColorScheme else AppleLightColorScheme
+    val bgSysColor = if (darkTheme) IosDarkSystemBackground else IosSystemBackground
 
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            window.statusBarColor = IosSystemBackground.toArgb()
-            window.navigationBarColor = IosSystemBackground.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = true
-            WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = true
+            window.statusBarColor = bgSysColor.toArgb()
+            window.navigationBarColor = bgSysColor.toArgb()
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
+            WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = !darkTheme
         }
     }
 

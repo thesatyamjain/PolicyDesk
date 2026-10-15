@@ -90,6 +90,24 @@ Then run:
 
 ---
 
+## GitHub Releases
+
+Automated releases are published via GitHub Actions whenever a semantic version tag (e.g. `v1.0.0`) is pushed:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+The workflow:
+1. Executes the unit test suite (`testDebugUnitTest`).
+2. Builds and signs the release APK (`PolicyDesk-v1.0.0.apk`) and Android App Bundle (`PolicyDesk-v1.0.0.aab`).
+3. Automatically creates a tagged GitHub Release with auto-generated release notes and attached distribution assets.
+
+You can also manually trigger the **Publish GitHub Release** workflow from the repository's **Actions** tab in GitHub.
+
+---
+
 ## Project Structure
 
 ```

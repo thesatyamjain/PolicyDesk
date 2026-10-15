@@ -39,13 +39,27 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextFieldColors
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import com.policydesk.app.ui.theme.AppleDarkSystemBlue
+import com.policydesk.app.ui.theme.AppleSystemBlue
+import com.policydesk.app.ui.theme.IosDarkLabelPrimary
+import com.policydesk.app.ui.theme.IosDarkLabelSecondary
+import com.policydesk.app.ui.theme.IosDarkLabelTertiary
+import com.policydesk.app.ui.theme.IosDarkTertiaryGrouped
+import com.policydesk.app.ui.theme.IosLabelPrimary
+import com.policydesk.app.ui.theme.IosLabelSecondary
+import com.policydesk.app.ui.theme.IosLabelTertiary
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -415,14 +429,14 @@ fun AddPolicyScreen(
                     TitleDropdown(
                         selectedTitle = state.title,
                         onTitleSelected = viewModel::onTitleChanged,
-                        modifier = Modifier.weight(0.9f)
+                        modifier = Modifier.width(112.dp)
                     )
 
                     // Customer Name
                     OutlinedTextField(
                         value = state.name,
                         onValueChange = viewModel::onNameChanged,
-                        modifier = Modifier.weight(2f),
+                        modifier = Modifier.weight(1f),
                         label = { Text("Customer Name *") },
                         singleLine = true,
                         shape = RoundedCornerShape(10.dp),
@@ -564,16 +578,28 @@ fun SectorOptionPill(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val haptic = LocalHapticFeedback.current
+    val isDark = isSystemInDarkTheme()
+    val selectedBg = if (isDark) AppleDarkSystemBlue.copy(alpha = 0.16f) else AppleSystemBlue.copy(alpha = 0.10f)
+    val unselectedBg = if (isDark) Color(0xFF2C2C2E) else Color.White
+    val selectedBorder = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
+    val unselectedBorder = if (isDark) Color(0x38FFFFFF) else Color(0x26000000)
+    val selectedText = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
+    val unselectedText = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
+
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(10.dp))
+            .clip(RoundedCornerShape(12.dp))
             .border(
                 width = if (selected) 2.dp else 1.dp,
-                color = if (selected) SapphireBlue else Slate200,
-                shape = RoundedCornerShape(10.dp)
+                color = if (selected) selectedBorder else unselectedBorder,
+                shape = RoundedCornerShape(12.dp)
             )
-            .background(if (selected) SapphireBlue.copy(alpha = 0.08f) else Slate50)
-            .clickable(onClick = onClick)
+            .background(if (selected) selectedBg else unselectedBg)
+            .clickable {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onClick()
+            }
             .padding(vertical = 12.dp, horizontal = 14.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -582,7 +608,7 @@ fun SectorOptionPill(
                 Icon(
                     imageVector = Icons.Default.Check,
                     contentDescription = null,
-                    tint = SapphireBlue,
+                    tint = selectedText,
                     modifier = Modifier.size(16.dp)
                 )
                 Spacer(modifier = Modifier.width(6.dp))
@@ -591,7 +617,7 @@ fun SectorOptionPill(
                 text = label,
                 fontSize = 13.sp,
                 fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                color = if (selected) SapphireBlue else Navy800
+                color = if (selected) selectedText else unselectedText
             )
         }
     }
@@ -681,7 +707,7 @@ fun TitleDropdown(
             modifier = Modifier
                 .fillMaxWidth()
                 .menuAnchor(),
-            label = { Text("Title") },
+            label = { Text("Title", maxLines = 1, softWrap = false) },
             placeholder = { Text("Shri") },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             shape = RoundedCornerShape(10.dp),
@@ -785,19 +811,33 @@ fun WarningBanner(text: String) {
 }
 
 @Composable
-fun formFieldColors() = TextFieldDefaults.colors(
-    focusedContainerColor = CardBackground,
-    unfocusedContainerColor = CardBackground,
-    focusedIndicatorColor = SapphireBlue,
-    unfocusedIndicatorColor = Slate200,
-    focusedLabelColor = SapphireBlue,
-    unfocusedLabelColor = Slate600
-)
+fun formFieldColors(): TextFieldColors {
+    val isDark = isSystemInDarkTheme()
+    val container = if (isDark) IosDarkTertiaryGrouped else Color.White
+    val borderUnfocused = if (isDark) Color(0x38FFFFFF) else Color(0x2E000000)
+    val textPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
+    val textSecondary = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
+    val textTertiary = if (isDark) IosDarkLabelTertiary else IosLabelTertiary
+    val accent = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
+
+    return OutlinedTextFieldDefaults.colors(
+        focusedContainerColor = container,
+        unfocusedContainerColor = container,
+        disabledContainerColor = if (isDark) Color(0xFF1E1E20) else Color(0xFFF2F2F7),
+        focusedTextColor = textPrimary,
+        unfocusedTextColor = textPrimary,
+        disabledTextColor = textSecondary,
+        focusedBorderColor = accent,
+        unfocusedBorderColor = borderUnfocused,
+        disabledBorderColor = if (isDark) Color(0x1FFFFFFF) else Color(0x18000000),
+        focusedLabelColor = accent,
+        unfocusedLabelColor = textSecondary,
+        disabledLabelColor = textTertiary,
+        focusedPlaceholderColor = textTertiary,
+        unfocusedPlaceholderColor = textTertiary,
+        disabledPlaceholderColor = textTertiary.copy(alpha = 0.6f)
+    )
+}
 
 @Composable
-fun formDisabledFieldColors() = TextFieldDefaults.colors(
-    disabledContainerColor = CardBackground,
-    disabledIndicatorColor = Slate200,
-    disabledTextColor = Navy900,
-    disabledLabelColor = Slate600
-)
+fun formDisabledFieldColors(): TextFieldColors = formFieldColors()

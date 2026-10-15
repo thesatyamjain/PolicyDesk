@@ -57,12 +57,16 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.policydesk.app.domain.model.RegistrationNormalizer
 import com.policydesk.app.domain.model.VehicleWithPolicies
 import com.policydesk.app.ui.components.DaysRemainingBadge
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import com.policydesk.app.ui.components.LiquidGlassCard
 import com.policydesk.app.ui.components.LiquidGlassFloatingButton
 import com.policydesk.app.ui.components.LiquidGlassSearchBar
 import com.policydesk.app.ui.components.LiquidGlassTopBar
 import com.policydesk.app.ui.components.UiFormatters
 import com.policydesk.app.ui.components.liquidGlass
+import com.policydesk.app.ui.theme.AppleDarkSystemBlue
 import com.policydesk.app.ui.theme.AppleSystemBlue
 import com.policydesk.app.ui.theme.AppleSystemGreen
 import com.policydesk.app.ui.theme.AppleSystemOrange
@@ -71,9 +75,13 @@ import com.policydesk.app.ui.theme.AppleSystemRed
 import com.policydesk.app.ui.theme.CardBackground
 import com.policydesk.app.ui.theme.GlassBorderBottom
 import com.policydesk.app.ui.theme.GlassBorderTop
+import com.policydesk.app.ui.theme.IosDarkLabelPrimary
+import com.policydesk.app.ui.theme.IosDarkLabelSecondary
+import com.policydesk.app.ui.theme.IosDarkSeparator
 import com.policydesk.app.ui.theme.IosLabelPrimary
 import com.policydesk.app.ui.theme.IosLabelSecondary
 import com.policydesk.app.ui.theme.IosLabelTertiary
+import com.policydesk.app.ui.theme.IosSeparator
 import com.policydesk.app.ui.theme.IosSystemBackground
 import com.policydesk.app.ui.theme.Navy800
 import com.policydesk.app.ui.theme.Navy900
@@ -173,32 +181,64 @@ fun DashboardScreen(
                 title = "PolicyDesk",
                 subtitle = "Vehicle Insurance Advisor",
                 actions = {
-                    IconButton(onClick = onNavigateToCustomers) {
+                    val isDark = isSystemInDarkTheme()
+                    val haptic = LocalHapticFeedback.current
+                    val actionTint = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
+
+                    IconButton(
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            onNavigateToCustomers()
+                        },
+                        modifier = Modifier.size(36.dp)
+                    ) {
                         Icon(
                             imageVector = Icons.Default.People,
                             contentDescription = "Clients & Households",
-                            tint = Navy800
+                            tint = actionTint,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
-                    IconButton(onClick = onNavigateToMonthView) {
+                    IconButton(
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            onNavigateToMonthView()
+                        },
+                        modifier = Modifier.size(36.dp)
+                    ) {
                         Icon(
                             imageVector = Icons.Default.CalendarMonth,
                             contentDescription = "Month Timeline",
-                            tint = Navy800
+                            tint = actionTint,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
-                    IconButton(onClick = onNavigateToReports) {
+                    IconButton(
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            onNavigateToReports()
+                        },
+                        modifier = Modifier.size(36.dp)
+                    ) {
                         Icon(
                             imageVector = Icons.Default.Assessment,
                             contentDescription = "Reports & Analytics",
-                            tint = Navy800
+                            tint = actionTint,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
-                    IconButton(onClick = onNavigateToSettings) {
+                    IconButton(
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            onNavigateToSettings()
+                        },
+                        modifier = Modifier.size(36.dp)
+                    ) {
                         Icon(
                             imageVector = Icons.Default.Settings,
                             contentDescription = "Settings",
-                            tint = Navy800
+                            tint = actionTint,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }
@@ -297,34 +337,47 @@ fun DashboardScreen(
             LazyRow(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 2.dp),
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 items(ExpiryFilter.values()) { filter ->
                     val isSelected = uiState.activeFilter == filter
-                    val pillShape = RoundedCornerShape(10.dp)
+                    val pillShape = RoundedCornerShape(12.dp)
+                    val haptic = LocalHapticFeedback.current
+                    val isDark = isSystemInDarkTheme()
 
                     Box(
                         modifier = Modifier
                             .clip(pillShape)
                             .background(
-                                color = if (isSelected) AppleSystemBlue else Color.White.copy(alpha = 0.72f),
+                                color = if (isSelected) {
+                                    if (isDark) AppleDarkSystemBlue else AppleSystemBlue
+                                } else {
+                                    if (isDark) Color(0xFF2C2C2E) else Color.White
+                                },
                                 shape = pillShape
                             )
                             .border(
                                 width = 1.dp,
-                                color = if (isSelected) AppleSystemBlue else Color.White.copy(alpha = 0.5f),
+                                color = if (isSelected) {
+                                    Color.Transparent
+                                } else {
+                                    if (isDark) Color(0x38FFFFFF) else Color(0x24000000)
+                                },
                                 shape = pillShape
                             )
-                            .clickable { viewModel.onFilterSelected(filter) }
-                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                            .clickable {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                viewModel.onFilterSelected(filter)
+                            }
+                            .padding(horizontal = 13.dp, vertical = 7.dp)
                     ) {
                         Text(
                             text = filter.label,
                             fontSize = 12.sp,
                             fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
-                            color = if (isSelected) Color.White else IosLabelPrimary
+                            color = if (isSelected) Color.White else (if (isDark) IosDarkLabelPrimary else IosLabelPrimary)
                         )
                     }
                 }
@@ -332,36 +385,57 @@ fun DashboardScreen(
                 item {
                     Box(
                         modifier = Modifier
+                            .padding(horizontal = 4.dp)
                             .width(1.dp)
-                            .height(20.dp)
-                            .background(Color(0x33000000))
+                            .height(18.dp)
+                            .background(
+                                if (isSystemInDarkTheme()) IosDarkSeparator else IosSeparator,
+                                RoundedCornerShape(1.dp)
+                            )
                     )
                 }
 
                 items(SectorFilter.values()) { sector ->
                     val isSelected = uiState.sectorFilter == sector
-                    val pillShape = RoundedCornerShape(10.dp)
+                    val pillShape = RoundedCornerShape(12.dp)
+                    val haptic = LocalHapticFeedback.current
+                    val isDark = isSystemInDarkTheme()
 
                     Box(
                         modifier = Modifier
                             .clip(pillShape)
                             .background(
-                                color = if (isSelected) AppleSystemBlue.copy(alpha = 0.14f) else Color.White.copy(alpha = 0.72f),
+                                color = if (isSelected) {
+                                    (if (isDark) AppleDarkSystemBlue else AppleSystemBlue).copy(alpha = 0.16f)
+                                } else {
+                                    if (isDark) Color(0xFF2C2C2E) else Color.White
+                                },
                                 shape = pillShape
                             )
                             .border(
                                 width = 1.dp,
-                                color = if (isSelected) AppleSystemBlue else Color.White.copy(alpha = 0.5f),
+                                color = if (isSelected) {
+                                    if (isDark) AppleDarkSystemBlue else AppleSystemBlue
+                                } else {
+                                    if (isDark) Color(0x38FFFFFF) else Color(0x24000000)
+                                },
                                 shape = pillShape
                             )
-                            .clickable { viewModel.onSectorFilterSelected(sector) }
-                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                            .clickable {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                viewModel.onSectorFilterSelected(sector)
+                            }
+                            .padding(horizontal = 13.dp, vertical = 7.dp)
                     ) {
                         Text(
                             text = sector.label,
                             fontSize = 12.sp,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                            color = if (isSelected) AppleSystemBlue else IosLabelSecondary
+                            color = if (isSelected) {
+                                if (isDark) AppleDarkSystemBlue else AppleSystemBlue
+                            } else {
+                                if (isDark) IosDarkLabelSecondary else IosLabelSecondary
+                            }
                         )
                     }
                 }
@@ -435,29 +509,34 @@ fun LiquidGlassMetricCard(
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
+    val isDark = isSystemInDarkTheme()
+    val haptic = LocalHapticFeedback.current
     val cardShape = RoundedCornerShape(16.dp)
 
     Column(
         modifier = modifier
-            .liquidGlass(shape = cardShape, elevation = 2.dp)
+            .liquidGlass(shape = cardShape, elevation = 3.dp, isDark = isDark)
             .clip(cardShape)
-            .clickable(onClick = onClick)
+            .clickable {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onClick()
+            }
             .padding(vertical = 12.dp, horizontal = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
             text = count.toString(),
-            fontSize = 22.sp,
+            fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
             color = accentColor,
-            letterSpacing = (-0.4).sp
+            letterSpacing = (-0.5).sp
         )
         Spacer(modifier = Modifier.height(3.dp))
         Text(
             text = title,
             fontSize = 11.sp,
-            fontWeight = FontWeight.Medium,
-            color = IosLabelSecondary,
+            fontWeight = FontWeight.SemiBold,
+            color = if (isDark) IosDarkLabelSecondary else IosLabelSecondary,
             letterSpacing = 0.1.sp
         )
     }
