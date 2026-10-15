@@ -104,7 +104,10 @@ The workflow:
 2. Builds and signs the release APK (`PolicyDesk-v1.0.0.apk`) and Android App Bundle (`PolicyDesk-v1.0.0.aab`).
 3. Automatically creates a tagged GitHub Release with auto-generated release notes and attached distribution assets.
 
-You can also manually trigger the **Publish GitHub Release** workflow from the repository's **Actions** tab in GitHub.
+You can also trigger releases directly from GitHub:
+1. Navigate to **Actions > Publish GitHub Release**.
+2. Click **Run workflow**.
+3. Leave the tag input blank to automatically tag starting with `v0.0.1` (or auto-increment the latest tag: `v0.0.2`, `v0.0.3`, etc.). The workflow will push the git tag and publish the release with APK and AAB assets attached.
 
 ---
 
