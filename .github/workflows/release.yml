@@ -6,8 +6,17 @@ on:
       - 'v*'
   workflow_dispatch:
     inputs:
+      version_type:
+        description: 'Version bump type'
+        required: true
+        type: choice
+        default: 'patch'
+        options:
+          - patch
+          - minor
+          - major
       tag_name:
-        description: 'Release Tag (leave empty to auto-tag starting at v0.0.1)'
+        description: 'Custom tag override (optional, e.g. v1.0.0)'
         required: false
         default: ''
 
@@ -28,30 +37,49 @@ jobs:
       - name: Determine & Create Release Tag
         id: release-tag
         run: |
-          if [ -n "${{ github.event.inputs.tag_name }}" ]; then
-            TAG="${{ github.event.inputs.tag_name }}"
-            # Ensure 'v' prefix
+          BUMP_TYPE="${{ github.event.inputs.version_type }}"
+          CUSTOM_TAG="${{ github.event.inputs.tag_name }}"
+
+          if [ -n "$CUSTOM_TAG" ]; then
+            TAG="$CUSTOM_TAG"
             if [[ ! "$TAG" =~ ^v ]]; then
               TAG="v$TAG"
             fi
-            echo "Using manual tag: $TAG"
+            echo "Using manual tag override: $TAG"
           elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             LATEST_TAG=$(git tag -l "v*" --sort=-v:refname | head -n 1)
             if [ -z "$LATEST_TAG" ]; then
-              TAG="v0.0.1"
-              echo "No existing tags found. Starting initial tag at: $TAG"
+              case "$BUMP_TYPE" in
+                major) TAG="v1.0.0" ;;
+                minor) TAG="v0.1.0" ;;
+                *) TAG="v0.0.1" ;;
+              esac
+              echo "No existing tags found. Starting initial tag at: $TAG ($BUMP_TYPE)"
             else
               RAW="${LATEST_TAG#v}"
               MAJOR=$(echo "$RAW" | cut -d. -f1)
               MINOR=$(echo "$RAW" | cut -d. -f2)
               PATCH=$(echo "$RAW" | cut -d. -f3)
-              if [ -n "$PATCH" ]; then
-                NEW_PATCH=$((PATCH + 1))
-                TAG="v${MAJOR}.${MINOR}.${NEW_PATCH}"
-              else
-                TAG="v0.0.1"
-              fi
-              echo "Auto-incremented from $LATEST_TAG to: $TAG"
+
+              MAJOR=${MAJOR:-0}
+              MINOR=${MINOR:-0}
+              PATCH=${PATCH:-0}
+
+              case "$BUMP_TYPE" in
+                major)
+                  NEW_MAJOR=$((MAJOR + 1))
+                  TAG="v${NEW_MAJOR}.0.0"
+                  ;;
+                minor)
+                  NEW_MINOR=$((MINOR + 1))
+                  TAG="v${MAJOR}.${NEW_MINOR}.0"
+                  ;;
+                patch|*)
+                  NEW_PATCH=$((PATCH + 1))
+                  TAG="v${MAJOR}.${MINOR}.${NEW_PATCH}"
+                  ;;
+              esac
+              echo "Auto-incremented from $LATEST_TAG ($BUMP_TYPE) to: $TAG"
             fi
 
             # Configure git and push tag to repository

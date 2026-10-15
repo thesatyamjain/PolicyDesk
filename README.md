@@ -107,7 +107,12 @@ The workflow:
 You can also trigger releases directly from GitHub:
 1. Navigate to **Actions > Publish GitHub Release**.
 2. Click **Run workflow**.
-3. Leave the tag input blank to automatically tag starting with `v0.0.1` (or auto-increment the latest tag: `v0.0.2`, `v0.0.3`, etc.). The workflow will push the git tag and publish the release with APK and AAB assets attached.
+3. Select your desired **Version bump type**:
+   - `patch` (default): starts at `v0.0.1`, then increments patch (`v0.0.2`, `v0.0.3`, etc.).
+   - `minor`: increments minor version (`v0.1.0`, `v0.2.0`, etc.).
+   - `major`: increments major version (`v1.0.0`, `v2.0.0`, etc.).
+   - Or optionally enter a custom tag in **Custom tag override**.
+4. Click the green **Run workflow** button. The workflow automatically tags the commit, pushes the tag, builds the signed APK and AAB, and publishes the GitHub Release.
 
 ---
 
