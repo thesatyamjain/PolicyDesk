@@ -65,6 +65,7 @@ data class AddPolicyFormState(
     val showDuplicateDialog: Boolean = false,
     val showSectorChangeConfirmDialog: Boolean = false,
     val pendingSectorChange: Sector? = null,
+    val hasAttemptedSave: Boolean = false,
 
     val isSaving: Boolean = false
 ) {
@@ -72,7 +73,6 @@ data class AddPolicyFormState(
         get() {
             val validName = FieldValidators.isValidName(name)
             val validMobile = FieldValidators.isValidMobile(mobile)
-            val validAddress = FieldValidators.isValidAddress(address)
             val validSector = sector != null
             val effectiveInsurer = if (insurer == "Other") otherInsurerName.trim() else insurer.trim()
             val validInsurer = effectiveInsurer.isNotEmpty()
@@ -83,7 +83,7 @@ data class AddPolicyFormState(
             val validRegNo = RegistrationNormalizer.normalize(regNo).isNotEmpty()
             val validEmail = email.isBlank() || FieldValidators.isValidEmail(email)
 
-            return validName && validMobile && validAddress && validSector &&
+            return validName && validMobile && validSector &&
                     validInsurer && validPolicyNo && validExpiry && validPremium &&
                     validRegNo && validEmail
         }
@@ -232,7 +232,7 @@ class AddPolicyViewModel @Inject constructor(
         val isUnusual = normalized.isNotEmpty() && !RegistrationNormalizer.isStandardFormat(normalized)
         _formState.update {
             it.copy(
-                regNo = raw.uppercase(),
+                regNo = normalized,
                 regNoUnusualWarning = isUnusual,
                 regNoDuplicate = false
             )
@@ -241,6 +241,7 @@ class AddPolicyViewModel @Inject constructor(
 
     fun onRegNoBlur() {
         val normalized = RegistrationNormalizer.normalize(_formState.value.regNo)
+        _formState.update { it.copy(regNo = normalized) }
         if (normalized.isEmpty()) return
 
         viewModelScope.launch {
@@ -293,7 +294,25 @@ class AddPolicyViewModel @Inject constructor(
 
     fun savePolicy(addAnother: Boolean = false) {
         val state = _formState.value
-        if (!state.isFormValid) return
+        if (!state.isFormValid) {
+            _formState.update { it.copy(hasAttemptedSave = true) }
+            val errorMsg = when {
+                RegistrationNormalizer.normalize(state.regNo).isEmpty() -> "Please enter Vehicle Registration Number"
+                state.sector == null -> "Please select Company Sector (PSU or Private)"
+                (if (state.insurer == "Other") state.otherInsurerName.trim() else state.insurer.trim()).isEmpty() -> "Please select or enter an Insurance Company"
+                !FieldValidators.isValidPolicyNumber(state.policyNumber) -> "Please enter a valid Policy Number"
+                state.expiryDateEpochMs == null -> "Please tap Expiry Date to select a date"
+                (state.totalPremium.toDoubleOrNull() ?: 0.0) <= 0.0 -> "Please enter Total Premium amount"
+                !FieldValidators.isValidName(state.name) -> "Please enter Customer Name (min 2 characters)"
+                !FieldValidators.isValidMobile(state.mobile) -> "Please enter a valid 10-digit Mobile Number"
+                state.email.isNotBlank() && !FieldValidators.isValidEmail(state.email) -> "Please enter a valid Email Address"
+                else -> "Please fill all required fields marked with *"
+            }
+            viewModelScope.launch {
+                _uiEvent.emit(AddPolicyUiEvent.ShowToast(errorMsg))
+            }
+            return
+        }
 
         val normalizedReg = RegistrationNormalizer.normalize(state.regNo)
         val finalInsurer = if (state.insurer == "Other") state.otherInsurerName.trim() else state.insurer.trim()

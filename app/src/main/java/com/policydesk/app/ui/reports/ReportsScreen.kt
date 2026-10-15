@@ -22,31 +22,16 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.Chat
-import androidx.compose.material.icons.filled.Call
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.TrendingUp
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import com.policydesk.app.ui.components.AppleButton
+import com.policydesk.app.ui.components.AppleSecondaryButton
+import com.policydesk.app.ui.components.LiquidGlassCard
+import com.policydesk.app.ui.theme.AppleIcons
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
-import androidx.compose.material3.TabRowDefaults
-import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -111,7 +96,7 @@ fun ReportsScreen(
                 onNavigateBack = onNavigateBack
             )
         },
-        containerColor = com.policydesk.app.ui.theme.IosSystemBackground
+        containerColor = androidx.compose.material3.MaterialTheme.colorScheme.background
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -143,16 +128,23 @@ fun ReportsScreen(
                 items(periods) { period ->
                     val isSelected = selectedPeriod.label == period.label
                     val pillShape = RoundedCornerShape(10.dp)
+                    val isDark = androidx.compose.foundation.isSystemInDarkTheme()
+                    val selectedBg = if (isDark) com.policydesk.app.ui.theme.AppleDarkSystemBlue else com.policydesk.app.ui.theme.AppleSystemBlue
+                    val unselectedBg = if (isDark) Color(0x33545458) else Color.White.copy(alpha = 0.72f)
+                    val selectedBorder = if (isDark) com.policydesk.app.ui.theme.AppleDarkSystemBlue else com.policydesk.app.ui.theme.AppleSystemBlue
+                    val unselectedBorder = if (isDark) Color(0x33FFFFFF) else Color.White.copy(alpha = 0.5f)
+                    val unselectedText = if (isDark) com.policydesk.app.ui.theme.IosDarkLabelPrimary else com.policydesk.app.ui.theme.IosLabelPrimary
+
                     Box(
                         modifier = Modifier
                             .clip(pillShape)
                             .background(
-                                color = if (isSelected) com.policydesk.app.ui.theme.AppleSystemBlue else Color.White.copy(alpha = 0.72f),
+                                color = if (isSelected) selectedBg else unselectedBg,
                                 shape = pillShape
                             )
                             .border(
                                 width = 1.dp,
-                                color = if (isSelected) com.policydesk.app.ui.theme.AppleSystemBlue else Color.White.copy(alpha = 0.5f),
+                                color = if (isSelected) selectedBorder else unselectedBorder,
                                 shape = pillShape
                             )
                             .clickable { viewModel.onPeriodSelected(period) }
@@ -162,7 +154,7 @@ fun ReportsScreen(
                             text = period.label,
                             fontSize = 12.sp,
                             fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
-                            color = if (isSelected) Color.White else com.policydesk.app.ui.theme.IosLabelPrimary
+                            color = if (isSelected) Color.White else unselectedText
                         )
                     }
                 }
@@ -211,11 +203,8 @@ fun SalesTabContent(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Card(
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = CardBackground),
-                    border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(Slate200))
+                LiquidGlassCard(
+                    modifier = Modifier.weight(1f)
                 ) {
                     Column(modifier = Modifier.padding(14.dp)) {
                         Text("Total Premium Sold", fontSize = 11.sp, color = Slate600)
@@ -229,11 +218,8 @@ fun SalesTabContent(
                     }
                 }
 
-                Card(
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = CardBackground),
-                    border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(Slate200))
+                LiquidGlassCard(
+                    modifier = Modifier.weight(1f)
                 ) {
                     Column(modifier = Modifier.padding(14.dp)) {
                         Text("Policies Sold", fontSize = 11.sp, color = Slate600)
@@ -251,11 +237,8 @@ fun SalesTabContent(
 
         // New Business vs Renewal Split
         item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(14.dp),
-                colors = CardDefaults.cardColors(containerColor = CardBackground),
-                border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(Slate200))
+            LiquidGlassCard(
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text("Sale Type Split", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Navy900)
@@ -269,11 +252,8 @@ fun SalesTabContent(
         // Split by Insurer
         if (sales.splitByInsurer.isNotEmpty()) {
             item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(containerColor = CardBackground),
-                    border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(Slate200))
+                LiquidGlassCard(
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("Premium by Insurer", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Navy900)
@@ -343,11 +323,8 @@ fun MissedRenewalsTabContent(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Card(
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = CardBackground),
-                    border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(Slate200))
+                LiquidGlassCard(
+                    modifier = Modifier.weight(1f)
                 ) {
                     Column(modifier = Modifier.padding(14.dp)) {
                         Text("Premium at Risk", fontSize = 11.sp, color = Slate600)
@@ -361,11 +338,8 @@ fun MissedRenewalsTabContent(
                     }
                 }
 
-                Card(
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = CardBackground),
-                    border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(Slate200))
+                LiquidGlassCard(
+                    modifier = Modifier.weight(1f)
                 ) {
                     Column(modifier = Modifier.padding(14.dp)) {
                         Text("Overdue Policies", fontSize = 11.sp, color = Slate600)
@@ -383,11 +357,8 @@ fun MissedRenewalsTabContent(
 
         // Renewal Performance Card
         item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(14.dp),
-                colors = CardDefaults.cardColors(containerColor = CardBackground),
-                border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(Slate200))
+            LiquidGlassCard(
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(
@@ -427,10 +398,15 @@ fun MissedRenewalsTabContent(
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(OverdueFilter.values()) { filter ->
                     val isSelected = activeFilter == filter
+                    val isDark = androidx.compose.foundation.isSystemInDarkTheme()
+                    val selectedBg = if (isDark) com.policydesk.app.ui.theme.AppleDarkSystemBlue else com.policydesk.app.ui.theme.AppleSystemBlue
+                    val unselectedBg = if (isDark) Color(0x33545458) else com.policydesk.app.ui.theme.Slate100
+                    val unselectedText = if (isDark) com.policydesk.app.ui.theme.IosDarkLabelPrimary else com.policydesk.app.ui.theme.Navy700
+
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
-                            .background(if (isSelected) Navy900 else Slate100)
+                            .background(if (isSelected) selectedBg else unselectedBg)
                             .clickable { onFilterSelected(filter) }
                             .padding(horizontal = 12.dp, vertical = 6.dp)
                     ) {
@@ -438,7 +414,7 @@ fun MissedRenewalsTabContent(
                             text = filter.label,
                             fontSize = 12.sp,
                             fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
-                            color = if (isSelected) Color.White else Navy700
+                            color = if (isSelected) Color.White else unselectedText
                         )
                     }
                 }
@@ -485,14 +461,9 @@ fun MissedRenewalCard(
     val daysRemaining = policy?.computeDaysRemaining() ?: 0
     val daysOverdue = -daysRemaining
 
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .clickable(onClick = onNavigateToDetail),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBackground),
-        border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(StatusOverdueRed.copy(alpha = 0.3f)))
+    LiquidGlassCard(
+        modifier = Modifier.fillMaxWidth(),
+        onClick = onNavigateToDetail
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Row(
@@ -504,7 +475,7 @@ fun MissedRenewalCard(
                     text = item.vehicle.regNo,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Navy900
+                    color = com.policydesk.app.ui.theme.IosLabelPrimary
                 )
                 Box(
                     modifier = Modifier
@@ -521,8 +492,8 @@ fun MissedRenewalCard(
             }
 
             Spacer(modifier = Modifier.height(4.dp))
-            Text(text = item.vehicle.customer.name, fontSize = 13.sp, color = Navy800)
-            Text(text = "${policy?.insurer} • Expired ${policy?.expiryDate?.let { UiFormatters.formatDate(it) }}", fontSize = 11.sp, color = Slate600)
+            Text(text = item.vehicle.customer.name, fontSize = 13.sp, color = com.policydesk.app.ui.theme.IosLabelPrimary)
+            Text(text = "${policy?.insurer} • Expired ${policy?.expiryDate?.let { UiFormatters.formatDate(it) }}", fontSize = 11.sp, color = com.policydesk.app.ui.theme.IosLabelSecondary)
             if (policy != null) {
                 Text(text = "Premium at risk: ${UiFormatters.formatCurrency(policy.totalPremium)}", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = StatusOverdueRed)
             }
@@ -534,37 +505,30 @@ fun MissedRenewalCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                OutlinedButton(
+                AppleSecondaryButton(
+                    text = "Call",
                     onClick = onCall,
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(8.dp),
-                    contentPadding = PaddingValues(4.dp)
-                ) {
-                    Icon(imageVector = Icons.Default.Call, contentDescription = null, modifier = Modifier.size(14.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Call", fontSize = 11.sp)
-                }
+                    icon = AppleIcons.Phone,
+                    tintColor = com.policydesk.app.ui.theme.AppleSystemBlue,
+                    height = 36.dp,
+                    modifier = Modifier.weight(1f)
+                )
 
-                OutlinedButton(
+                AppleSecondaryButton(
+                    text = "WhatsApp",
                     onClick = onWhatsApp,
-                    modifier = Modifier.weight(1.2f),
-                    shape = RoundedCornerShape(8.dp),
-                    contentPadding = PaddingValues(4.dp)
-                ) {
-                    Icon(imageVector = Icons.AutoMirrored.Filled.Chat, contentDescription = null, modifier = Modifier.size(14.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("WhatsApp", fontSize = 11.sp)
-                }
+                    icon = AppleIcons.Message,
+                    tintColor = com.policydesk.app.ui.theme.AppleSystemGreen,
+                    height = 36.dp,
+                    modifier = Modifier.weight(1.2f)
+                )
 
-                Button(
+                AppleButton(
+                    text = "Renew",
                     onClick = onRenew,
-                    modifier = Modifier.weight(1.3f),
-                    shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = SapphireBlue),
-                    contentPadding = PaddingValues(4.dp)
-                ) {
-                    Text("Renew Late", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                }
+                    height = 36.dp,
+                    modifier = Modifier.weight(1.1f)
+                )
             }
         }
     }
@@ -581,11 +545,8 @@ fun AnalyticsTabContent(aggregate: ReportsAggregate) {
     ) {
         // Book Size Card
         item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(14.dp),
-                colors = CardDefaults.cardColors(containerColor = CardBackground),
-                border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(Slate200))
+            LiquidGlassCard(
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text("Active Book Size", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Navy900)
@@ -609,11 +570,8 @@ fun AnalyticsTabContent(aggregate: ReportsAggregate) {
 
         // Renewal Pipeline
         item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(14.dp),
-                colors = CardDefaults.cardColors(containerColor = CardBackground),
-                border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(Slate200))
+            LiquidGlassCard(
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Upcoming Renewal Pipeline", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Navy900)
@@ -635,11 +593,8 @@ fun AnalyticsTabContent(aggregate: ReportsAggregate) {
 
         // Renewal Performance Summary
         item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(14.dp),
-                colors = CardDefaults.cardColors(containerColor = CardBackground),
-                border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(Slate200))
+            LiquidGlassCard(
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Retention Metrics", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Navy900)
@@ -665,11 +620,8 @@ fun AnalyticsTabContent(aggregate: ReportsAggregate) {
 fun MonthlySalesTrendCard(trends: List<com.policydesk.app.domain.model.MonthlyTrendItem>) {
     val maxPremium = trends.maxOfOrNull { it.totalPremium }?.coerceAtLeast(1000.0) ?: 1000.0
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBackground),
-        border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(Slate200))
+    LiquidGlassCard(
+        modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(

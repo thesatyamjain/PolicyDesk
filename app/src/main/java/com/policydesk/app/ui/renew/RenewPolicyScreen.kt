@@ -20,9 +20,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import com.policydesk.app.ui.components.AppleButton
+import com.policydesk.app.ui.theme.AppleIcons
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DatePicker
@@ -129,7 +128,7 @@ fun RenewPolicyScreen(
                 onNavigateBack = onNavigateBack
             )
         },
-        containerColor = com.policydesk.app.ui.theme.IosSystemBackground
+        containerColor = androidx.compose.material3.MaterialTheme.colorScheme.background
     ) { paddingValues ->
         val item = state.currentVehicle
         if (item == null) {
@@ -227,7 +226,7 @@ fun RenewPolicyScreen(
                             placeholder = { Text("Pick renewal expiry date") },
                             trailingIcon = {
                                 Icon(
-                                    imageVector = Icons.Default.CalendarToday,
+                                    imageVector = AppleIcons.Calendar,
                                     contentDescription = null,
                                     tint = SapphireBlue,
                                     modifier = Modifier.size(18.dp)
@@ -273,24 +272,13 @@ fun RenewPolicyScreen(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                Button(
+                AppleButton(
+                    text = if (state.isSaving) "Renewing..." else "Save Renewal & Start Countdown",
                     onClick = viewModel::saveRenewal,
                     enabled = state.isValid && !state.isSaving,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = SapphireBlue,
-                        disabledContainerColor = Slate200
-                    )
-                ) {
-                    Text(
-                        text = if (state.isSaving) "Renewing..." else "Save Renewal & Start Countdown",
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
+                    isLoading = state.isSaving,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         }
     }

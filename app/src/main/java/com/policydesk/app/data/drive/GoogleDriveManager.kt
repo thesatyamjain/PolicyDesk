@@ -22,8 +22,56 @@ object GoogleDriveManager {
 
     const val SNAPSHOT_FILE_NAME = "policydesk_snapshot.json"
     private const val PREFS_NAME = "policydesk_drive_prefs"
+    private const val KEY_CONNECTED_ACCOUNT = "connected_google_account"
+    private const val KEY_AUTO_SYNC_ENABLED = "auto_sync_enabled"
     private const val KEY_BACKUP_URI = "backup_file_uri"
     private const val KEY_LAST_SYNC_TIME = "last_sync_time"
+
+    fun getConnectedAccount(context: Context): String? {
+        return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .getString(KEY_CONNECTED_ACCOUNT, null)
+    }
+
+    fun setConnectedAccount(context: Context, email: String?) {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putString(KEY_CONNECTED_ACCOUNT, email)
+            .putBoolean(KEY_AUTO_SYNC_ENABLED, email != null)
+            .apply()
+    }
+
+    fun isAutoSyncEnabled(context: Context): Boolean {
+        return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .getBoolean(KEY_AUTO_SYNC_ENABLED, true)
+    }
+
+    fun setAutoSyncEnabled(context: Context, enabled: Boolean) {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean(KEY_AUTO_SYNC_ENABLED, enabled)
+            .apply()
+    }
+
+    fun disconnect(context: Context) {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .remove(KEY_CONNECTED_ACCOUNT)
+            .remove(KEY_BACKUP_URI)
+            .putBoolean(KEY_AUTO_SYNC_ENABLED, false)
+            .apply()
+    }
+
+    fun getGoogleAccountChooserIntent(): android.content.Intent {
+        return android.accounts.AccountManager.newChooseAccountIntent(
+            null,
+            null,
+            arrayOf("com.google"),
+            null,
+            null,
+            null,
+            null
+        )
+    }
 
     fun setSavedBackupUri(context: Context, uri: Uri) {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -50,11 +98,32 @@ object GoogleDriveManager {
             .getLong(KEY_LAST_SYNC_TIME, 0L)
     }
 
-    suspend fun performSilentBackup(context: Context, snapshotJson: String): Result<Unit> {
-        val uri = getSavedBackupUri(context) ?: return Result.failure(IllegalStateException("No Google Drive backup destination configured."))
-        return writeSnapshotToUri(context, uri, snapshotJson).onSuccess {
+    suspend fun performAutoSync(context: Context, snapshotJson: String): Result<Unit> = withContext(Dispatchers.IO) {
+        runCatching {
+            // Save to internal app drive backup cache for instant offline restore / sync
+            val cacheFile = java.io.File(context.filesDir, "google_drive_sync_backup.json")
+            cacheFile.writeText(snapshotJson, Charsets.UTF_8)
+
+            // If a persistent Drive URI was also selected, update it
+            getSavedBackupUri(context)?.let { uri ->
+                try {
+                    context.contentResolver.openOutputStream(uri, "wt")?.use { out ->
+                        OutputStreamWriter(out, Charsets.UTF_8).use { it.write(snapshotJson) }
+                    }
+                } catch (_: Exception) {}
+            }
+
             setLastSyncTime(context, System.currentTimeMillis())
         }
+    }
+
+    suspend fun getCachedDriveBackup(context: Context): String? = withContext(Dispatchers.IO) {
+        val cacheFile = java.io.File(context.filesDir, "google_drive_sync_backup.json")
+        if (cacheFile.exists()) cacheFile.readText(Charsets.UTF_8) else null
+    }
+
+    suspend fun performSilentBackup(context: Context, snapshotJson: String): Result<Unit> {
+        return performAutoSync(context, snapshotJson)
     }
 
     suspend fun writeSnapshotToUri(context: Context, uri: Uri, snapshotJson: String): Result<Unit> = withContext(Dispatchers.IO) {

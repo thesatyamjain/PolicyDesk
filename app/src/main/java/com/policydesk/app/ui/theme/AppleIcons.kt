@@ -609,4 +609,127 @@ object AppleIcons {
             close()
         }
     }
+
+    /** SF Symbol: checkmark.circle.fill (Apple verified status) */
+    val CheckCircle: ImageVector by lazy {
+        buildIcon("AppleCheckCircle") {
+            moveTo(12f, 2f)
+            curveTo(6.5f, 2f, 2f, 6.5f, 2f, 12f)
+            curveTo(2f, 17.5f, 6.5f, 22f, 12f, 22f)
+            curveTo(17.5f, 22f, 22f, 17.5f, 22f, 12f)
+            curveTo(22f, 6.5f, 17.5f, 2f, 12f, 2f)
+            close()
+
+            // Inset Checkmark
+            moveTo(10.2f, 16.2f)
+            lineTo(6.8f, 12.8f)
+            lineTo(8.2f, 11.4f)
+            lineTo(10.2f, 13.4f)
+            lineTo(15.8f, 7.8f)
+            lineTo(17.2f, 9.2f)
+            close()
+        }
+    }
+
+    /** SF Symbol: arrow.up.doc.fill (Apple upload document) */
+    val Upload: ImageVector by lazy {
+        buildIcon("AppleUpload") {
+            moveTo(6f, 2.5f)
+            lineTo(14f, 2.5f)
+            lineTo(20f, 8.5f)
+            lineTo(20f, 19.5f)
+            curveTo(20f, 21f, 18.8f, 22f, 17.5f, 22f)
+            lineTo(6f, 22f)
+            curveTo(4.5f, 22f, 3.5f, 21f, 3.5f, 19.5f)
+            lineTo(3.5f, 5f)
+            curveTo(3.5f, 3.5f, 4.5f, 2.5f, 6f, 2.5f)
+            close()
+
+            // Inset upward arrow
+            moveTo(12f, 11f)
+            lineTo(15.5f, 14.5f)
+            lineTo(14.1f, 15.9f)
+            lineTo(13f, 14.8f)
+            lineTo(13f, 19f)
+            lineTo(11f, 19f)
+            lineTo(11f, 14.8f)
+            lineTo(9.9f, 15.9f)
+            lineTo(8.5f, 14.5f)
+            close()
+        }
+    }
+
+    /** SF Symbol: arrow.down.doc.fill (Apple download document) */
+    val Download: ImageVector by lazy {
+        buildIcon("AppleDownload") {
+            moveTo(6f, 2.5f)
+            lineTo(14f, 2.5f)
+            lineTo(20f, 8.5f)
+            lineTo(20f, 19.5f)
+            curveTo(20f, 21f, 18.8f, 22f, 17.5f, 22f)
+            lineTo(6f, 22f)
+            curveTo(4.5f, 22f, 3.5f, 21f, 3.5f, 19.5f)
+            lineTo(3.5f, 5f)
+            curveTo(3.5f, 3.5f, 4.5f, 2.5f, 6f, 2.5f)
+            close()
+
+            // Inset downward arrow
+            moveTo(12f, 19f)
+            lineTo(8.5f, 15.5f)
+            lineTo(9.9f, 14.1f)
+            lineTo(11f, 15.2f)
+            lineTo(11f, 11f)
+            lineTo(13f, 11f)
+            lineTo(13f, 15.2f)
+            lineTo(14.1f, 14.1f)
+            lineTo(15.5f, 15.5f)
+            close()
+        }
+    }
+
+    /** SF Symbol: lock.fill (Apple iOS security padlock) */
+    val Lock: ImageVector by lazy {
+        buildIcon("AppleLock") {
+            // Shackle (arch)
+            moveTo(12f, 2f)
+            curveTo(9.2f, 2f, 7f, 4.2f, 7f, 7f)
+            lineTo(7f, 10f)
+            lineTo(17f, 10f)
+            lineTo(17f, 7f)
+            curveTo(17f, 4.2f, 14.8f, 2f, 12f, 2f)
+            close()
+
+            // Shackle inner cut
+            moveTo(12f, 4.5f)
+            curveTo(13.4f, 4.5f, 14.5f, 5.6f, 14.5f, 7f)
+            lineTo(14.5f, 10f)
+            lineTo(9.5f, 10f)
+            lineTo(9.5f, 7f)
+            curveTo(9.5f, 5.6f, 10.6f, 4.5f, 12f, 4.5f)
+            close()
+
+            // Padlock body
+            moveTo(5.5f, 10f)
+            curveTo(4.4f, 10f, 3.5f, 10.9f, 3.5f, 12f)
+            lineTo(3.5f, 20f)
+            curveTo(3.5f, 21.1f, 4.4f, 22f, 5.5f, 22f)
+            lineTo(18.5f, 22f)
+            curveTo(19.6f, 22f, 20.5f, 21.1f, 20.5f, 20f)
+            lineTo(20.5f, 12f)
+            curveTo(20.5f, 10.9f, 19.6f, 10f, 18.5f, 10f)
+            close()
+
+            // Keyhole
+            moveTo(12f, 14f)
+            curveTo(11.2f, 14f, 10.5f, 14.7f, 10.5f, 15.5f)
+            curveTo(10.5f, 16.1f, 10.9f, 16.6f, 11.4f, 16.9f)
+            lineTo(11f, 19f)
+            lineTo(13f, 19f)
+            lineTo(12.6f, 16.9f)
+            curveTo(13.1f, 16.6f, 13.5f, 16.1f, 13.5f, 15.5f)
+            curveTo(13.5f, 14.7f, 12.8f, 14f, 12f, 14f)
+            close()
+        }
+    }
 }
+

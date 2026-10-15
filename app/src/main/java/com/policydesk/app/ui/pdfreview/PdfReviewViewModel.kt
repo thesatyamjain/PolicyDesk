@@ -161,10 +161,10 @@ class PdfReviewViewModel @Inject constructor(
                             isExtracting = false,
                             isPasswordProtected = false,
                             extractedData = data,
-                            regNo = data.regNo,
+                            regNo = RegistrationNormalizer.normalize(data.regNo),
                             customerName = data.customerName,
                             title = data.title,
-                            mobile = data.mobile,
+                            mobile = FieldValidators.normalizeMobile(data.mobile),
                             email = data.email,
                             address = data.address,
                             sector = sector ?: Sector.PRIVATE,
@@ -216,14 +216,14 @@ class PdfReviewViewModel @Inject constructor(
     fun onFieldChanged(fieldKey: String, value: String) {
         _uiState.update {
             when (fieldKey) {
-                "regNo" -> it.copy(regNo = value.uppercase())
+                "regNo" -> it.copy(regNo = RegistrationNormalizer.normalize(value))
                 "customerName" -> it.copy(customerName = value)
-                "mobile" -> it.copy(mobile = value)
+                "mobile" -> it.copy(mobile = FieldValidators.normalizeMobile(value))
                 "email" -> it.copy(email = value)
                 "address" -> it.copy(address = value)
                 "policyNumber" -> it.copy(policyNumber = value.uppercase())
                 "expiryDate" -> it.copy(expiryDate = value)
-                "totalPremium" -> it.copy(totalPremium = value)
+                "totalPremium" -> it.copy(totalPremium = value.filter { c -> c.isDigit() || c == '.' })
                 "makeModel" -> it.copy(makeModel = value)
                 "vin" -> it.copy(vin = value.uppercase())
                 "engineNo" -> it.copy(engineNo = value.uppercase())

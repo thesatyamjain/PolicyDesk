@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.policydesk.app.domain.model.DashboardSummary
 import com.policydesk.app.domain.model.PolicyStatus
+import com.policydesk.app.domain.model.RegistrationNormalizer
 import com.policydesk.app.domain.model.VehicleWithPolicies
 import com.policydesk.app.domain.repository.VehicleRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -53,11 +54,11 @@ class DashboardViewModel @Inject constructor(
         _sectorFilter
     ) { summary, query, filter, sector ->
         val today = LocalDate.now().toEpochDay()
-        val queryClean = query.trim().uppercase().replace(" ", "").replace("-", "")
+        val queryClean = RegistrationNormalizer.normalize(query)
 
         val list = summary.soonestExpiring.filter { item ->
             // Search filter
-            val regMatch = item.vehicle.regNo.contains(queryClean)
+            val regMatch = queryClean.isNotEmpty() && item.vehicle.regNo.contains(queryClean)
             val nameMatch = item.vehicle.customer.name.contains(query.trim(), ignoreCase = true)
             val mobileMatch = item.vehicle.customer.mobile.contains(query.trim())
             val policyMatch = item.currentPolicy?.policyNumber?.contains(query.trim(), ignoreCase = true) == true

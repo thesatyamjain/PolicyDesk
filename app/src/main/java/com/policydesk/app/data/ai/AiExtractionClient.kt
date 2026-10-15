@@ -3,8 +3,12 @@ package com.policydesk.app.data.ai
 import android.content.Context
 import android.net.Uri
 import android.util.Base64
+import com.policydesk.app.data.importer.SpreadsheetParser
 import com.policydesk.app.data.security.AiConfig
 import com.policydesk.app.data.security.AiProvider
+import com.policydesk.app.domain.model.FieldValidators
+import com.policydesk.app.domain.model.InsurerCatalog
+import com.policydesk.app.domain.model.RegistrationNormalizer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -41,41 +45,47 @@ sealed interface ExtractionResult {
 object AiExtractionClient {
 
     private const val SYSTEM_PROMPT = """
-You are an expert vehicle insurance policy document parser. 
-Extract the policy information into JSON format matching the following keys:
+You are an expert vehicle insurance policy document parser specializing in Indian motor insurance (Private Cars, Two Wheelers, Commercial Vehicles).
+Extract the policy information from the document into a JSON object matching these keys:
 {
-  "regNo": "Vehicle registration number (e.g. MH12AB1234)",
-  "customerName": "Insured person or company name",
-  "title": "Title like Shri, Smt., Kumari if present as prefix",
-  "mobile": "10 digit mobile number without +91",
+  "regNo": "Vehicle registration number (e.g. MH12AB1234, DL01A9999, 22BH1234AA) without spaces or hyphens",
+  "customerName": "Insured person or company name without salutations",
+  "title": "Title like Shri, Smt., Kumari, Mr., Ms., Dr., M/s if present",
+  "mobile": "10 digit mobile number without country code or 0 prefix",
   "email": "Email address if present",
-  "address": "Residential / communication address",
-  "sector": "PSU or Private",
-  "insurer": "Name of the insurance company",
-  "policyNumber": "Policy number",
-  "expiryDate": "Expiry date in DD/MM/YYYY format",
-  "totalPremium": "Total premium payable in INR as a number",
-  "makeModel": "Vehicle make and model (e.g. Swift Dzire)",
-  "vin": "Chassis number or VIN",
+  "address": "Residential or communication address of insured",
+  "sector": "PSU or Private (National Insurance, New India Assurance, Oriental Insurance, and United India Insurance are PSU; all others like HDFC ERGO, ICICI Lombard, Digit, Tata AIG, Bajaj Allianz are Private)",
+  "insurer": "Canonical name of the insurance company",
+  "policyNumber": "Policy or certificate number",
+  "expiryDate": "Policy expiry / valid-till date in DD/MM/YYYY format (check 'Period of Insurance: To midnight of')",
+  "totalPremium": "Final gross total premium payable in INR including GST as a numeric value",
+  "makeModel": "Vehicle make and model variant (e.g. Swift Dzire VXI, Creta SX)",
+  "vin": "Chassis number or VIN (typically 17 alphanumeric characters)",
   "engineNo": "Engine number"
 }
 Rules:
 1. Return ONLY the raw JSON object. Do not wrap in markdown quotes.
-2. If a field is not found in the document, return an empty string. NEVER GUESS OR FABRICATE.
+2. If a field is not found in the document, return an empty string. NEVER guess or hallucinate.
+3. For expiryDate, always convert the expiration date to DD/MM/YYYY.
+4. For totalPremium, return the final payable gross amount (Total Premium Payable / Gross Premium) without currency symbols or commas.
 """
 
     suspend fun testConnection(config: AiConfig): Result<String> = withContext(Dispatchers.IO) {
-        if (config.apiKey.isBlank()) {
+        val cleanKey = config.apiKey.trim()
+        if (cleanKey.isBlank()) {
             return@withContext Result.failure(Exception("API key cannot be empty"))
         }
 
         try {
             when (config.provider) {
                 AiProvider.GEMINI -> {
-                    val url = URL("https://generativelanguage.googleapis.com/v1beta/models/${config.model}:generateContent?key=${config.apiKey}")
+                    val cleanModel = config.model.trim().removePrefix("models/").ifBlank { "gemini-2.5-flash" }
+                    val url = URL("https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${cleanKey}")
                     val conn = url.openConnection() as HttpURLConnection
                     conn.requestMethod = "POST"
                     conn.setRequestProperty("Content-Type", "application/json")
+                    conn.connectTimeout = 15000
+                    conn.readTimeout = 15000
                     conn.doOutput = true
 
                     val body = JSONObject().apply {
@@ -90,21 +100,51 @@ Rules:
 
                     val code = conn.responseCode
                     if (code == 200) {
-                        Result.success("Connection successful! Provider: Google Gemini")
+                        Result.success("Connection successful! Provider: Google Gemini ($cleanModel)")
+                    } else if (code == 404) {
+                        // Model not found or deprecated (e.g. gemini-1.5-flash) - verify key with models.list
+                        val listUrl = URL("https://generativelanguage.googleapis.com/v1beta/models?key=${cleanKey}")
+                        val listConn = listUrl.openConnection() as HttpURLConnection
+                        listConn.requestMethod = "GET"
+                        listConn.connectTimeout = 10000
+                        listConn.readTimeout = 10000
+                        val listCode = listConn.responseCode
+                        if (listCode == 200) {
+                            Result.success("Connection successful! Key is active. Model '$cleanModel' is retired; please use 'gemini-2.5-flash'.")
+                        } else {
+                            val err = try {
+                                val stream = listConn.errorStream ?: listConn.inputStream
+                                val raw = BufferedReader(InputStreamReader(stream)).readText()
+                                JSONObject(raw).optJSONObject("error")?.optString("message") ?: raw
+                            } catch (_: Exception) { conn.responseMessage }
+                            Result.failure(Exception("HTTP $code: Model '$cleanModel' not found. ($err)"))
+                        }
                     } else {
-                        Result.failure(Exception("HTTP $code: ${conn.responseMessage}"))
+                        val errorText = try {
+                            val stream = conn.errorStream ?: conn.inputStream
+                            val raw = BufferedReader(InputStreamReader(stream)).readText()
+                            JSONObject(raw).optJSONObject("error")?.optString("message") ?: raw
+                        } catch (_: Exception) { conn.responseMessage }
+                        Result.failure(Exception("HTTP $code: $errorText"))
                     }
                 }
                 AiProvider.OPENAI -> {
                     val url = URL("https://api.openai.com/v1/models")
                     val conn = url.openConnection() as HttpURLConnection
                     conn.requestMethod = "GET"
-                    conn.setRequestProperty("Authorization", "Bearer ${config.apiKey}")
+                    conn.setRequestProperty("Authorization", "Bearer $cleanKey")
+                    conn.connectTimeout = 15000
+                    conn.readTimeout = 15000
                     val code = conn.responseCode
                     if (code == 200) {
                         Result.success("Connection successful! Provider: OpenAI")
                     } else {
-                        Result.failure(Exception("HTTP $code: ${conn.responseMessage}"))
+                        val errorText = try {
+                            val stream = conn.errorStream ?: conn.inputStream
+                            val raw = BufferedReader(InputStreamReader(stream)).readText()
+                            JSONObject(raw).optJSONObject("error")?.optString("message") ?: raw
+                        } catch (_: Exception) { conn.responseMessage }
+                        Result.failure(Exception("HTTP $code: $errorText"))
                     }
                 }
                 AiProvider.CLAUDE -> {
@@ -161,14 +201,14 @@ Rules:
     }
 
     private fun extractWithGemini(base64Pdf: String, config: AiConfig, password: String? = null): ExtractionResult {
-        val endpoint = "https://generativelanguage.googleapis.com/v1beta/models/${config.model}:generateContent?key=${config.apiKey}"
-        val url = URL(endpoint)
-        val conn = url.openConnection() as HttpURLConnection
-        conn.requestMethod = "POST"
-        conn.setRequestProperty("Content-Type", "application/json")
-        conn.doOutput = true
-        conn.connectTimeout = 30000
-        conn.readTimeout = 30000
+        val cleanKey = config.apiKey.trim()
+        val configuredModel = config.model.trim().removePrefix("models/").ifBlank { "gemini-2.5-flash" }
+        val candidateModels = listOf(
+            configuredModel,
+            "gemini-2.5-flash",
+            "gemini-2.0-flash",
+            "gemini-2.5-flash-lite"
+        ).distinct()
 
         val promptText = if (password.isNullOrBlank()) {
             "Extract all vehicle policy fields from this document:"
@@ -197,44 +237,99 @@ Rules:
             })
         }
 
-        OutputStreamWriter(conn.outputStream).use { it.write(requestJson.toString()) }
+        var lastError = "No response from Gemini"
 
-        val code = conn.responseCode
-        if (code != 200) {
-            val errReader = BufferedReader(InputStreamReader(conn.errorStream ?: conn.inputStream))
-            val errorText = errReader.readText()
-            return ExtractionResult.Error("Gemini API Error ($code): $errorText")
+        for (targetModel in candidateModels) {
+            val endpoint = "https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${cleanKey}"
+            val url = URL(endpoint)
+            val conn = url.openConnection() as HttpURLConnection
+            conn.requestMethod = "POST"
+            conn.setRequestProperty("Content-Type", "application/json")
+            conn.doOutput = true
+            conn.connectTimeout = 30000
+            conn.readTimeout = 30000
+
+            try {
+                OutputStreamWriter(conn.outputStream).use { it.write(requestJson.toString()) }
+
+                val code = conn.responseCode
+                if (code == 200) {
+                    val responseText = BufferedReader(InputStreamReader(conn.inputStream)).readText()
+                    val responseJson = JSONObject(responseText)
+                    val candidates = responseJson.optJSONArray("candidates")
+                    val candidate = candidates?.optJSONObject(0)
+                    val parts = candidate?.optJSONObject("content")?.optJSONArray("parts")
+                    val text = parts?.optJSONObject(0)?.optString("text") ?: ""
+
+                    if (text.isBlank()) {
+                        return ExtractionResult.Error("The model returned empty output. Ensure document is an insurance PDF.")
+                    }
+
+                    return parseGeminiResponse(text)
+                } else if (code == 404 && targetModel != candidateModels.last()) {
+                    // Try next model if current is retired (e.g. gemini-1.5-flash)
+                    continue
+                } else {
+                    val stream = conn.errorStream ?: conn.inputStream
+                    val errReader = BufferedReader(InputStreamReader(stream))
+                    val errorText = errReader.readText()
+                    val parsedMsg = try {
+                        JSONObject(errorText).optJSONObject("error")?.optString("message") ?: errorText
+                    } catch (_: Exception) { errorText }
+                    lastError = "Gemini API Error ($code): $parsedMsg"
+                    break
+                }
+            } catch (e: Exception) {
+                lastError = "Network error connecting to $targetModel: ${e.message}"
+            }
         }
 
-        val responseText = BufferedReader(InputStreamReader(conn.inputStream)).readText()
-        val responseJson = JSONObject(responseText)
-        val candidates = responseJson.optJSONArray("candidates")
-        val candidate = candidates?.optJSONObject(0)
-        val parts = candidate?.optJSONObject("content")?.optJSONArray("parts")
-        val text = parts?.optJSONObject(0)?.optString("text") ?: ""
+        return ExtractionResult.Error(lastError)
+    }
 
-        if (text.isBlank()) {
-            return ExtractionResult.Error("The model returned empty output. Ensure document is an insurance PDF.")
-        }
+    private fun parseGeminiResponse(text: String): ExtractionResult {
 
         return try {
             val cleanJsonStr = text.trim().removePrefix("```json").removePrefix("```").removeSuffix("```").trim()
             val parsed = JSONObject(cleanJsonStr)
+
+            val rawReg = parsed.optString("regNo", "")
+            val normalizedReg = RegistrationNormalizer.repairOcrMisreads(RegistrationNormalizer.normalize(rawReg))
+
+            val rawMobile = parsed.optString("mobile", "")
+            val normalizedMobile = FieldValidators.normalizeMobile(rawMobile)
+
+            val rawPremium = parsed.optString("totalPremium", "")
+            val cleanPremium = SpreadsheetParser.parsePremium(rawPremium)?.let {
+                if (it % 1.0 == 0.0) it.toLong().toString() else it.toString()
+            } ?: rawPremium.filter { it.isDigit() || it == '.' }
+
+            val rawExpiry = parsed.optString("expiryDate", "")
+            val cleanExpiry = SpreadsheetParser.parseDateToEpochMs(rawExpiry)?.let {
+                SpreadsheetParser.formatDateForDisplay(it)
+            } ?: rawExpiry
+
+            val rawInsurer = parsed.optString("insurer", "")
+            val rawSector = parsed.optString("sector", "")
+            val matched = InsurerCatalog.matchInsurer(rawInsurer)
+            val finalInsurer = matched?.second ?: rawInsurer
+            val finalSector = matched?.first?.name ?: rawSector
+
             val data = ExtractedPolicyData(
-                regNo = parsed.optString("regNo", ""),
-                customerName = parsed.optString("customerName", ""),
-                title = parsed.optString("title", ""),
-                mobile = parsed.optString("mobile", ""),
-                email = parsed.optString("email", ""),
-                address = parsed.optString("address", ""),
-                sector = parsed.optString("sector", ""),
-                insurer = parsed.optString("insurer", ""),
-                policyNumber = parsed.optString("policyNumber", ""),
-                expiryDate = parsed.optString("expiryDate", ""),
-                totalPremium = parsed.optString("totalPremium", ""),
-                makeModel = parsed.optString("makeModel", ""),
-                vin = parsed.optString("vin", ""),
-                engineNo = parsed.optString("engineNo", ""),
+                regNo = normalizedReg,
+                customerName = parsed.optString("customerName", "").trim(),
+                title = parsed.optString("title", "").trim(),
+                mobile = normalizedMobile,
+                email = parsed.optString("email", "").trim(),
+                address = parsed.optString("address", "").trim(),
+                sector = finalSector,
+                insurer = finalInsurer,
+                policyNumber = parsed.optString("policyNumber", "").trim(),
+                expiryDate = cleanExpiry,
+                totalPremium = cleanPremium,
+                makeModel = parsed.optString("makeModel", "").trim(),
+                vin = parsed.optString("vin", "").trim().uppercase(),
+                engineNo = parsed.optString("engineNo", "").trim().uppercase(),
                 rawJson = cleanJsonStr
             )
             ExtractionResult.Success(data)

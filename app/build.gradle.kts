@@ -105,3 +105,7 @@ dependencies {
     androidTestImplementation(platform(libs.androidx.compose.bom))
     debugImplementation(libs.androidx.compose.ui.tooling)
 }
+
+tasks.withType<Test>().configureEach {
+    classpath += files(layout.buildDirectory.dir("tmp/kotlin-classes/debug"))
+}

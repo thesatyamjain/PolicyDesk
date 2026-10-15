@@ -24,6 +24,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.People
@@ -31,10 +32,13 @@ import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.TableChart
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -67,6 +71,7 @@ import com.policydesk.app.ui.components.LiquidGlassTopBar
 import com.policydesk.app.ui.components.UiFormatters
 import com.policydesk.app.ui.components.liquidGlass
 import com.policydesk.app.ui.theme.AppleDarkSystemBlue
+import com.policydesk.app.ui.theme.AppleIcons
 import com.policydesk.app.ui.theme.AppleSystemBlue
 import com.policydesk.app.ui.theme.AppleSystemGreen
 import com.policydesk.app.ui.theme.AppleSystemOrange
@@ -108,11 +113,15 @@ fun DashboardScreen(
     var showAddChooserSheet by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState()
 
+    val isDark = isSystemInDarkTheme()
+    val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
+    val labelSecondary = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
+
     if (showAddChooserSheet) {
         ModalBottomSheet(
             onDismissRequest = { showAddChooserSheet = false },
             sheetState = sheetState,
-            containerColor = Color.White.copy(alpha = 0.96f),
+            containerColor = if (isDark) Color(0xFF1C1C1E) else Color(0xFFF2F2F7),
             shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
         ) {
             Column(
@@ -125,20 +134,20 @@ fun DashboardScreen(
                     text = "Add Customer Policy",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
-                    color = IosLabelPrimary,
+                    color = labelPrimary,
                     letterSpacing = (-0.3).sp
                 )
                 Text(
                     text = "Three ways in, one verified record out:",
                     fontSize = 13.sp,
-                    color = IosLabelSecondary
+                    color = labelSecondary
                 )
 
                 AddOptionCard(
-                    icon = Icons.Default.Edit,
+                    icon = AppleIcons.SquareAndPencil,
                     iconBg = AppleSystemBlue.copy(alpha = 0.12f),
                     iconTint = AppleSystemBlue,
-                    title = "Manual Form Entry",
+                    title = "Fill Form (Manual Entry)",
                     subtitle = "Fill vehicle, policy & customer details manually",
                     onClick = {
                         showAddChooserSheet = false
@@ -147,7 +156,7 @@ fun DashboardScreen(
                 )
 
                 AddOptionCard(
-                    icon = Icons.Default.TableChart,
+                    icon = AppleIcons.TableCells,
                     iconBg = AppleSystemGreen.copy(alpha = 0.12f),
                     iconTint = AppleSystemGreen,
                     title = "Spreadsheet Import (.xlsx / .csv)",
@@ -159,7 +168,7 @@ fun DashboardScreen(
                 )
 
                 AddOptionCard(
-                    icon = Icons.Default.PictureAsPdf,
+                    icon = AppleIcons.DocText,
                     iconBg = AppleSystemRed.copy(alpha = 0.12f),
                     iconTint = AppleSystemRed,
                     title = "Import from PDF (AI Extraction)",
@@ -167,6 +176,18 @@ fun DashboardScreen(
                     onClick = {
                         showAddChooserSheet = false
                         onNavigateToPdf()
+                    }
+                )
+
+                AddOptionCard(
+                    icon = Icons.Default.CloudDone,
+                    iconBg = AppleSystemBlue.copy(alpha = 0.12f),
+                    iconTint = AppleSystemBlue,
+                    title = "Restore from Google Drive",
+                    subtitle = "Restore all vehicles & policies from your Drive backup",
+                    onClick = {
+                        showAddChooserSheet = false
+                        onNavigateToSettings()
                     }
                 )
 
@@ -193,7 +214,7 @@ fun DashboardScreen(
                         modifier = Modifier.size(36.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.People,
+                            imageVector = AppleIcons.Person2,
                             contentDescription = "Clients & Households",
                             tint = actionTint,
                             modifier = Modifier.size(20.dp)
@@ -207,7 +228,7 @@ fun DashboardScreen(
                         modifier = Modifier.size(36.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.CalendarMonth,
+                            imageVector = AppleIcons.Calendar,
                             contentDescription = "Month Timeline",
                             tint = actionTint,
                             modifier = Modifier.size(20.dp)
@@ -221,7 +242,7 @@ fun DashboardScreen(
                         modifier = Modifier.size(36.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Assessment,
+                            imageVector = AppleIcons.ChartBar,
                             contentDescription = "Reports & Analytics",
                             tint = actionTint,
                             modifier = Modifier.size(20.dp)
@@ -235,7 +256,7 @@ fun DashboardScreen(
                         modifier = Modifier.size(36.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Settings,
+                            imageVector = AppleIcons.GearShape,
                             contentDescription = "Settings",
                             tint = actionTint,
                             modifier = Modifier.size(20.dp)
@@ -247,11 +268,11 @@ fun DashboardScreen(
         floatingActionButton = {
             LiquidGlassFloatingButton(
                 text = "Add Customer",
-                icon = Icons.Default.Add,
+                icon = AppleIcons.Plus,
                 onClick = { showAddChooserSheet = true }
             )
         },
-        containerColor = IosSystemBackground
+        containerColor = androidx.compose.material3.MaterialTheme.colorScheme.background
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -443,7 +464,11 @@ fun DashboardScreen(
 
             // Vehicle Expiry List
             if (uiState.filteredList.isEmpty()) {
-                EmptyStateView(hasQuery = uiState.searchQuery.isNotEmpty())
+                EmptyStateView(
+                    hasQuery = uiState.searchQuery.isNotEmpty(),
+                    onAddCustomerClicked = { showAddChooserSheet = true },
+                    onNavigateToSettings = onNavigateToSettings
+                )
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
@@ -474,6 +499,10 @@ fun AddOptionCard(
     subtitle: String,
     onClick: () -> Unit
 ) {
+    val isDark = isSystemInDarkTheme()
+    val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
+    val labelSecondary = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
+
     LiquidGlassCard(
         shape = RoundedCornerShape(16.dp),
         elevation = 2.dp,
@@ -486,16 +515,16 @@ fun AddOptionCard(
                 modifier = Modifier
                     .size(42.dp)
                     .background(iconBg, RoundedCornerShape(12.dp))
-                    .border(0.5.dp, Color.White.copy(alpha = 0.4f), RoundedCornerShape(12.dp)),
+                    .border(0.5.dp, if (isDark) Color(0x33FFFFFF) else Color.White.copy(alpha = 0.4f), RoundedCornerShape(12.dp)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(imageVector = icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(22.dp))
             }
             Spacer(modifier = Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = title, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = IosLabelPrimary)
+                Text(text = title, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = labelPrimary)
                 Spacer(modifier = Modifier.height(2.dp))
-                Text(text = subtitle, fontSize = 12.sp, color = IosLabelSecondary)
+                Text(text = subtitle, fontSize = 12.sp, color = labelSecondary)
             }
         }
     }
@@ -547,6 +576,9 @@ fun VehicleExpiryCard(
     item: VehicleWithPolicies,
     onClick: () -> Unit
 ) {
+    val isDark = isSystemInDarkTheme()
+    val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
+    val labelSecondary = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
     val policy = item.currentPolicy
     val daysRemaining = policy?.computeDaysRemaining() ?: 0
     val status = policy?.computeCurrentStatus() ?: com.policydesk.app.domain.model.PolicyStatus.ACTIVE
@@ -564,8 +596,8 @@ fun VehicleExpiryCard(
             // Vehicle Registration Plate Pill
             Box(
                 modifier = Modifier
-                    .background(Color(0xFFFEF9C3).copy(alpha = 0.60f), RoundedCornerShape(8.dp))
-                    .border(0.75.dp, Color(0xFFCA8A04).copy(alpha = 0.6f), RoundedCornerShape(8.dp))
+                    .background(if (isDark) Color(0xFF332E00) else Color(0xFFFEF9C3).copy(alpha = 0.60f), RoundedCornerShape(8.dp))
+                    .border(0.75.dp, if (isDark) Color(0xFFEAB308) else Color(0xFFCA8A04).copy(alpha = 0.6f), RoundedCornerShape(8.dp))
                     .padding(horizontal = 9.dp, vertical = 3.dp)
             ) {
                 Text(
@@ -573,7 +605,7 @@ fun VehicleExpiryCard(
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 0.6.sp,
-                    color = IosLabelPrimary
+                    color = if (isDark) Color(0xFFFEF08A) else IosLabelPrimary
                 )
             }
 
@@ -595,7 +627,7 @@ fun VehicleExpiryCard(
                     text = item.vehicle.customer.name,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = IosLabelPrimary,
+                    color = labelPrimary,
                     letterSpacing = (-0.2).sp
                 )
                 item.vehicle.makeModel?.let { make ->
@@ -603,7 +635,7 @@ fun VehicleExpiryCard(
                         Text(
                             text = make,
                             fontSize = 13.sp,
-                            color = IosLabelSecondary
+                            color = labelSecondary
                         )
                     }
                 }
@@ -614,7 +646,7 @@ fun VehicleExpiryCard(
                     text = UiFormatters.formatCurrency(policy.totalPremium),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
-                    color = AppleSystemBlue,
+                    color = if (isDark) AppleDarkSystemBlue else AppleSystemBlue,
                     letterSpacing = (-0.2).sp
                 )
             }
@@ -631,7 +663,7 @@ fun VehicleExpiryCard(
                 text = policy?.insurer ?: "No Active Policy",
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
-                color = IosLabelSecondary
+                color = labelSecondary
             )
 
             if (policy != null) {
@@ -639,7 +671,7 @@ fun VehicleExpiryCard(
                     text = "Exp: ${UiFormatters.formatDate(policy.expiryDate)}",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
-                    color = if (daysRemaining <= 7) AppleSystemRed else IosLabelSecondary
+                    color = if (daysRemaining <= 7) AppleSystemRed else labelSecondary
                 )
             }
         }
@@ -647,7 +679,15 @@ fun VehicleExpiryCard(
 }
 
 @Composable
-fun EmptyStateView(hasQuery: Boolean) {
+fun EmptyStateView(
+    hasQuery: Boolean,
+    onAddCustomerClicked: () -> Unit = {},
+    onNavigateToSettings: () -> Unit = {}
+) {
+    val isDark = isSystemInDarkTheme()
+    val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
+    val labelSecondary = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -658,14 +698,14 @@ fun EmptyStateView(hasQuery: Boolean) {
             Box(
                 modifier = Modifier
                     .size(64.dp)
-                    .background(Color.White.copy(alpha = 0.75f), CircleShape)
-                    .border(1.dp, Color.White.copy(alpha = 0.9f), CircleShape),
+                    .background(if (isDark) Color(0x33545458) else Color.White.copy(alpha = 0.75f), CircleShape)
+                    .border(1.dp, if (isDark) Color(0x33FFFFFF) else Color.White.copy(alpha = 0.9f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Default.DirectionsCar,
+                    imageVector = AppleIcons.Car,
                     contentDescription = null,
-                    tint = IosLabelTertiary,
+                    tint = if (isDark) Color(0xFF8E8E93) else IosLabelTertiary,
                     modifier = Modifier.size(32.dp)
                 )
             }
@@ -674,16 +714,39 @@ fun EmptyStateView(hasQuery: Boolean) {
                 text = if (hasQuery) "No matching policies found" else "No vehicles added yet",
                 fontSize = 17.sp,
                 fontWeight = FontWeight.Bold,
-                color = IosLabelPrimary,
+                color = labelPrimary,
                 letterSpacing = (-0.2).sp
             )
             Spacer(modifier = Modifier.height(6.dp))
             Text(
-                text = if (hasQuery) "Try searching for a different registration, customer or phone number" else "Tap '+ Add Customer' below to add via Form, Spreadsheet, or PDF.",
+                text = if (hasQuery) "Try searching for a different registration, customer or phone number" else "Tap below to add via Form, Spreadsheet, or PDF.",
                 fontSize = 13.sp,
-                color = IosLabelSecondary,
+                color = labelSecondary,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
             )
+
+            if (!hasQuery) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = onAddCustomerClicked,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = if (isDark) AppleDarkSystemBlue else AppleSystemBlue)
+                ) {
+                    Icon(imageVector = AppleIcons.Plus, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Add Customer Policy", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = onNavigateToSettings,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = if (isDark) AppleDarkSystemBlue else AppleSystemBlue)
+                ) {
+                    Icon(imageVector = Icons.Default.CloudDone, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Restore from Google Drive", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                }
+            }
         }
     }
 }

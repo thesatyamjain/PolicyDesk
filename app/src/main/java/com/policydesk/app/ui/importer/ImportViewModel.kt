@@ -8,9 +8,12 @@ import com.policydesk.app.data.importer.ImportPreviewResult
 import com.policydesk.app.data.importer.ParsedRow
 import com.policydesk.app.data.importer.SpreadsheetParser
 import com.policydesk.app.domain.model.Customer
+import com.policydesk.app.domain.model.FieldValidators
+import com.policydesk.app.domain.model.InsurerCatalog
 import com.policydesk.app.domain.model.Policy
 import com.policydesk.app.domain.model.PolicySource
 import com.policydesk.app.domain.model.PolicyStatus
+import com.policydesk.app.domain.model.RegistrationNormalizer
 import com.policydesk.app.domain.model.SaleType
 import com.policydesk.app.domain.model.Vehicle
 import com.policydesk.app.domain.repository.VehicleRepository
@@ -87,10 +90,24 @@ class ImportViewModel @Inject constructor(
                     return@launch
                 }
 
-                val headerRow = table.first()
-                val dataRows = table.drop(1)
+                // Intelligently detect header row index (skipping report titles/metadata rows)
+                val headerIndex = findHeaderRowIndex(table)
+                val headerRow = table[headerIndex]
+                val allDataRows = table.drop(headerIndex + 1)
 
-                val autoMapping = autoMapHeaders(headerRow)
+                // Filter out blank rows and summary/trailer rows (e.g. "Total", "Grand Total")
+                val dataRows = allDataRows.filter { row ->
+                    if (row.all { it.isBlank() }) return@filter false
+                    val firstCell = row.firstOrNull()?.trim()?.lowercase() ?: ""
+                    val isSummaryRow = firstCell.startsWith("total") ||
+                            firstCell.startsWith("grand total") ||
+                            firstCell.startsWith("sub total") ||
+                            firstCell.startsWith("count") ||
+                            firstCell.startsWith("summary")
+                    !isSummaryRow
+                }
+
+                val autoMapping = autoMapHeaders(headerRow, dataRows)
 
                 _uiState.update {
                     it.copy(
@@ -108,29 +125,162 @@ class ImportViewModel @Inject constructor(
         }
     }
 
-    private fun autoMapHeaders(headers: List<String>): Map<Int, String> {
-        val mapping = mutableMapOf<Int, String>()
-        for ((index, rawHeader) in headers.withIndex()) {
-            val h = rawHeader.lowercase().replace(" ", "").replace("_", "")
-            when {
-                h.contains("reg") || h.contains("vehicleno") -> mapping[index] = "regNo"
-                h.contains("name") || h.contains("customer") || h.contains("client") -> mapping[index] = "name"
-                h.contains("title") || h.contains("salutation") -> mapping[index] = "title"
-                h.contains("mobile") || h.contains("phone") || h.contains("contact") -> mapping[index] = "mobile"
-                h.contains("email") -> mapping[index] = "email"
-                h.contains("address") -> mapping[index] = "address"
-                h.contains("sector") -> mapping[index] = "sector"
-                h.contains("insurer") || h.contains("company") -> mapping[index] = "insurer"
-                h.contains("policy") || h.contains("policyno") -> mapping[index] = "policyNumber"
-                h.contains("expiry") || h.contains("duedate") -> mapping[index] = "expiryDate"
-                h.contains("premium") || h.contains("amount") || h.contains("cost") -> mapping[index] = "totalPremium"
-                h.contains("make") || h.contains("model") -> mapping[index] = "makeModel"
-                h.contains("vin") || h.contains("chassis") -> mapping[index] = "vin"
-                h.contains("engine") -> mapping[index] = "engineNo"
-                h.contains("note") || h.contains("remark") -> mapping[index] = "notes"
-                h.contains("saledate") || h.contains("booked") -> mapping[index] = "saleDate"
+    private fun findHeaderRowIndex(table: List<List<String>>): Int {
+        val maxScan = minOf(table.size, 15)
+        var bestIndex = 0
+        var maxMatches = -1
+
+        val keyTokens = listOf(
+            "reg", "veh", "vahan", "policy", "pol", "insured", "name", "customer",
+            "chassis", "vin", "engine", "mobile", "phone", "contact", "expiry", "exp",
+            "due", "valid", "premium", "prem", "tp", "od", "make", "model", "insurer", "company"
+        )
+
+        for (i in 0 until maxScan) {
+            val row = table[i]
+            if (row.size < 2) continue
+            var score = 0
+            for (cell in row) {
+                val clean = cell.lowercase().replace(" ", "").replace("_", "").replace("-", "")
+                if (keyTokens.any { clean.contains(it) }) {
+                    score++
+                }
+            }
+            if (score > maxMatches && score >= 2) {
+                maxMatches = score
+                bestIndex = i
             }
         }
+        return bestIndex
+    }
+
+    private fun autoMapHeaders(headers: List<String>, sampleRows: List<List<String>> = emptyList()): Map<Int, String> {
+        val mapping = mutableMapOf<Int, String>()
+        val mappedFields = mutableSetOf<String>()
+
+        for ((index, rawHeader) in headers.withIndex()) {
+            val h = rawHeader.lowercase()
+                .replace(" ", "")
+                .replace("_", "")
+                .replace("-", "")
+                .replace(".", "")
+                .replace("/", "")
+
+            val target = when {
+                h.contains("reg") || h.contains("vehicleno") || h.contains("vehiclenumber") ||
+                        h.contains("vehical") || h.contains("vahan") || h.contains("vahanno") ||
+                        h.contains("vehno") || h.contains("vehnum") || h.contains("rcno") ||
+                        h.contains("rcnum") || h == "rc" || h == "veh" || h.contains("carno") ||
+                        h.contains("bikeno") || h.contains("truckno") || h.contains("busno") ||
+                        h.contains("rtono") || h.contains("registration") || h.contains("regmark") ||
+                        h.contains("registrationmark") || h.contains("gaddi") -> "regNo"
+
+                h.contains("customername") || h.contains("clientname") || h.contains("insuredname") ||
+                        h.contains("proposername") || h.contains("partyname") || h.contains("ownername") ||
+                        h.contains("custname") || h.contains("policyholder") ||
+                        h == "name" || h.contains("customer") || h.contains("client") ||
+                        h.contains("insured") || h.contains("proposer") || h.contains("party") ||
+                        h.contains("owner") || h.contains("holder") -> "name"
+
+                h.contains("title") || h.contains("salutation") || h.contains("prefix") ||
+                        h.contains("mrms") -> "title"
+
+                h.contains("mobile") || h.contains("phone") || h.contains("contact") ||
+                        h.contains("cell") || h.contains("whatsapp") || h.contains("tel") ||
+                        h == "mob" || h.contains("contactno") || h.contains("phoneno") ||
+                        h.contains("custmobile") || h.contains("mobilenumber") ||
+                        h.contains("contactnumber") -> "mobile"
+
+                h.contains("email") || h.contains("mail") || h.contains("emailid") -> "email"
+
+                h.contains("address") || h.contains("residence") || h.contains("location") ||
+                        h.contains("city") || h.contains("addr") || h.contains("state") -> "address"
+
+                h.contains("sector") || h.contains("companytype") || h.contains("category") -> "sector"
+
+                h.contains("insurer") || h.contains("insurancecompany") || h.contains("underwriter") ||
+                        h.contains("carrier") || h.contains("company") || h.contains("companyname") ||
+                        h.contains("insuranceco") || h.contains("insurance") -> "insurer"
+
+                h.contains("policyno") || h.contains("policynumber") || h.contains("policy") ||
+                        h.contains("polno") || h.contains("covernoteno") || h.contains("cnno") ||
+                        h.contains("certificateno") || h.contains("covernote") || h.contains("certno") ||
+                        h.contains("polnum") -> "policyNumber"
+
+                h.contains("expiry") || h.contains("expdate") || h.contains("validtill") ||
+                        h.contains("validto") || h.contains("validupto") || h.contains("enddate") ||
+                        h.contains("duedate") || h.contains("renewaldate") || h.contains("periodto") ||
+                        h.contains("riskexpiry") || h == "exp" -> "expiryDate"
+
+                h.contains("tppremium") || h.contains("thirdpartypremium") || h.contains("tpprem") ||
+                        h == "tp" || h == "thirdparty" -> "tpPremium"
+
+                h.contains("odpremium") || h.contains("owndamagepremium") || h.contains("odprem") ||
+                        h == "od" || h == "owndamage" -> "odPremium"
+
+                h.contains("premium") || h.contains("netpremium") || h.contains("grosspremium") ||
+                        h.contains("totalpremium") || h.contains("finalpremium") || h.contains("totalprem") ||
+                        h.contains("grossprem") || h.contains("netprem") || h.contains("amount") ||
+                        h.contains("totalamount") || h.contains("cost") || h.contains("payout") ||
+                        h.contains("payment") || h.contains("gwp") || h.contains("nwp") || h == "prem" -> "totalPremium"
+
+                h.contains("makemodel") || (h.contains("make") && h.contains("model")) ||
+                        h.contains("variant") || h.contains("description") -> "makeModel"
+
+                h.contains("make") || h.contains("mfg") || h.contains("manufacturer") || h.contains("oem") -> "make"
+
+                h.contains("model") || h.contains("submodel") -> "model"
+
+                h.contains("vin") || h.contains("chassis") || h.contains("chassisno") ||
+                        h.contains("chassisnumber") || h.contains("frameno") || h.contains("framenumber") ||
+                        h.contains("vinnumber") || h.contains("chassisnum") -> "vin"
+
+                h.contains("engineno") || h.contains("enginenumber") || h.contains("engno") ||
+                        h.contains("enginenum") || h.contains("engine") || h.contains("motorno") -> "engineNo"
+
+                h.contains("notes") || h.contains("note") || h.contains("remark") ||
+                        h.contains("remarks") || h.contains("comments") -> "notes"
+
+                h.contains("saledate") || h.contains("startdate") || h.contains("issuedate") ||
+                        h.contains("inception") || h.contains("bookingdate") || h.contains("periodfrom") ||
+                        h.contains("booked") -> "saleDate"
+
+                else -> null
+            }
+
+            if (target != null && target !in mappedFields) {
+                mapping[index] = target
+                mappedFields.add(target)
+            }
+        }
+
+        // Fallback: Content-based heuristic auto-detection from first few sample rows
+        if (sampleRows.isNotEmpty()) {
+            val unmappedIndices = headers.indices.filter { it !in mapping }
+            for (colIdx in unmappedIndices) {
+                val samples = sampleRows.take(5).mapNotNull { row ->
+                    if (colIdx < row.size) row[colIdx].trim().ifBlank { null } else null
+                }
+                if (samples.isEmpty()) continue
+
+                val target = when {
+                    "regNo" !in mappedFields && samples.any { RegistrationNormalizer.isStandardFormat(RegistrationNormalizer.normalize(it)) } -> "regNo"
+                    "mobile" !in mappedFields && samples.any { FieldValidators.isValidMobile(it) } -> "mobile"
+                    "email" !in mappedFields && samples.any { it.contains("@") && FieldValidators.isValidEmail(it) } -> "email"
+                    "vin" !in mappedFields && samples.any { it.length == 17 && it.all { c -> c.isLetterOrDigit() } } -> "vin"
+                    "expiryDate" !in mappedFields && samples.any { SpreadsheetParser.parseDateToEpochMs(it) != null } -> "expiryDate"
+                    "totalPremium" !in mappedFields && samples.any { SpreadsheetParser.parsePremium(it)?.let { p -> p > 0 } == true } -> "totalPremium"
+                    "insurer" !in mappedFields && samples.any { InsurerCatalog.matchInsurer(it) != null } -> "insurer"
+                    else -> null
+                }
+
+                if (target != null && target !in mappedFields) {
+                    mapping[colIdx] = target
+                    mappedFields.add(target)
+                }
+            }
+        }
+
         return mapping
     }
 

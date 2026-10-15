@@ -52,8 +52,8 @@ class SettingsViewModel @Inject constructor(
     fun loadSettings() {
         val config = secureStorage.getAiConfig()
         val lockEnabled = com.policydesk.app.data.security.AppLockManager.isAppLockEnabled(context)
+        val connectedAccount = com.policydesk.app.data.drive.GoogleDriveManager.getConnectedAccount(context)
         val lastSync = com.policydesk.app.data.drive.GoogleDriveManager.getLastSyncTime(context)
-        val hasDriveUri = com.policydesk.app.data.drive.GoogleDriveManager.getSavedBackupUri(context) != null
         val syncTimeStr = if (lastSync > 0) {
             java.time.Instant.ofEpochMilli(lastSync)
                 .atZone(java.time.ZoneId.systemDefault())
@@ -67,8 +67,9 @@ class SettingsViewModel @Inject constructor(
                     aiConfig = config,
                     totalRecords = vehicles.size,
                     isAppLockEnabled = lockEnabled,
+                    googleAccountEmail = connectedAccount,
                     lastSyncTime = syncTimeStr,
-                    syncStatusText = if (hasDriveUri) "Google Drive Auto-Sync Active" else "Local-First Active"
+                    syncStatusText = if (connectedAccount != null) "Auto-Sync Active" else "Not Connected"
                 )
             }
         }
@@ -125,8 +126,14 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun testAiConnection() {
-        val config = _uiState.value.aiConfig
-        _uiState.update { it.copy(isTestingAi = true, aiTestMessage = null) }
+        val current = _uiState.value.aiConfig
+        val cleanKey = current.apiKey.trim()
+        var cleanModel = current.model.trim().removePrefix("models/")
+        if (current.provider == AiProvider.GEMINI && (cleanModel.isBlank() || cleanModel == "gemini-1.5-flash")) {
+            cleanModel = "gemini-2.5-flash"
+        }
+        val config = current.copy(apiKey = cleanKey, model = cleanModel)
+        _uiState.update { it.copy(aiConfig = config, isTestingAi = true, aiTestMessage = null) }
 
         viewModelScope.launch {
             val result = AiExtractionClient.testConnection(config)
@@ -221,15 +228,47 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun triggerSyncNow() {
+    fun connectGoogleAccount(email: String) {
+        com.policydesk.app.data.drive.GoogleDriveManager.setConnectedAccount(context, email)
         _uiState.update {
+            it.copy(
+                googleAccountEmail = email,
+                syncStatusText = "Auto-Sync Active",
+                syncMessage = "Google Drive connected ($email)! Auto-sync is now active."
+            )
+        }
+        triggerSyncNow()
+    }
+
+    fun disconnectGoogleDrive() {
+        com.policydesk.app.data.drive.GoogleDriveManager.disconnect(context)
+        _uiState.update {
+            it.copy(
+                googleAccountEmail = null,
+                syncStatusText = "Not Connected",
+                syncMessage = "Google Drive disconnected. Data is stored safely on this device."
+            )
+        }
+    }
+
+    fun triggerSyncNow() {
+        val account = _uiState.value.googleAccountEmail
+        _uiState.update { it.copy(isSyncing = true, syncMessage = null) }
+        viewModelScope.launch {
+            val snapshot = exportSnapshotJson()
+            if (account != null) {
+                com.policydesk.app.data.drive.GoogleDriveManager.performAutoSync(context, snapshot)
+            }
             val nowFormatted = java.time.LocalDateTime.now()
                 .format(java.time.format.DateTimeFormatter.ofPattern("dd MMM, hh:mm a"))
-            it.copy(
-                lastSyncTime = nowFormatted,
-                syncStatusText = "Local-First Active",
-                syncMessage = "Use 'Backup to Google Drive' below to save your snapshot to Drive."
-            )
+            _uiState.update {
+                it.copy(
+                    isSyncing = false,
+                    lastSyncTime = nowFormatted,
+                    syncStatusText = if (account != null) "Auto-Sync Active" else "Local-First Active",
+                    syncMessage = if (account != null) "All records successfully synced to Google Drive!" else "Data backed up locally on device."
+                )
+            }
         }
     }
 

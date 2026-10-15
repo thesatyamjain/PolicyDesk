@@ -28,6 +28,18 @@ class SpreadsheetAndReportsTest {
         assertEquals(expected, SpreadsheetParser.parseDateToEpochMs("28/11/2026"))
         assertEquals(expected, SpreadsheetParser.parseDateToEpochMs("28-11-2026"))
         assertEquals(expected, SpreadsheetParser.parseDateToEpochMs("2026-11-28"))
+        assertEquals(expected, SpreadsheetParser.parseDateToEpochMs("28-Nov-2026"))
+        assertEquals(expected, SpreadsheetParser.parseDateToEpochMs("28 Nov 2026"))
+        assertEquals(expected, SpreadsheetParser.parseDateToEpochMs("28/11/2026 23:59:59"))
+    }
+
+    @Test
+    fun parsePremium_cleans_currency_and_symbols() {
+        assertEquals(14500.0, SpreadsheetParser.parsePremium("14500") ?: 0.0, 0.001)
+        assertEquals(14500.0, SpreadsheetParser.parsePremium("14,500") ?: 0.0, 0.001)
+        assertEquals(14500.0, SpreadsheetParser.parsePremium("₹ 14,500.00/-") ?: 0.0, 0.001)
+        assertEquals(14500.0, SpreadsheetParser.parsePremium("Rs. 14,500") ?: 0.0, 0.001)
+        assertEquals(14500.0, SpreadsheetParser.parsePremium("INR 14500/-") ?: 0.0, 0.001)
     }
 
     @Test
@@ -132,6 +144,42 @@ class SpreadsheetAndReportsTest {
     }
 
     @Test
+    fun insurerCatalog_contains_all_major_psu_and_private_and_matches_aliases() {
+        val psuList = com.policydesk.app.domain.model.InsurerCatalog.PSU_INSURERS
+        assertTrue(psuList.contains("National Insurance"))
+        assertTrue(psuList.contains("New India Assurance"))
+        assertTrue(psuList.contains("Oriental Insurance"))
+        assertTrue(psuList.contains("United India Insurance"))
+        assertEquals("Other", psuList.last())
+
+        val pvtList = com.policydesk.app.domain.model.InsurerCatalog.PRIVATE_INSURERS
+        assertTrue(pvtList.contains("Acko General Insurance"))
+        assertTrue(pvtList.contains("Bajaj Allianz General Insurance"))
+        assertTrue(pvtList.contains("Cholamandalam MS General Insurance"))
+        assertTrue(pvtList.contains("Go Digit General Insurance"))
+        assertTrue(pvtList.contains("HDFC ERGO General Insurance"))
+        assertTrue(pvtList.contains("ICICI Lombard General Insurance"))
+        assertTrue(pvtList.contains("IFFCO Tokio General Insurance"))
+        assertTrue(pvtList.contains("Reliance General Insurance"))
+        assertTrue(pvtList.contains("SBI General Insurance"))
+        assertTrue(pvtList.contains("Tata AIG General Insurance"))
+        assertTrue(pvtList.contains("Universal Sompo General Insurance"))
+        assertTrue(pvtList.contains("Zuno General Insurance"))
+        assertTrue(pvtList.contains("Zurich Kotak General Insurance"))
+        assertEquals("Other", pvtList.last())
+
+        // Test alias & abbreviation matching
+        assertEquals(Pair(Sector.PSU, "National Insurance"), com.policydesk.app.domain.model.InsurerCatalog.matchInsurer("NIC"))
+        assertEquals(Pair(Sector.PSU, "New India Assurance"), com.policydesk.app.domain.model.InsurerCatalog.matchInsurer("The New India Assurance Co. Ltd."))
+        assertEquals(Pair(Sector.PSU, "United India Insurance"), com.policydesk.app.domain.model.InsurerCatalog.matchInsurer("UIIC"))
+        assertEquals(Pair(Sector.PSU, "Oriental Insurance"), com.policydesk.app.domain.model.InsurerCatalog.matchInsurer("OICL"))
+        assertEquals(Pair(Sector.PRIVATE, "Go Digit General Insurance"), com.policydesk.app.domain.model.InsurerCatalog.matchInsurer("Digit"))
+        assertEquals(Pair(Sector.PRIVATE, "ICICI Lombard General Insurance"), com.policydesk.app.domain.model.InsurerCatalog.matchInsurer("Bharti AXA General Insurance"))
+        assertEquals(Pair(Sector.PRIVATE, "Zuno General Insurance"), com.policydesk.app.domain.model.InsurerCatalog.matchInsurer("Edelweiss General Insurance"))
+        assertEquals(Pair(Sector.PRIVATE, "Zurich Kotak General Insurance"), com.policydesk.app.domain.model.InsurerCatalog.matchInsurer("Zurich Kotak"))
+    }
+
+    @Test
     fun customerGrouping_aggregates_multiple_vehicles() {
         val c1 = Customer(name = "Ramesh Kumar", mobile = "9876543210", address = "Mumbai")
         val v1 = Vehicle(regNo = "MH01AB1111", customer = c1)
@@ -156,5 +204,50 @@ class SpreadsheetAndReportsTest {
         assertEquals("9876543210", group.mobile)
         assertEquals(2, group.vehicles.size)
         assertEquals(25000.0, group.totalActivePremium, 0.001)
+    }
+
+    @Test
+    fun validateAndMapRows_supports_custom_broker_headers_with_separate_make_model_and_tp_premium() {
+        val rawRows = listOf(
+            listOf(
+                "POL/2026/7890",       // Policy Number
+                "Rohan Sharma",        // Insured Name
+                "15/10/2026",          // Policy Expiry Date
+                "MA3EJA62S00123456",   // Chassis Number
+                "K12M1234567",         // Engine Number
+                "MH 12 AB 1234",       // Registration Number
+                "₹ 3,450/-",           // TP Premium
+                "HDFC ERGO",           // Company Name
+                "+91 98765-43210",     // Mobile Number
+                "Maruti Suzuki",       // Vehicle Make
+                "Swift Dzire VXI"      // Vehicle Model
+            )
+        )
+
+        val columnMapping = mapOf(
+            0 to "policyNumber",
+            1 to "name",
+            2 to "expiryDate",
+            3 to "vin",
+            4 to "engineNo",
+            5 to "regNo",
+            6 to "tpPremium",
+            7 to "insurer",
+            8 to "mobile",
+            9 to "make",
+            10 to "model"
+        )
+
+        val result = SpreadsheetParser.validateAndMapRows(rawRows, columnMapping, emptySet())
+        assertEquals(1, result.validRows.size)
+        val row = result.validRows[0]
+        assertEquals("POL/2026/7890", row.policyNumber)
+        assertEquals("Rohan Sharma", row.customerName)
+        assertEquals("MH12AB1234", row.regNo)
+        assertEquals(3450.0, row.totalPremium ?: 0.0, 0.001)
+        assertEquals("9876543210", row.mobile)
+        assertEquals("Maruti Suzuki Swift Dzire VXI", row.makeModel)
+        assertEquals("HDFC ERGO General Insurance", row.insurer)
+        assertEquals(Sector.PRIVATE, row.sector)
     }
 }

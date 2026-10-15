@@ -3,6 +3,7 @@ package com.policydesk.app.ui.customers
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.policydesk.app.domain.model.CustomerGroup
+import com.policydesk.app.domain.model.RegistrationNormalizer
 import com.policydesk.app.domain.repository.VehicleRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,13 +33,17 @@ class CustomersViewModel @Inject constructor(
         _searchQuery
     ) { groups, query ->
         val cleanQuery = query.trim().lowercase()
+        val normalizedQuery = RegistrationNormalizer.normalize(query).lowercase()
         val filtered = if (cleanQuery.isEmpty()) {
             groups
         } else {
             groups.filter { group ->
                 group.name.lowercase().contains(cleanQuery) ||
                         group.mobile.contains(cleanQuery) ||
-                        group.vehicles.any { it.vehicle.regNo.lowercase().contains(cleanQuery) }
+                        group.vehicles.any {
+                            it.vehicle.regNo.lowercase().contains(cleanQuery) ||
+                                (normalizedQuery.isNotEmpty() && it.vehicle.regNo.lowercase().contains(normalizedQuery))
+                        }
             }
         }
 

@@ -13,10 +13,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import com.policydesk.app.ui.components.AppleButton
+import com.policydesk.app.ui.theme.AppleIcons
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -100,10 +98,14 @@ class MainActivity : FragmentActivity() {
 
 @Composable
 fun AppLockScreen(onUnlockClicked: () -> Unit) {
+    val isDark = androidx.compose.foundation.isSystemInDarkTheme()
+    val labelPrimary = if (isDark) com.policydesk.app.ui.theme.IosDarkLabelPrimary else com.policydesk.app.ui.theme.IosLabelPrimary
+    val labelSecondary = if (isDark) com.policydesk.app.ui.theme.IosDarkLabelSecondary else com.policydesk.app.ui.theme.IosLabelSecondary
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Slate50),
+            .background(androidx.compose.material3.MaterialTheme.colorScheme.background),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -117,24 +119,21 @@ fun AppLockScreen(onUnlockClicked: () -> Unit) {
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Default.Lock,
+                    imageVector = AppleIcons.Lock,
                     contentDescription = null,
                     tint = SapphireBlue,
                     modifier = Modifier.size(36.dp)
                 )
             }
             Spacer(modifier = Modifier.height(18.dp))
-            Text("PolicyDesk is Locked", fontSize = 19.sp, fontWeight = FontWeight.Bold, color = Navy900)
+            Text("PolicyDesk is Locked", fontSize = 19.sp, fontWeight = FontWeight.Bold, color = labelPrimary)
             Spacer(modifier = Modifier.height(6.dp))
-            Text("Authentication required to access customer policy records.", fontSize = 13.sp, color = Slate600)
+            Text("Authentication required to access customer policy records.", fontSize = 13.sp, color = labelSecondary)
             Spacer(modifier = Modifier.height(24.dp))
-            Button(
-                onClick = onUnlockClicked,
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = SapphireBlue)
-            ) {
-                Text("Unlock with Biometrics / PIN", fontWeight = FontWeight.Bold)
-            }
+            AppleButton(
+                text = "Unlock with Biometrics / PIN",
+                onClick = onUnlockClicked
+            )
         }
     }
 }

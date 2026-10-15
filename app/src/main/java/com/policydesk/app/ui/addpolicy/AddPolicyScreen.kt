@@ -24,9 +24,9 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import com.policydesk.app.ui.components.AppleAlertDialog
+import com.policydesk.app.ui.components.AppleButton
+import com.policydesk.app.ui.components.AppleSecondaryButton
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DatePicker
@@ -52,10 +52,12 @@ import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import com.policydesk.app.ui.theme.AppleDarkSystemBlue
+import com.policydesk.app.ui.theme.AppleIcons
 import com.policydesk.app.ui.theme.AppleSystemBlue
 import com.policydesk.app.ui.theme.IosDarkLabelPrimary
 import com.policydesk.app.ui.theme.IosDarkLabelSecondary
 import com.policydesk.app.ui.theme.IosDarkLabelTertiary
+import com.policydesk.app.ui.theme.IosDarkSecondaryGrouped
 import com.policydesk.app.ui.theme.IosDarkTertiaryGrouped
 import com.policydesk.app.ui.theme.IosLabelPrimary
 import com.policydesk.app.ui.theme.IosLabelSecondary
@@ -162,61 +164,27 @@ fun AddPolicyScreen(
 
     // Duplicate Registration Dialog
     if (state.showDuplicateDialog) {
-        AlertDialog(
+        AppleAlertDialog(
             onDismissRequest = viewModel::dismissDuplicateDialog,
-            title = {
-                Text("Vehicle Already Exists", fontWeight = FontWeight.Bold, color = Navy900)
-            },
-            text = {
-                Text(
-                    "A record with registration ${RegistrationNormalizer.formatForDisplay(state.regNo)} already exists in PolicyDesk. You can view the existing record or update it with new policy details.",
-                    color = Slate600,
-                    fontSize = 14.sp
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = viewModel::onOpenExistingDuplicate,
-                    colors = ButtonDefaults.buttonColors(containerColor = SapphireBlue)
-                ) {
-                    Text("Open Existing")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = viewModel::dismissDuplicateDialog) {
-                    Text("Cancel")
-                }
-            }
+            title = "Vehicle Already Exists",
+            message = "A record with registration ${RegistrationNormalizer.formatForDisplay(state.regNo)} already exists in PolicyDesk. You can view the existing record or update it with new policy details.",
+            confirmText = "Open Existing",
+            onConfirm = viewModel::onOpenExistingDuplicate,
+            dismissText = "Cancel",
+            onDismiss = viewModel::dismissDuplicateDialog
         )
     }
 
     // Sector Change Confirmation Dialog
     if (state.showSectorChangeConfirmDialog) {
-        AlertDialog(
+        AppleAlertDialog(
             onDismissRequest = viewModel::dismissSectorChangeDialog,
-            title = {
-                Text("Change Company Sector?", fontWeight = FontWeight.Bold, color = Navy900)
-            },
-            text = {
-                Text(
-                    "Changing the sector will reset your currently selected company. Are you sure you want to proceed?",
-                    color = Slate600,
-                    fontSize = 14.sp
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = viewModel::confirmSectorChange,
-                    colors = ButtonDefaults.buttonColors(containerColor = SapphireBlue)
-                ) {
-                    Text("Change Sector")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = viewModel::dismissSectorChangeDialog) {
-                    Text("Keep Current")
-                }
-            }
+            title = "Change Company Sector?",
+            message = "Changing the sector will reset your currently selected company. Are you sure you want to proceed?",
+            confirmText = "Change Sector",
+            onConfirm = viewModel::confirmSectorChange,
+            dismissText = "Keep Current",
+            onDismiss = viewModel::dismissSectorChangeDialog
         )
     }
 
@@ -227,7 +195,7 @@ fun AddPolicyScreen(
                 onNavigateBack = onNavigateBack
             )
         },
-        containerColor = com.policydesk.app.ui.theme.IosSystemBackground
+        containerColor = androidx.compose.material3.MaterialTheme.colorScheme.background
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -253,6 +221,10 @@ fun AddPolicyScreen(
                     label = { Text("Vehicle Registration No *") },
                     placeholder = { Text("e.g. MH 12 AB 1234 or 22 BH 1234 AA") },
                     singleLine = true,
+                    isError = state.hasAttemptedSave && RegistrationNormalizer.normalize(state.regNo).isEmpty(),
+                    supportingText = if (state.hasAttemptedSave && RegistrationNormalizer.normalize(state.regNo).isEmpty()) {
+                        { Text("Registration number is required", color = StatusOverdueRed) }
+                    } else null,
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters),
                     shape = RoundedCornerShape(10.dp),
                     colors = formFieldColors()
@@ -310,11 +282,12 @@ fun AddPolicyScreen(
             // SECTION 2: POLICY INFORMATION
             FormSectionCard(title = "Policy Information") {
                 // Sector Selection
+                val isDark = isSystemInDarkTheme()
                 Text(
                     text = "Company Sector *",
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = Navy900
+                    color = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
                 )
 
                 Row(
@@ -363,6 +336,10 @@ fun AddPolicyScreen(
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text("Policy Number *") },
                     singleLine = true,
+                    isError = state.hasAttemptedSave && !FieldValidators.isValidPolicyNumber(state.policyNumber),
+                    supportingText = if (state.hasAttemptedSave && !FieldValidators.isValidPolicyNumber(state.policyNumber)) {
+                        { Text("Valid policy number is required", color = StatusOverdueRed) }
+                    } else null,
                     shape = RoundedCornerShape(10.dp),
                     colors = formFieldColors()
                 )
@@ -372,29 +349,37 @@ fun AddPolicyScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    // Expiry Date Field (tap to pick)
-                    Box(
-                        modifier = Modifier
-                            .weight(1.2f)
-                            .clickable { showDatePicker = true }
-                    ) {
+                    // Expiry Date Field (tap anywhere to pick)
+                    Box(modifier = Modifier.weight(1.2f)) {
                         OutlinedTextField(
                             value = state.expiryDateEpochMs?.let { UiFormatters.formatDate(it) } ?: "",
                             onValueChange = {},
                             modifier = Modifier.fillMaxWidth(),
-                            enabled = false,
+                            readOnly = true,
+                            isError = state.hasAttemptedSave && state.expiryDateEpochMs == null,
+                            supportingText = if (state.hasAttemptedSave && state.expiryDateEpochMs == null) {
+                                { Text("Tap to select date", color = StatusOverdueRed) }
+                            } else null,
                             label = { Text("Expiry Date *") },
-                            placeholder = { Text("Pick Date") },
+                            placeholder = { Text("Tap to select") },
                             trailingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.CalendarToday,
-                                    contentDescription = null,
-                                    tint = SapphireBlue,
-                                    modifier = Modifier.size(18.dp)
-                                )
+                                IconButton(onClick = { showDatePicker = true }) {
+                                    Icon(
+                                        imageVector = AppleIcons.Calendar,
+                                        contentDescription = "Select Date",
+                                        tint = SapphireBlue,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
                             },
                             shape = RoundedCornerShape(10.dp),
-                            colors = formDisabledFieldColors()
+                            colors = formFieldColors()
+                        )
+                        // Clickable overlay capturing taps on the whole field
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .clickable { showDatePicker = true }
                         )
                     }
 
@@ -406,6 +391,10 @@ fun AddPolicyScreen(
                         label = { Text("Total Premium *") },
                         placeholder = { Text("₹ INR") },
                         singleLine = true,
+                        isError = state.hasAttemptedSave && (state.totalPremium.toDoubleOrNull() ?: 0.0) <= 0.0,
+                        supportingText = if (state.hasAttemptedSave && (state.totalPremium.toDoubleOrNull() ?: 0.0) <= 0.0) {
+                            { Text("Amount > 0 required", color = StatusOverdueRed) }
+                        } else null,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         shape = RoundedCornerShape(10.dp),
                         colors = formFieldColors()
@@ -439,6 +428,10 @@ fun AddPolicyScreen(
                         modifier = Modifier.weight(1f),
                         label = { Text("Customer Name *") },
                         singleLine = true,
+                        isError = state.hasAttemptedSave && !FieldValidators.isValidName(state.name),
+                        supportingText = if (state.hasAttemptedSave && !FieldValidators.isValidName(state.name)) {
+                            { Text("Customer name required (min 2 chars)", color = StatusOverdueRed) }
+                        } else null,
                         shape = RoundedCornerShape(10.dp),
                         colors = formFieldColors()
                     )
@@ -456,6 +449,10 @@ fun AddPolicyScreen(
                         label = { Text("Mobile Number *") },
                         placeholder = { Text("10 digits (6-9)") },
                         singleLine = true,
+                        isError = state.hasAttemptedSave && !FieldValidators.isValidMobile(state.mobile),
+                        supportingText = if (state.hasAttemptedSave && !FieldValidators.isValidMobile(state.mobile)) {
+                            { Text("Valid 10-digit mobile required", color = StatusOverdueRed) }
+                        } else null,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                         shape = RoundedCornerShape(10.dp),
                         colors = formFieldColors()
@@ -468,6 +465,10 @@ fun AddPolicyScreen(
                         modifier = Modifier.weight(1.3f),
                         label = { Text("Email Address") },
                         singleLine = true,
+                        isError = state.hasAttemptedSave && state.email.isNotBlank() && !FieldValidators.isValidEmail(state.email),
+                        supportingText = if (state.hasAttemptedSave && state.email.isNotBlank() && !FieldValidators.isValidEmail(state.email)) {
+                            { Text("Invalid email format", color = StatusOverdueRed) }
+                        } else null,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                         shape = RoundedCornerShape(10.dp),
                         colors = formFieldColors()
@@ -479,7 +480,7 @@ fun AddPolicyScreen(
                     value = state.address,
                     onValueChange = viewModel::onAddressChanged,
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Residential Address *") },
+                    label = { Text("Residential Address (Optional)") },
                     minLines = 2,
                     maxLines = 3,
                     shape = RoundedCornerShape(10.dp),
@@ -505,40 +506,22 @@ fun AddPolicyScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             // Action Buttons
-            Button(
+            AppleButton(
+                text = if (state.isSaving) "Saving..." else "Save Policy",
                 onClick = { viewModel.savePolicy(addAnother = false) },
-                enabled = state.isFormValid && !state.isSaving,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = SapphireBlue,
-                    disabledContainerColor = Slate200
-                )
-            ) {
-                Text(
-                    text = if (state.isSaving) "Saving..." else "Save Policy",
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
+                enabled = !state.isSaving,
+                isLoading = state.isSaving,
+                modifier = Modifier.fillMaxWidth()
+            )
 
-            OutlinedButton(
+            Spacer(modifier = Modifier.height(10.dp))
+
+            AppleSecondaryButton(
+                text = "Save and Add Another",
                 onClick = { viewModel.savePolicy(addAnother = true) },
-                enabled = state.isFormValid && !state.isSaving,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = SapphireBlue)
-            ) {
-                Text(
-                    text = "Save and Add Another",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
+                enabled = !state.isSaving,
+                modifier = Modifier.fillMaxWidth()
+            )
 
             Spacer(modifier = Modifier.height(24.dp))
         }
@@ -550,6 +533,8 @@ fun FormSectionCard(
     title: String,
     content: @Composable () -> Unit
 ) {
+    val isDark = isSystemInDarkTheme()
+    val titleColor = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
     com.policydesk.app.ui.components.LiquidGlassCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
@@ -559,7 +544,7 @@ fun FormSectionCard(
             text = title,
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold,
-            color = Navy900,
+            color = titleColor,
             letterSpacing = (-0.2).sp
         )
         Spacer(modifier = Modifier.height(10.dp))
@@ -606,7 +591,7 @@ fun SectorOptionPill(
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (selected) {
                 Icon(
-                    imageVector = Icons.Default.Check,
+                    imageVector = AppleIcons.Checkmark,
                     contentDescription = null,
                     tint = selectedText,
                     modifier = Modifier.size(16.dp)
@@ -661,10 +646,14 @@ fun InsurerDropdown(
             colors = formFieldColors()
         )
 
+        val isDark = isSystemInDarkTheme()
+        val menuBg = if (isDark) IosDarkSecondaryGrouped else CardBackground
+        val itemTextColor = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
+
         ExposedDropdownMenu(
             expanded = expanded && isEnabled,
             onDismissRequest = { expanded = false },
-            modifier = Modifier.background(CardBackground)
+            modifier = Modifier.background(menuBg)
         ) {
             insurers.forEach { company ->
                 DropdownMenuItem(
@@ -673,7 +662,7 @@ fun InsurerDropdown(
                             text = company,
                             fontSize = 13.sp,
                             fontWeight = if (company == selectedInsurer) FontWeight.Bold else FontWeight.Normal,
-                            color = Navy900
+                            color = itemTextColor
                         )
                     },
                     onClick = {
@@ -714,14 +703,18 @@ fun TitleDropdown(
             colors = formFieldColors()
         )
 
+        val isDark = isSystemInDarkTheme()
+        val menuBg = if (isDark) IosDarkSecondaryGrouped else CardBackground
+        val itemTextColor = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
+
         ExposedDropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false },
-            modifier = Modifier.background(CardBackground)
+            modifier = Modifier.background(menuBg)
         ) {
             InsurerCatalog.TITLES.forEach { title ->
                 DropdownMenuItem(
-                    text = { Text(title, fontSize = 13.sp, color = Navy900) },
+                    text = { Text(title, fontSize = 13.sp, color = itemTextColor) },
                     onClick = {
                         onTitleSelected(title)
                         expanded = false
@@ -765,14 +758,18 @@ fun MakeModelAutocomplete(
         )
 
         if (filtered.isNotEmpty()) {
+            val isDark = isSystemInDarkTheme()
+            val menuBg = if (isDark) IosDarkSecondaryGrouped else CardBackground
+            val itemTextColor = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
+
             ExposedDropdownMenu(
                 expanded = expanded,
                 onDismissRequest = { expanded = false },
-                modifier = Modifier.background(CardBackground)
+                modifier = Modifier.background(menuBg)
             ) {
                 filtered.take(5).forEach { item ->
                     DropdownMenuItem(
-                        text = { Text(item, fontSize = 13.sp, color = Navy900) },
+                        text = { Text(item, fontSize = 13.sp, color = itemTextColor) },
                         onClick = {
                             onValueChange(item)
                             expanded = false
@@ -786,16 +783,21 @@ fun MakeModelAutocomplete(
 
 @Composable
 fun WarningBanner(text: String) {
+    val isDark = isSystemInDarkTheme()
+    val bg = if (isDark) Color(0x33CA8A04) else StatusExpiringAmberBg
+    val border = if (isDark) Color(0x66CA8A04) else StatusExpiringAmber.copy(alpha = 0.4f)
+    val textColor = if (isDark) Color(0xFFFEF08A) else IosLabelPrimary
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(StatusExpiringAmberBg, RoundedCornerShape(8.dp))
-            .border(1.dp, StatusExpiringAmber.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+            .background(bg, RoundedCornerShape(8.dp))
+            .border(1.dp, border, RoundedCornerShape(8.dp))
             .padding(10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
-            imageVector = Icons.Default.Warning,
+            imageVector = AppleIcons.Warning,
             contentDescription = null,
             tint = StatusExpiringAmber,
             modifier = Modifier.size(16.dp)
@@ -804,7 +806,7 @@ fun WarningBanner(text: String) {
         Text(
             text = text,
             fontSize = 12.sp,
-            color = Navy900,
+            color = textColor,
             lineHeight = 16.sp
         )
     }

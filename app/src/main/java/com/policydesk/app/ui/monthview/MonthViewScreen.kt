@@ -22,7 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBackIos
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
-import androidx.compose.material.icons.filled.CalendarToday
+import com.policydesk.app.ui.theme.AppleIcons
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
@@ -52,9 +52,16 @@ import com.policydesk.app.ui.dashboard.VehicleExpiryCard
 import com.policydesk.app.ui.theme.AppleSystemBlue
 import com.policydesk.app.ui.theme.AppleSystemGreen
 import com.policydesk.app.ui.theme.AppleSystemRed
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.MaterialTheme
+import com.policydesk.app.ui.theme.IosDarkLabelPrimary
+import com.policydesk.app.ui.theme.IosDarkLabelSecondary
+import com.policydesk.app.ui.theme.IosDarkLabelTertiary
+import com.policydesk.app.ui.theme.IosDarkSeparator
 import com.policydesk.app.ui.theme.IosLabelPrimary
 import com.policydesk.app.ui.theme.IosLabelSecondary
 import com.policydesk.app.ui.theme.IosLabelTertiary
+import com.policydesk.app.ui.theme.IosSeparator
 import com.policydesk.app.ui.theme.IosSystemBackground
 import com.policydesk.app.ui.theme.Slate100
 import com.policydesk.app.ui.theme.Slate200
@@ -96,8 +103,12 @@ fun MonthViewScreen(
                 }
             )
         },
-        containerColor = IosSystemBackground
+        containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
+        val isDark = isSystemInDarkTheme()
+        val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
+        val labelSecondary = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -119,8 +130,8 @@ fun MonthViewScreen(
                     modifier = Modifier
                         .size(36.dp)
                         .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.8f))
-                        .border(1.dp, Color.White, CircleShape)
+                        .background(if (isDark) Color(0x33545458) else Color.White.copy(alpha = 0.8f))
+                        .border(1.dp, if (isDark) Color(0x33FFFFFF) else Color.White, CircleShape)
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBackIos,
@@ -134,7 +145,7 @@ fun MonthViewScreen(
                     text = UiFormatters.formatMonthYear(selection.year, selection.month),
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
-                    color = IosLabelPrimary,
+                    color = labelPrimary,
                     letterSpacing = (-0.3).sp
                 )
 
@@ -146,8 +157,8 @@ fun MonthViewScreen(
                     modifier = Modifier
                         .size(36.dp)
                         .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.8f))
-                        .border(1.dp, Color.White, CircleShape)
+                        .background(if (isDark) Color(0x33545458) else Color.White.copy(alpha = 0.8f))
+                        .border(1.dp, if (isDark) Color(0x33FFFFFF) else Color.White, CircleShape)
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
@@ -172,13 +183,13 @@ fun MonthViewScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Policies Expiring", fontSize = 12.sp, color = IosLabelSecondary)
+                        Text("Policies Expiring", fontSize = 12.sp, color = labelSecondary)
                         Spacer(modifier = Modifier.height(2.dp))
-                        Text("${data.totalPolicies}", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = IosLabelPrimary)
+                        Text("${data.totalPolicies}", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = labelPrimary)
                     }
-                    Box(modifier = Modifier.width(1.dp).height(30.dp).background(Color(0x26000000)))
+                    Box(modifier = Modifier.width(1.dp).height(30.dp).background(if (isDark) IosDarkSeparator else Color(0x26000000)))
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Total Premium", fontSize = 12.sp, color = IosLabelSecondary)
+                        Text("Total Premium", fontSize = 12.sp, color = labelSecondary)
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(UiFormatters.formatCurrency(data.totalPremium), fontSize = 20.sp, fontWeight = FontWeight.Bold, color = AppleSystemBlue)
                     }
@@ -291,11 +302,12 @@ fun CalendarGridView(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    val isDark = isSystemInDarkTheme()
                                     Text(
                                         text = dayNumber.toString(),
                                         fontSize = 13.sp,
                                         fontWeight = if (policiesOnDay.isNotEmpty() || isSelected) FontWeight.Bold else FontWeight.Normal,
-                                        color = if (isSelected) Color.White else IosLabelPrimary
+                                        color = if (isSelected) Color.White else (if (isDark) IosDarkLabelPrimary else IosLabelPrimary)
                                     )
 
                                     if (policiesOnDay.isNotEmpty()) {
@@ -322,17 +334,21 @@ fun CalendarGridView(
         // Selected Day's Policies List
         if (selectedDay != null) {
             val list = dateGroupedPolicies[selectedDay] ?: emptyList()
+            val isDark = isSystemInDarkTheme()
+            val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
+            val labelSecondary = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
+
             Text(
                 text = "$selectedDay ${LocalDate.of(year, month, selectedDay).month.name.lowercase().replaceFirstChar { it.uppercase() }} (${list.size} expiring)",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
-                color = IosLabelPrimary,
+                color = labelPrimary,
                 letterSpacing = (-0.2).sp
             )
             Spacer(modifier = Modifier.height(8.dp))
 
             if (list.isEmpty()) {
-                Text("No policies expiring on this date.", fontSize = 13.sp, color = IosLabelSecondary)
+                Text("No policies expiring on this date.", fontSize = 13.sp, color = labelSecondary)
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
@@ -358,6 +374,10 @@ fun TimelineListView(
     dateGroupedPolicies: Map<Int, List<VehicleWithPolicies>>,
     onNavigateToVehicleDetail: (String) -> Unit
 ) {
+    val isDark = isSystemInDarkTheme()
+    val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
+    val labelSecondary = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
+
     if (dateGroupedPolicies.isEmpty()) {
         Box(
             modifier = Modifier.fillMaxSize().padding(32.dp),
@@ -367,16 +387,16 @@ fun TimelineListView(
                 Box(
                     modifier = Modifier
                         .size(64.dp)
-                        .background(Color.White.copy(alpha = 0.8f), CircleShape)
-                        .border(1.dp, Color.White, CircleShape),
+                        .background(if (isDark) Color(0x33545458) else Color.White.copy(alpha = 0.8f), CircleShape)
+                        .border(1.dp, if (isDark) Color(0x33FFFFFF) else Color.White, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(imageVector = Icons.Default.CalendarToday, contentDescription = null, tint = IosLabelTertiary, modifier = Modifier.size(28.dp))
+                    Icon(imageVector = AppleIcons.Calendar, contentDescription = null, tint = if (isDark) Color(0xFF8E8E93) else IosLabelTertiary, modifier = Modifier.size(28.dp))
                 }
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("No policies expire this month", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = IosLabelPrimary, letterSpacing = (-0.2).sp)
+                Text("No policies expire this month", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = labelPrimary, letterSpacing = (-0.2).sp)
                 Spacer(modifier = Modifier.height(6.dp))
-                Text("Use the navigation arrows to explore other months.", fontSize = 13.sp, color = IosLabelSecondary)
+                Text("Use the navigation arrows to explore other months.", fontSize = 13.sp, color = labelSecondary)
             }
         }
     } else {
@@ -394,8 +414,8 @@ fun TimelineListView(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(text = dateStr, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = IosLabelPrimary)
-                        Text(text = "${vehicles.size} ${if (vehicles.size == 1) "policy" else "policies"}", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = IosLabelSecondary)
+                        Text(text = dateStr, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = labelPrimary)
+                        Text(text = "${vehicles.size} ${if (vehicles.size == 1) "policy" else "policies"}", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = labelSecondary)
                     }
                 }
 

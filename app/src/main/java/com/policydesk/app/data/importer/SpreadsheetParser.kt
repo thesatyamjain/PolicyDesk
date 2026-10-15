@@ -163,8 +163,10 @@ object SpreadsheetParser {
             val name = entry?.name ?: ""
             if (name == "xl/sharedStrings.xml") {
                 sharedStrings.addAll(parseSharedStrings(zip))
-            } else if (name == "xl/worksheets/sheet1.xml") {
-                sheet1Bytes = zip.readBytes()
+            } else if (name.startsWith("xl/worksheets/sheet") && name.endsWith(".xml")) {
+                if (sheet1Bytes == null || name.contains("sheet1.xml")) {
+                    sheet1Bytes = zip.readBytes()
+                }
             }
             zip.closeEntry()
         }
@@ -208,6 +210,25 @@ object SpreadsheetParser {
         return list
     }
 
+    private fun parseColumnIndex(cellRef: String?): Int {
+        if (cellRef.isNullOrEmpty()) return -1
+        var col = 0
+        var foundLetter = false
+        for (i in 0 until cellRef.length) {
+            val c = cellRef[i]
+            if (c in 'A'..'Z') {
+                col = col * 26 + (c - 'A' + 1)
+                foundLetter = true
+            } else if (c in 'a'..'z') {
+                col = col * 26 + (c - 'a' + 1)
+                foundLetter = true
+            } else {
+                break
+            }
+        }
+        return if (foundLetter) col - 1 else -1
+    }
+
     private fun parseSheetXml(stream: InputStream, sharedStrings: List<String>): List<List<String>> {
         val rows = mutableListOf<List<String>>()
         val factory = XmlPullParserFactory.newInstance()
@@ -217,8 +238,10 @@ object SpreadsheetParser {
         var eventType = parser.eventType
         var currentRow = mutableListOf<String>()
         var cellType: String? = null
+        var cellRef: String? = null
         var inV = false
-        var cellValue = ""
+        var inT = false
+        val cellValue = StringBuilder()
 
         while (eventType != XmlPullParser.END_DOCUMENT) {
             val name = parser.name
@@ -228,24 +251,43 @@ object SpreadsheetParser {
                         currentRow = mutableListOf()
                     } else if (name == "c") {
                         cellType = parser.getAttributeValue(null, "t")
+                        cellRef = parser.getAttributeValue(null, "r")
+                        cellValue.setLength(0)
                     } else if (name == "v") {
                         inV = true
-                        cellValue = ""
+                    } else if (name == "t") {
+                        inT = true
                     }
                 }
                 XmlPullParser.TEXT -> {
-                    if (inV) cellValue += parser.text
+                    if (inV || inT) cellValue.append(parser.text)
                 }
                 XmlPullParser.END_TAG -> {
                     if (name == "v") {
                         inV = false
+                    } else if (name == "t") {
+                        inT = false
+                    } else if (name == "c") {
+                        val rawStr = cellValue.toString().trim()
                         val finalVal = if (cellType == "s") {
-                            val idx = cellValue.toIntOrNull() ?: -1
-                            if (idx in sharedStrings.indices) sharedStrings[idx] else cellValue
+                            val idx = rawStr.toIntOrNull() ?: -1
+                            if (idx in sharedStrings.indices) sharedStrings[idx] else rawStr
                         } else {
-                            cellValue
+                            rawStr
                         }
-                        currentRow.add(finalVal)
+                        val colIdx = parseColumnIndex(cellRef)
+                        if (colIdx >= 0) {
+                            while (currentRow.size < colIdx) {
+                                currentRow.add("")
+                            }
+                            if (currentRow.size == colIdx) {
+                                currentRow.add(finalVal)
+                            } else {
+                                currentRow[colIdx] = finalVal
+                            }
+                        } else {
+                            currentRow.add(finalVal)
+                        }
                     } else if (name == "row") {
                         if (currentRow.any { it.isNotBlank() }) {
                             rows.add(currentRow)
@@ -262,27 +304,62 @@ object SpreadsheetParser {
         val clean = raw.trim()
         if (clean.isEmpty()) return null
 
-        // 1. Try Excel numeric serial date (e.g. 45000)
+        // 1. Try Excel numeric serial date (e.g. 45000 or 45000.5)
         val num = clean.toDoubleOrNull()
-        if (num != null && num > 20000 && num < 70000) {
-            // Excel epoch is 1899-12-30
+        if (num != null && num > 20000 && num < 75000) {
             val days = num.toLong() - 25569
             return days * 86400000L
         }
 
-        // 2. Try common formats
+        // 2. Strip trailing time if present (e.g. "28/11/2026 23:59:59" or "2026-11-28T00:00:00")
+        val datePart = clean.split(Regex("[\\sT]"))[0].trim()
+
         val patterns = listOf(
             "dd/MM/yyyy", "d/M/yyyy", "dd-MM-yyyy", "d-M-yyyy",
-            "yyyy-MM-dd", "dd.MM.yyyy", "yyyy/MM/dd"
+            "yyyy-MM-dd", "dd.MM.yyyy", "yyyy/MM/dd",
+            "dd/MM/yy", "d/M/yy", "dd-MM-yy", "d-M-yy",
+            "dd-MMM-yyyy", "d-MMM-yyyy", "dd MMM yyyy", "d MMM yyyy",
+            "dd-MMM-yy", "d-MMM-yy", "dd-MMMM-yyyy", "dd MMMM yyyy",
+            "MM/dd/yyyy", "M/d/yyyy"
         )
+
         for (pattern in patterns) {
             try {
-                val formatter = DateTimeFormatter.ofPattern(pattern)
+                val formatter = DateTimeFormatter.ofPattern(pattern, java.util.Locale.ENGLISH)
+                val date = LocalDate.parse(datePart, formatter)
+                return date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+            } catch (_: Exception) {}
+        }
+
+        for (pattern in patterns) {
+            try {
+                val formatter = DateTimeFormatter.ofPattern(pattern, java.util.Locale.ENGLISH)
                 val date = LocalDate.parse(clean, formatter)
                 return date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
             } catch (_: Exception) {}
         }
+
         return null
+    }
+
+    fun formatDateForDisplay(epochMs: Long): String {
+        return java.time.Instant.ofEpochMilli(epochMs)
+            .atZone(ZoneId.systemDefault())
+            .toLocalDate()
+            .format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+    }
+
+    fun parsePremium(raw: String): Double? {
+        val clean = raw.trim()
+            .replace("₹", "")
+            .replace("INR", "", ignoreCase = true)
+            .replace("Rs.", "", ignoreCase = true)
+            .replace("Rs", "", ignoreCase = true)
+            .replace("/-", "")
+            .replace(",", "")
+            .replace(" ", "")
+            .trim()
+        return clean.toDoubleOrNull()
     }
 
     /**
@@ -319,7 +396,16 @@ object SpreadsheetParser {
             val policyNo = data["policyNumber"] ?: ""
             val expiryRaw = data["expiryDate"] ?: ""
             val premiumRaw = data["totalPremium"] ?: ""
-            val makeModel = data["makeModel"]?.ifBlank { null }
+            val rawMake = data["make"]?.trim()?.ifBlank { null }
+            val rawModel = data["model"]?.trim()?.ifBlank { null }
+            val rawMakeModel = data["makeModel"]?.trim()?.ifBlank { null }
+            val makeModel = when {
+                rawMake != null && rawModel != null -> if (rawModel.contains(rawMake, ignoreCase = true)) rawModel else "$rawMake $rawModel"
+                rawMakeModel != null -> rawMakeModel
+                rawMake != null -> rawMake
+                rawModel != null -> rawModel
+                else -> null
+            }
             val vin = data["vin"]?.ifBlank { null }
             val engineNo = data["engineNo"]?.ifBlank { null }
             val notes = data["notes"]?.ifBlank { null }
@@ -340,13 +426,13 @@ object SpreadsheetParser {
                 errors.add("Customer name must be at least 2 characters")
             }
 
-            if (!FieldValidators.isValidMobile(mobile)) {
+            val normalizedMobile = FieldValidators.normalizeMobile(mobile)
+            if (!FieldValidators.isValidMobile(normalizedMobile)) {
                 errors.add("Invalid 10-digit mobile number ($mobile)")
             }
 
-            if (address.isBlank()) {
-                errors.add("Missing Residential Address")
-            }
+            val cleanAddress = address.trim()
+            val finalAddress = cleanAddress.ifBlank { "Not Specified" }
 
             // Insurer & Sector matching
             var sector: Sector? = null
@@ -384,9 +470,19 @@ object SpreadsheetParser {
                 errors.add("Expiry date '$expiryRaw' not recognized (use DD/MM/YYYY)")
             }
 
-            val premium = premiumRaw.replace(",", "").toDoubleOrNull()
+            val directPremium = parsePremium(data["totalPremium"] ?: "")
+            val tpPremium = parsePremium(data["tpPremium"] ?: "")
+            val odPremium = parsePremium(data["odPremium"] ?: "")
+
+            val premium = when {
+                directPremium != null && directPremium > 0.0 -> directPremium
+                tpPremium != null && odPremium != null && (tpPremium + odPremium) > 0.0 -> (tpPremium + odPremium)
+                tpPremium != null && tpPremium > 0.0 -> tpPremium
+                odPremium != null && odPremium > 0.0 -> odPremium
+                else -> null
+            }
             if (premium == null || premium <= 0.0) {
-                errors.add("Total Premium must be a valid number greater than 0")
+                errors.add("Total Premium / TP Premium must be a valid number greater than 0")
             }
 
             val saleDateMs = if (saleDateRaw.isNotBlank()) parseDateToEpochMs(saleDateRaw) else null
@@ -398,9 +494,9 @@ object SpreadsheetParser {
                 regNo = normalizedReg,
                 customerName = name,
                 title = title,
-                mobile = FieldValidators.normalizeMobile(mobile),
+                mobile = normalizedMobile,
                 email = email,
-                address = address,
+                address = finalAddress,
                 sector = sector,
                 insurer = finalInsurer,
                 policyNumber = policyNo,

@@ -1,8 +1,6 @@
 package com.policydesk.app.domain.model
 
 object RegistrationNormalizer {
-    private val STRIP_REGEX = Regex("[\\s\\-\\.]")
-
     // Standard Indian format: State code (2) + District/RTO (1-2) + Series (0-3) + Number (4)
     // E.g., MH12AB1234, DL01A9999, KA051234
     private val STANDARD_PATTERN = Regex("^[A-Z]{2}[0-9]{1,2}[A-Z]{0,3}[0-9]{4}$")
@@ -15,7 +13,16 @@ object RegistrationNormalizer {
     private val EXTENDED_PATTERN = Regex("^[A-Z0-9]{6,12}$")
 
     fun normalize(raw: String): String {
-        return raw.trim().uppercase().replace(STRIP_REGEX, "")
+        val sb = StringBuilder(raw.length)
+        for (i in 0 until raw.length) {
+            val ch = raw[i]
+            if (ch in 'a'..'z') {
+                sb.append((ch.code - 32).toChar())
+            } else if (ch in 'A'..'Z' || ch in '0'..'9') {
+                sb.append(ch)
+            }
+        }
+        return sb.toString()
     }
 
     /**
@@ -25,6 +32,38 @@ object RegistrationNormalizer {
     fun isStandardFormat(normalized: String): Boolean {
         if (normalized.length < 6 || normalized.length > 12) return false
         return STANDARD_PATTERN.matches(normalized) || BH_PATTERN.matches(normalized)
+    }
+
+    /**
+     * Intelligently repairs common OCR character confusions (e.g. 'O' vs '0', 'I' vs '1')
+     * if repairing them yields a valid standard Indian registration number.
+     */
+    fun repairOcrMisreads(normalized: String): String {
+        if (isStandardFormat(normalized)) return normalized
+        if (normalized.length !in 8..11) return normalized
+
+        val chars = normalized.toCharArray()
+        val numStart = chars.size - 4
+
+        for (i in numStart until chars.size) {
+            when (chars[i]) {
+                'O' -> chars[i] = '0'
+                'I' -> chars[i] = '1'
+                'S' -> chars[i] = '5'
+                'Z' -> chars[i] = '2'
+                'B' -> chars[i] = '8'
+            }
+        }
+
+        if (chars.size >= 4) {
+            if (chars[2] == 'O') chars[2] = '0'
+            else if (chars[2] == 'I') chars[2] = '1'
+            if (chars[3] == 'O' && chars[2].isDigit()) chars[3] = '0'
+            else if (chars[3] == 'I' && chars[2].isDigit()) chars[3] = '1'
+        }
+
+        val candidate = String(chars)
+        return if (isStandardFormat(candidate)) candidate else normalized
     }
 
     fun isAcceptableFormat(normalized: String): Boolean {
@@ -63,14 +102,25 @@ object FieldValidators {
 
     fun isValidName(name: String): Boolean = name.trim().length >= 2
 
-    fun isValidMobile(mobile: String): Boolean {
-        val clean = mobile.trim().replace(" ", "").replace("-", "")
-        return MOBILE_REGEX.matches(clean)
+    fun normalizeMobile(mobile: String): String {
+        var clean = mobile.trim()
+        val asDouble = clean.toDoubleOrNull()
+        if (asDouble != null && asDouble >= 6000000000.0 && asDouble < 100000000000.0) {
+            clean = asDouble.toLong().toString()
+        }
+        val digits = clean.filter { it.isDigit() }
+        return when {
+            digits.length == 10 -> digits
+            digits.length == 12 && digits.startsWith("91") -> digits.substring(2)
+            digits.length == 11 && digits.startsWith("0") -> digits.substring(1)
+            digits.length > 10 && digits.takeLast(10)[0] in '6'..'9' -> digits.takeLast(10)
+            else -> digits
+        }
     }
 
-    fun normalizeMobile(mobile: String): String {
-        val clean = mobile.trim().replace(" ", "").replace("-", "")
-        return if (clean.startsWith("+91")) clean.substring(3) else clean
+    fun isValidMobile(mobile: String): Boolean {
+        val clean = normalizeMobile(mobile)
+        return clean.length == 10 && clean[0] in '6'..'9'
     }
 
     fun isValidEmail(email: String): Boolean {
@@ -78,11 +128,11 @@ object FieldValidators {
         return EMAIL_REGEX.matches(email.trim())
     }
 
-    fun isValidAddress(address: String): Boolean = address.trim().isNotEmpty()
+    fun isValidAddress(address: String): Boolean = true
 
     fun isValidPolicyNumber(policyNumber: String): Boolean {
         val clean = policyNumber.trim()
-        return clean.isNotEmpty() && clean.all { it.isLetterOrDigit() || it == '/' || it == '-' }
+        return clean.isNotEmpty() && clean.all { it.isLetterOrDigit() || it == '/' || it == '-' || it == '.' || it == '_' || it == ' ' }
     }
 
     fun isVinStandardLength(vin: String?): Boolean {

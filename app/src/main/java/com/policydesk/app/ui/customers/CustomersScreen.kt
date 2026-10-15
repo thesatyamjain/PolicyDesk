@@ -63,6 +63,16 @@ import com.policydesk.app.domain.model.CustomerGroup
 import com.policydesk.app.domain.model.RegistrationNormalizer
 import com.policydesk.app.ui.components.DaysRemainingBadge
 import com.policydesk.app.ui.components.UiFormatters
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.MaterialTheme
+import com.policydesk.app.ui.theme.IosDarkLabelPrimary
+import com.policydesk.app.ui.theme.IosDarkLabelSecondary
+import com.policydesk.app.ui.theme.IosDarkSecondaryGrouped
+import com.policydesk.app.ui.theme.IosDarkTertiaryGrouped
+import com.policydesk.app.ui.theme.IosDarkSeparator
+import com.policydesk.app.ui.theme.IosLabelPrimary
+import com.policydesk.app.ui.theme.IosLabelSecondary
+import com.policydesk.app.ui.theme.AppleIcons
 import com.policydesk.app.ui.theme.CardBackground
 import com.policydesk.app.ui.theme.Navy800
 import com.policydesk.app.ui.theme.Navy900
@@ -84,6 +94,9 @@ fun CustomersScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val isDark = isSystemInDarkTheme()
+    val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
+    val labelSecondary = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
 
     Scaffold(
         topBar = {
@@ -93,7 +106,7 @@ fun CustomersScreen(
                         text = "Clients & Households",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Navy900
+                        color = labelPrimary
                     )
                 },
                 navigationIcon = {
@@ -101,14 +114,14 @@ fun CustomersScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
-                            tint = Navy900
+                            tint = labelPrimary
                         )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Slate50)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
             )
         },
-        containerColor = Slate50
+        containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -126,22 +139,24 @@ fun CustomersScreen(
                     Text("Search client name, mobile, or vehicle...", fontSize = 13.sp, color = Slate400)
                 },
                 leadingIcon = {
-                    Icon(imageVector = Icons.Default.Search, contentDescription = null, tint = Slate400, modifier = Modifier.size(20.dp))
+                    Icon(imageVector = AppleIcons.Search, contentDescription = null, tint = Slate400, modifier = Modifier.size(20.dp))
                 },
                 trailingIcon = {
                     if (uiState.searchQuery.isNotEmpty()) {
                         IconButton(onClick = { viewModel.onSearchQueryChanged("") }) {
-                            Icon(imageVector = Icons.Default.Clear, contentDescription = "Clear", tint = Slate400, modifier = Modifier.size(18.dp))
+                            Icon(imageVector = AppleIcons.Clear, contentDescription = "Clear", tint = Slate400, modifier = Modifier.size(18.dp))
                         }
                     }
                 },
                 singleLine = true,
                 shape = RoundedCornerShape(12.dp),
                 colors = TextFieldDefaults.colors(
-                    focusedContainerColor = CardBackground,
-                    unfocusedContainerColor = CardBackground,
+                    focusedContainerColor = if (isDark) IosDarkTertiaryGrouped else CardBackground,
+                    unfocusedContainerColor = if (isDark) IosDarkTertiaryGrouped else CardBackground,
+                    focusedTextColor = labelPrimary,
+                    unfocusedTextColor = labelPrimary,
                     focusedIndicatorColor = SapphireBlue,
-                    unfocusedIndicatorColor = Slate200
+                    unfocusedIndicatorColor = if (isDark) IosDarkSeparator else Slate200
                 )
             )
 
@@ -155,23 +170,23 @@ fun CustomersScreen(
                 Card(
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(10.dp),
-                    colors = CardDefaults.cardColors(containerColor = CardBackground),
-                    border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(Slate200))
+                    colors = CardDefaults.cardColors(containerColor = if (isDark) IosDarkSecondaryGrouped else CardBackground),
+                    border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(if (isDark) IosDarkSeparator else Slate200))
                 ) {
                     Column(modifier = Modifier.padding(10.dp)) {
-                        Text("Total Clients", fontSize = 11.sp, color = Slate600)
-                        Text("${uiState.totalCustomers}", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Navy900)
+                        Text("Total Clients", fontSize = 11.sp, color = labelSecondary)
+                        Text("${uiState.totalCustomers}", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = labelPrimary)
                     }
                 }
 
                 Card(
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(10.dp),
-                    colors = CardDefaults.cardColors(containerColor = CardBackground),
-                    border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(Slate200))
+                    colors = CardDefaults.cardColors(containerColor = if (isDark) IosDarkSecondaryGrouped else CardBackground),
+                    border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(if (isDark) IosDarkSeparator else Slate200))
                 ) {
                     Column(modifier = Modifier.padding(10.dp)) {
-                        Text("Multi-Vehicle Clients", fontSize = 11.sp, color = Slate600)
+                        Text("Multi-Vehicle Clients", fontSize = 11.sp, color = labelSecondary)
                         Text("${uiState.multiVehicleCount}", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = SapphireBlue)
                     }
                 }
@@ -187,7 +202,7 @@ fun CustomersScreen(
                         .padding(32.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("No clients found matching query.", color = Slate600, fontSize = 14.sp)
+                    Text("No clients found matching query.", color = labelSecondary, fontSize = 14.sp)
                 }
             } else {
                 LazyColumn(
@@ -224,12 +239,15 @@ fun CustomerCard(
     onWhatsApp: () -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
+    val isDark = isSystemInDarkTheme()
+    val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
+    val labelSecondary = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
 
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBackground),
-        border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(Slate200))
+        colors = CardDefaults.cardColors(containerColor = if (isDark) IosDarkSecondaryGrouped else CardBackground),
+        border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(if (isDark) IosDarkSeparator else Slate200))
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             // Client Header
@@ -245,27 +263,27 @@ fun CustomerCard(
                             .background(SapphireBlue.copy(alpha = 0.1f), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(imageVector = Icons.Default.Person, contentDescription = null, tint = SapphireBlue, modifier = Modifier.size(20.dp))
+                        Icon(imageVector = AppleIcons.Person2, contentDescription = null, tint = SapphireBlue, modifier = Modifier.size(20.dp))
                     }
                     Spacer(modifier = Modifier.width(10.dp))
                     Column {
                         val displayName = if (customer.title.isNullOrBlank()) customer.name else "${customer.title} ${customer.name}"
-                        Text(text = displayName, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Navy900)
-                        Text(text = customer.mobile, fontSize = 12.sp, color = Slate600)
+                        Text(text = displayName, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = labelPrimary)
+                        Text(text = customer.mobile, fontSize = 12.sp, color = labelSecondary)
                     }
                 }
 
                 // Vehicle count chip
                 Box(
                     modifier = Modifier
-                        .background(if (customer.vehicles.size > 1) SapphireBlue.copy(alpha = 0.12f) else Slate100, RoundedCornerShape(8.dp))
+                        .background(if (customer.vehicles.size > 1) SapphireBlue.copy(alpha = 0.12f) else (if (isDark) Color(0x33545458) else Slate100), RoundedCornerShape(8.dp))
                         .padding(horizontal = 10.dp, vertical = 4.dp)
                 ) {
                     Text(
                         text = "${customer.vehicles.size} ${if (customer.vehicles.size == 1) "Vehicle" else "Vehicles"}",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (customer.vehicles.size > 1) SapphireBlue else Navy800
+                        color = if (customer.vehicles.size > 1) SapphireBlue else (if (isDark) IosDarkLabelPrimary else Navy800)
                     )
                 }
             }
@@ -290,7 +308,7 @@ fun CustomerCard(
                         contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                         modifier = Modifier.height(32.dp)
                     ) {
-                        Icon(imageVector = Icons.Default.Call, contentDescription = null, modifier = Modifier.size(13.dp))
+                        Icon(imageVector = AppleIcons.Phone, contentDescription = null, modifier = Modifier.size(13.dp))
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("Call", fontSize = 11.sp)
                     }
@@ -301,7 +319,7 @@ fun CustomerCard(
                         contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                         modifier = Modifier.height(32.dp)
                     ) {
-                        Icon(imageVector = Icons.AutoMirrored.Filled.Chat, contentDescription = null, modifier = Modifier.size(13.dp))
+                        Icon(imageVector = AppleIcons.Message, contentDescription = null, modifier = Modifier.size(13.dp))
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("WhatsApp", fontSize = 11.sp)
                     }
@@ -346,8 +364,8 @@ fun CustomerCard(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(8.dp))
-                                .background(Slate50)
-                                .border(1.dp, Slate200, RoundedCornerShape(8.dp))
+                                .background(if (isDark) IosDarkTertiaryGrouped else Slate50)
+                                .border(1.dp, if (isDark) IosDarkSeparator else Slate200, RoundedCornerShape(8.dp))
                                 .clickable { onNavigateToVehicle(vehicle.regNo) }
                                 .padding(10.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -358,12 +376,12 @@ fun CustomerCard(
                                     text = RegistrationNormalizer.formatForDisplay(vehicle.regNo),
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = Navy900
+                                    color = labelPrimary
                                 )
                                 Text(
                                     text = "${vehicle.makeModel ?: "Vehicle"} • ${policy?.insurer ?: "No Policy"}",
                                     fontSize = 11.sp,
-                                    color = Slate600
+                                    color = labelSecondary
                                 )
                             }
 

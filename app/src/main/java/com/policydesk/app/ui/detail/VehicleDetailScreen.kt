@@ -29,16 +29,14 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Message
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import com.policydesk.app.ui.components.AppleAlertDialog
+import com.policydesk.app.ui.components.AppleButton
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -65,11 +63,16 @@ import com.policydesk.app.ui.components.LiquidGlassGroupedSection
 import com.policydesk.app.ui.components.LiquidGlassTopBar
 import com.policydesk.app.ui.components.UiFormatters
 import com.policydesk.app.ui.components.liquidGlass
+import com.policydesk.app.ui.theme.AppleIcons
 import com.policydesk.app.ui.theme.AppleSystemBlue
 import com.policydesk.app.ui.theme.AppleSystemGreen
 import com.policydesk.app.ui.theme.AppleSystemOrange
 import com.policydesk.app.ui.theme.AppleSystemDeepOrange
 import com.policydesk.app.ui.theme.AppleSystemRed
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.MaterialTheme
+import com.policydesk.app.ui.theme.IosDarkLabelPrimary
+import com.policydesk.app.ui.theme.IosDarkLabelSecondary
 import com.policydesk.app.ui.theme.IosLabelPrimary
 import com.policydesk.app.ui.theme.IosLabelSecondary
 import com.policydesk.app.ui.theme.IosLabelTertiary
@@ -115,18 +118,20 @@ fun VehicleDetailScreen(
         )
         var selectedReason by remember { mutableStateOf(closeReasons.first()) }
 
-        AlertDialog(
+        AppleAlertDialog(
             onDismissRequest = { showCloseDialog = false },
-            title = {
-                Text("Close Vehicle Policy", fontWeight = FontWeight.Bold, color = IosLabelPrimary)
+            title = "Close Vehicle Policy",
+            message = "Closing removes this vehicle from active expiry dashboards. Please choose a reason:",
+            confirmText = "Close Vehicle",
+            onConfirm = {
+                viewModel.closeVehicle(selectedReason)
+                showCloseDialog = false
             },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        "Closing removes this vehicle from active expiry dashboards. Please choose a reason:",
-                        fontSize = 13.sp,
-                        color = IosLabelSecondary
-                    )
+            dismissText = "Cancel",
+            onDismiss = { showCloseDialog = false },
+            isDestructive = true,
+            content = {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     closeReasons.forEach { reason ->
                         Row(
                             modifier = Modifier
@@ -145,22 +150,6 @@ fun VehicleDetailScreen(
                             )
                         }
                     }
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        viewModel.closeVehicle(selectedReason)
-                        showCloseDialog = false
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = AppleSystemRed)
-                ) {
-                    Text("Close Vehicle")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showCloseDialog = false }) {
-                    Text("Cancel")
                 }
             }
         )
@@ -201,7 +190,7 @@ fun VehicleDetailScreen(
                 )
             }
         },
-        containerColor = IosSystemBackground
+        containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
         val data = vehicleWithPolicies
         if (data == null) {
@@ -392,7 +381,7 @@ fun CountdownLiveBanner(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
-                imageVector = Icons.Default.Shield,
+                imageVector = AppleIcons.ShieldCheck,
                 contentDescription = null,
                 tint = accentColor,
                 modifier = Modifier.size(18.dp)
@@ -424,7 +413,7 @@ fun CustomerContactBar(
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             ContactActionButton(
-                icon = Icons.Default.Call,
+                icon = AppleIcons.Phone,
                 label = "Call",
                 onClick = {
                     val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$mobile"))
@@ -432,7 +421,7 @@ fun CustomerContactBar(
                 }
             )
             ContactActionButton(
-                icon = Icons.AutoMirrored.Filled.Chat,
+                icon = AppleIcons.Message,
                 label = "WhatsApp",
                 onClick = {
                     val formattedMobile = if (mobile.startsWith("91")) mobile else "91$mobile"
@@ -443,7 +432,7 @@ fun CustomerContactBar(
                 }
             )
             ContactActionButton(
-                icon = Icons.Default.Message,
+                icon = AppleIcons.Message,
                 label = "SMS",
                 onClick = {
                     val intent = Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:$mobile"))
@@ -482,17 +471,19 @@ fun ContactActionButton(
             )
         }
         Spacer(modifier = Modifier.height(4.dp))
+        val isDark = isSystemInDarkTheme()
         Text(
             text = label,
             fontSize = 12.sp,
             fontWeight = FontWeight.Medium,
-            color = IosLabelPrimary
+            color = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
         )
     }
 }
 
 @Composable
 fun DetailRow(label: String, value: String) {
+    val isDark = isSystemInDarkTheme()
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -503,14 +494,14 @@ fun DetailRow(label: String, value: String) {
         Text(
             text = label,
             fontSize = 13.sp,
-            color = IosLabelSecondary,
+            color = if (isDark) IosDarkLabelSecondary else IosLabelSecondary,
             modifier = Modifier.weight(1f)
         )
         Text(
             text = value,
             fontSize = 14.sp,
             fontWeight = FontWeight.SemiBold,
-            color = IosLabelPrimary,
+            color = if (isDark) IosDarkLabelPrimary else IosLabelPrimary,
             modifier = Modifier.weight(1.3f),
             textAlign = androidx.compose.ui.text.style.TextAlign.End
         )
@@ -519,6 +510,7 @@ fun DetailRow(label: String, value: String) {
 
 @Composable
 fun PolicyHistoryItem(policy: Policy) {
+    val isDark = isSystemInDarkTheme()
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -526,9 +518,9 @@ fun PolicyHistoryItem(policy: Policy) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
-            imageVector = Icons.Default.History,
+            imageVector = AppleIcons.History,
             contentDescription = null,
-            tint = IosLabelSecondary,
+            tint = if (isDark) IosDarkLabelSecondary else IosLabelSecondary,
             modifier = Modifier.size(16.dp)
         )
         Spacer(modifier = Modifier.width(8.dp))
@@ -537,12 +529,12 @@ fun PolicyHistoryItem(policy: Policy) {
                 text = "${policy.insurer} • ${policy.policyNumber}",
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = IosLabelPrimary
+                color = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
             )
             Text(
                 text = "Expired: ${UiFormatters.formatDate(policy.expiryDate)} • Premium: ${UiFormatters.formatCurrency(policy.totalPremium)}",
                 fontSize = 12.sp,
-                color = IosLabelSecondary
+                color = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
             )
         }
     }
@@ -563,20 +555,10 @@ fun SurfaceActionBar(
             )
             .padding(16.dp)
     ) {
-        Button(
+        AppleButton(
+            text = "Renew Policy",
             onClick = onRenew,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp),
-            shape = RoundedCornerShape(14.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = AppleSystemBlue)
-        ) {
-            Text(
-                text = "Renew Policy",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = (-0.2).sp
-            )
-        }
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }

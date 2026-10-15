@@ -24,16 +24,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Error
-import androidx.compose.material.icons.filled.UploadFile
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import com.policydesk.app.ui.components.AppleButton
+import com.policydesk.app.ui.components.AppleSecondaryButton
+import com.policydesk.app.ui.theme.AppleIcons
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenuItem
@@ -118,7 +111,7 @@ fun ImportScreen(
                 onNavigateBack = onNavigateBack
             )
         },
-        containerColor = com.policydesk.app.ui.theme.IosSystemBackground
+        containerColor = androidx.compose.material3.MaterialTheme.colorScheme.background
     ) { paddingValues ->
         Box(
             modifier = Modifier
@@ -205,7 +198,7 @@ fun SelectFileStep(
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                imageVector = Icons.Default.UploadFile,
+                imageVector = AppleIcons.Upload,
                 contentDescription = null,
                 tint = SapphireBlue,
                 modifier = Modifier.size(36.dp)
@@ -229,33 +222,21 @@ fun SelectFileStep(
 
         Spacer(modifier = Modifier.height(28.dp))
 
-        Button(
+        AppleButton(
+            text = "Select .XLSX or .CSV File",
             onClick = onPickFile,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = SapphireBlue)
-        ) {
-            Icon(imageVector = Icons.Default.UploadFile, contentDescription = null)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Select .XLSX or .CSV File", fontWeight = FontWeight.Bold)
-        }
+            icon = AppleIcons.Upload,
+            modifier = Modifier.fillMaxWidth()
+        )
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        OutlinedButton(
+        AppleSecondaryButton(
+            text = "Download Standard Template",
             onClick = onDownloadTemplate,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = SapphireBlue)
-        ) {
-            Icon(imageVector = Icons.Default.Download, contentDescription = null)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Download Standard Template", fontWeight = FontWeight.SemiBold)
-        }
+            icon = AppleIcons.Download,
+            modifier = Modifier.fillMaxWidth()
+        )
 
         if (errorMessage != null) {
             Spacer(modifier = Modifier.height(16.dp))
@@ -290,7 +271,11 @@ fun MapColumnsStep(
         "policyNumber" to "Policy Number *",
         "expiryDate" to "Policy Expiry Date *",
         "totalPremium" to "Total Premium Cost *",
+        "tpPremium" to "TP Premium",
+        "odPremium" to "OD Premium",
         "makeModel" to "Vehicle Make & Model",
+        "make" to "Vehicle Make",
+        "model" to "Vehicle Model",
         "vin" to "Chassis Number (VIN)",
         "engineNo" to "Engine Number",
         "notes" to "Notes & Preferences",
@@ -360,16 +345,11 @@ fun MapColumnsStep(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        Button(
+        AppleButton(
+            text = "Preview Validation",
             onClick = onProceed,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = SapphireBlue)
-        ) {
-            Text("Preview Validation", fontWeight = FontWeight.Bold)
-        }
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }
 
@@ -503,16 +483,11 @@ fun PreviewStep(
 
         val countToImport = preview.validRows.size + preview.warningRows.size +
                 if (state.duplicateStrategy != DuplicateStrategy.SKIP) preview.duplicateRows.size else 0
-        Button(
+        AppleButton(
+            text = "Import $countToImport Records",
             onClick = onExecuteImport,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = SapphireBlue)
-        ) {
-            Text("Import $countToImport Records", fontWeight = FontWeight.Bold)
-        }
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }
 
@@ -597,7 +572,7 @@ fun SummaryStep(
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                imageVector = Icons.Default.CheckCircle,
+                imageVector = AppleIcons.CheckCircle,
                 contentDescription = null,
                 tint = StatusActiveGreen,
                 modifier = Modifier.size(36.dp)
@@ -630,44 +605,36 @@ fun SummaryStep(
         Spacer(modifier = Modifier.height(20.dp))
 
         if (summary != null && summary.failedCount > 0) {
-            OutlinedButton(
+            AppleSecondaryButton(
+                text = "Download Failed Rows (CSV)",
                 onClick = onDownloadFailedCsv,
+                icon = AppleIcons.Download,
+                tintColor = StatusOverdueRed,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(44.dp),
-                shape = RoundedCornerShape(10.dp),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = StatusOverdueRed)
-            ) {
-                Icon(imageVector = Icons.Default.Download, contentDescription = null, modifier = Modifier.size(16.dp))
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("Download Failed Rows (CSV)", fontSize = 13.sp)
-            }
+                    .height(44.dp)
+            )
             Spacer(modifier = Modifier.height(10.dp))
         }
 
         if (summary != null && summary.canUndo && (summary.addedCount > 0 || summary.updatedCount > 0 || summary.renewedCount > 0)) {
-            OutlinedButton(
+            AppleSecondaryButton(
+                text = "Undo Last Import",
                 onClick = onUndo,
+                tintColor = StatusOverdueRed,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(44.dp),
-                shape = RoundedCornerShape(10.dp),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = StatusOverdueRed)
-            ) {
-                Text("Undo Last Import", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-            }
+                    .height(44.dp)
+            )
             Spacer(modifier = Modifier.height(10.dp))
         }
 
-        Button(
+        AppleButton(
+            text = "Go to Dashboard",
             onClick = onDone,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(48.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = SapphireBlue)
-        ) {
-            Text("Go to Dashboard", fontWeight = FontWeight.Bold)
-        }
+                .height(50.dp)
+        )
     }
 }

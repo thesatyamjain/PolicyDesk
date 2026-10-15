@@ -3,6 +3,7 @@ package com.policydesk.app.ui.detail
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.policydesk.app.domain.model.RegistrationNormalizer
 import com.policydesk.app.domain.model.VehicleWithPolicies
 import com.policydesk.app.domain.repository.VehicleRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -29,7 +30,7 @@ class VehicleDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
-    private val regNo: String = checkNotNull(savedStateHandle["regNo"])
+    private val regNo: String = RegistrationNormalizer.normalize(checkNotNull(savedStateHandle["regNo"]))
 
     val vehicleData: StateFlow<VehicleWithPolicies?> = repository.getVehicleWithPolicies(regNo)
         .stateIn(

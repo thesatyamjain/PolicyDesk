@@ -22,14 +22,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.PictureAsPdf
-import androidx.compose.material.icons.filled.UploadFile
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import com.policydesk.app.ui.components.AppleAlertDialog
+import com.policydesk.app.ui.components.AppleButton
+import com.policydesk.app.ui.components.AppleSecondaryButton
+import com.policydesk.app.ui.theme.AppleIcons
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -118,52 +114,25 @@ fun PdfReviewScreen(
     }
 
     if (state.isPasswordProtected) {
-        androidx.compose.material3.AlertDialog(
+        AppleAlertDialog(
             onDismissRequest = viewModel::dismissPasswordDialog,
-            title = {
-                Text(
-                    text = "Password-Protected PDF",
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Navy900
+            title = "Password-Protected PDF",
+            message = "This policy document is encrypted with a password. Enter it to decrypt and extract details.",
+            confirmText = "Unlock & Extract",
+            onConfirm = viewModel::submitPassword,
+            dismissText = "Cancel",
+            onDismiss = viewModel::dismissPasswordDialog,
+            content = {
+                OutlinedTextField(
+                    value = state.passwordInput,
+                    onValueChange = viewModel::onPasswordChanged,
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Document Password") },
+                    singleLine = true,
+                    shape = RoundedCornerShape(10.dp),
+                    colors = formFieldColors()
                 )
-            },
-            text = {
-                Column {
-                    Text(
-                        text = "This policy document is encrypted with a password (e.g. vehicle registration, birth year, or PAN). Enter it to decrypt and extract details.",
-                        fontSize = 13.sp,
-                        color = Slate600
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    OutlinedTextField(
-                        value = state.passwordInput,
-                        onValueChange = viewModel::onPasswordChanged,
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Document Password") },
-                        singleLine = true,
-                        shape = RoundedCornerShape(8.dp),
-                        colors = formFieldColors()
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = viewModel::submitPassword,
-                    enabled = state.passwordInput.isNotBlank(),
-                    shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = SapphireBlue)
-                ) {
-                    Text("Unlock & Extract")
-                }
-            },
-            dismissButton = {
-                androidx.compose.material3.TextButton(onClick = viewModel::dismissPasswordDialog) {
-                    Text("Cancel", color = Slate600)
-                }
-            },
-            containerColor = CardBackground,
-            shape = RoundedCornerShape(14.dp)
+            }
         )
     }
 
@@ -186,7 +155,7 @@ fun PdfReviewScreen(
                 }
             )
         },
-        containerColor = com.policydesk.app.ui.theme.IosSystemBackground
+        containerColor = androidx.compose.material3.MaterialTheme.colorScheme.background
     ) { paddingValues ->
         if (state.pdfUri == null) {
             // Pick PDF Screen
@@ -205,7 +174,7 @@ fun PdfReviewScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Default.PictureAsPdf,
+                        imageVector = AppleIcons.DocText,
                         contentDescription = null,
                         tint = StatusOverdueRed,
                         modifier = Modifier.size(36.dp)
@@ -229,18 +198,12 @@ fun PdfReviewScreen(
 
                 Spacer(modifier = Modifier.height(28.dp))
 
-                Button(
+                AppleButton(
+                    text = "Select Policy PDF(s)",
                     onClick = { pdfPickerLauncher.launch(arrayOf("application/pdf")) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = SapphireBlue)
-                ) {
-                    Icon(imageVector = Icons.Default.UploadFile, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Select Policy PDF(s)", fontWeight = FontWeight.Bold)
-                }
+                    icon = AppleIcons.Upload,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         } else if (state.isExtracting) {
             // Extracting in progress
@@ -277,7 +240,7 @@ fun PdfReviewScreen(
                 verticalArrangement = Arrangement.Center
             ) {
                 Icon(
-                    imageVector = Icons.Default.Warning,
+                    imageVector = AppleIcons.Warning,
                     contentDescription = null,
                     tint = StatusOverdueRed,
                     modifier = Modifier.size(48.dp)
@@ -298,23 +261,19 @@ fun PdfReviewScreen(
                 )
                 Spacer(modifier = Modifier.height(24.dp))
 
-                Button(
+                AppleButton(
+                    text = "Try Another PDF",
                     onClick = { pdfPickerLauncher.launch(arrayOf("application/pdf")) },
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = SapphireBlue)
-                ) {
-                    Text("Try Another PDF")
-                }
+                    modifier = Modifier.fillMaxWidth()
+                )
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                Button(
+                AppleSecondaryButton(
+                    text = "Open AI Settings",
                     onClick = onNavigateToSettings,
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Slate200)
-                ) {
-                    Text("Open AI Settings", color = Navy900)
-                }
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         } else {
             // Review & Confirm Screen
@@ -334,7 +293,7 @@ fun PdfReviewScreen(
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
-                            imageVector = Icons.Default.Check,
+                            imageVector = AppleIcons.Checkmark,
                             contentDescription = null,
                             tint = StatusActiveGreen,
                             modifier = Modifier.size(18.dp)
@@ -499,26 +458,18 @@ fun PdfReviewScreen(
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                Button(
+                AppleButton(
+                    text = when {
+                        state.isSaving -> "Saving..."
+                        state.queue.size > 1 && state.queueIndex + 1 < state.queue.size ->
+                            "Confirm & Next Document (${state.queueIndex + 1}/${state.queue.size})"
+                        else -> "Confirm & Save Policy"
+                    },
                     onClick = viewModel::savePolicy,
                     enabled = state.isValid && !state.isSaving,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = SapphireBlue)
-                ) {
-                    Text(
-                        text = when {
-                            state.isSaving -> "Saving..."
-                            state.queue.size > 1 && state.queueIndex + 1 < state.queue.size ->
-                                "Confirm & Next Document (${state.queueIndex + 1}/${state.queue.size})"
-                            else -> "Confirm & Save Policy"
-                        },
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
+                    isLoading = state.isSaving,
+                    modifier = Modifier.fillMaxWidth()
+                )
 
                 Spacer(modifier = Modifier.height(24.dp))
             }

@@ -7,6 +7,7 @@ import com.policydesk.app.domain.model.FieldValidators
 import com.policydesk.app.domain.model.Policy
 import com.policydesk.app.domain.model.PolicySource
 import com.policydesk.app.domain.model.PolicyStatus
+import com.policydesk.app.domain.model.RegistrationNormalizer
 import com.policydesk.app.domain.model.SaleType
 import com.policydesk.app.domain.model.VehicleWithPolicies
 import com.policydesk.app.domain.repository.VehicleRepository
@@ -56,7 +57,7 @@ class RenewPolicyViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
-    private val regNo: String = checkNotNull(savedStateHandle["regNo"])
+    private val regNo: String = RegistrationNormalizer.normalize(checkNotNull(savedStateHandle["regNo"]))
 
     private val _formState = MutableStateFlow(RenewFormState())
     val formState: StateFlow<RenewFormState> = _formState.asStateFlow()

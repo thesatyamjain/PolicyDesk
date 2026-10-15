@@ -5,7 +5,7 @@ import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 
 enum class AiProvider(val displayName: String, val defaultModel: String) {
-    GEMINI("Google Gemini", "gemini-1.5-flash"),
+    GEMINI("Google Gemini", "gemini-2.5-flash"),
     OPENAI("OpenAI", "gpt-4o-mini"),
     CLAUDE("Anthropic Claude", "claude-3-5-haiku-20241022")
 }
@@ -50,15 +50,20 @@ class SecureKeyStorage(context: Context) {
         val providerStr = prefs.getString("ai_provider", AiProvider.GEMINI.name) ?: AiProvider.GEMINI.name
         val provider = try { AiProvider.valueOf(providerStr) } catch (_: Exception) { AiProvider.GEMINI }
         val apiKey = prefs.getString("ai_api_key", "") ?: ""
-        val model = prefs.getString("ai_model", provider.defaultModel) ?: provider.defaultModel
+        var model = prefs.getString("ai_model", provider.defaultModel) ?: provider.defaultModel
+        // Auto-migrate retired Gemini 1.5 models to stable gemini-2.5-flash
+        if (provider == AiProvider.GEMINI && (model.isBlank() || model == "gemini-1.5-flash" || model == "models/gemini-1.5-flash")) {
+            model = "gemini-2.5-flash"
+        }
         return AiConfig(provider, apiKey, model)
     }
 
     fun saveAiConfig(config: AiConfig) {
+        val cleanModel = config.model.trim().removePrefix("models/").ifBlank { config.provider.defaultModel }
         prefs.edit()
             .putString("ai_provider", config.provider.name)
             .putString("ai_api_key", config.apiKey.trim())
-            .putString("ai_model", config.model.trim())
+            .putString("ai_model", cleanModel)
             .apply()
     }
 

@@ -16,13 +16,33 @@ import kotlinx.coroutines.flow.map
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import android.content.Context
+import com.policydesk.app.data.drive.GoogleDriveManager
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class VehicleRepositoryImpl @Inject constructor(
-    private val vehicleDao: VehicleDao
+    private val vehicleDao: VehicleDao,
+    @ApplicationContext private val context: Context
 ) : VehicleRepository {
+
+    private fun triggerSilentDriveSync() {
+        if (GoogleDriveManager.getConnectedAccount(context) != null) {
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    val all = vehicleDao.getAllVehicles().first().map { it.toDomain() }
+                    val json = GoogleDriveManager.createSnapshotJson(all)
+                    GoogleDriveManager.performAutoSync(context, json)
+                } catch (_: Exception) {}
+            }
+        }
+    }
 
     override fun normalizeRegistration(raw: String): String {
         return RegistrationNormalizer.normalize(raw)
@@ -46,6 +66,7 @@ class VehicleRepositoryImpl @Inject constructor(
             VehicleEntity.fromDomain(vehicleWithNorm),
             PolicyEntity.fromDomain(policyWithNorm)
         )
+        triggerSilentDriveSync()
     }
 
     override suspend fun getVehicleWithPoliciesDirect(regNo: String): VehicleWithPolicies? {
@@ -364,15 +385,18 @@ class VehicleRepositoryImpl @Inject constructor(
     override suspend fun closeVehicle(regNo: String, reason: String) {
         val normalized = normalizeRegistration(regNo)
         vehicleDao.closeVehicle(normalized, reason)
+        triggerSilentDriveSync()
     }
 
     override suspend fun softDeleteVehicle(regNo: String) {
         val normalized = normalizeRegistration(regNo)
         vehicleDao.softDeleteVehicle(normalized)
+        triggerSilentDriveSync()
     }
 
     override suspend fun markPolicyRenewed(policyId: String, renewedOn: Long) {
         vehicleDao.markPolicyRenewed(policyId, renewedOn)
+        triggerSilentDriveSync()
     }
 
     override suspend fun rollbackImport(vehicleRegNos: List<String>, policyIds: List<String>) {
@@ -382,6 +406,7 @@ class VehicleRepositoryImpl @Inject constructor(
         if (vehicleRegNos.isNotEmpty()) {
             vehicleDao.softDeleteVehicles(vehicleRegNos)
         }
+        triggerSilentDriveSync()
     }
 
     override fun getCustomerGroups(): Flow<List<com.policydesk.app.domain.model.CustomerGroup>> {
@@ -428,6 +453,7 @@ class VehicleRepositoryImpl @Inject constructor(
             }
             count++
         }
+        triggerSilentDriveSync()
         return count
     }
 }
