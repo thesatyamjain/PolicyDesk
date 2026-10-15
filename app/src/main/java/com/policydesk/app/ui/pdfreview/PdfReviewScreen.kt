@@ -1,0 +1,527 @@
+package com.policydesk.app.ui.pdfreview
+
+import android.net.Uri
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.PictureAsPdf
+import androidx.compose.material.icons.filled.UploadFile
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.policydesk.app.domain.model.Sector
+import com.policydesk.app.ui.addpolicy.FormSectionCard
+import com.policydesk.app.ui.addpolicy.SectorOptionPill
+import com.policydesk.app.ui.addpolicy.formFieldColors
+import com.policydesk.app.ui.theme.CardBackground
+import com.policydesk.app.ui.theme.Navy900
+import com.policydesk.app.ui.theme.SapphireBlue
+import com.policydesk.app.ui.theme.Slate200
+import com.policydesk.app.ui.theme.Slate50
+import com.policydesk.app.ui.theme.Slate600
+import com.policydesk.app.ui.theme.StatusActiveGreen
+import com.policydesk.app.ui.theme.StatusActiveGreenBg
+import com.policydesk.app.ui.theme.StatusExpiringAmber
+import com.policydesk.app.ui.theme.StatusExpiringAmberBg
+import com.policydesk.app.ui.theme.StatusOverdueRed
+import com.policydesk.app.ui.theme.StatusOverdueRedBg
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun PdfReviewScreen(
+    initialUri: Uri? = null,
+    onNavigateBack: () -> Unit,
+    onNavigateToVehicleDetail: (String) -> Unit,
+    onNavigateToSettings: () -> Unit,
+    viewModel: PdfReviewViewModel = hiltViewModel()
+) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+
+    LaunchedEffect(initialUri) {
+        if (initialUri != null && state.pdfUri == null) {
+            viewModel.onPdfSelected(initialUri)
+        }
+    }
+
+    val pdfPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenMultipleDocuments()
+    ) { uris: List<Uri> ->
+        if (uris.isNotEmpty()) {
+            viewModel.onPdfsSelected(uris)
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.uiEvent.collect { event ->
+            when (event) {
+                is PdfReviewUiEvent.SaveSuccess -> {
+                    Toast.makeText(context, "Policy extracted and saved!", Toast.LENGTH_SHORT).show()
+                    if (event.isBatchFinished) {
+                        onNavigateToVehicleDetail(event.regNo)
+                    }
+                }
+                is PdfReviewUiEvent.BatchCompleted -> {
+                    Toast.makeText(context, "Batch review completed!", Toast.LENGTH_SHORT).show()
+                    onNavigateBack()
+                }
+                is PdfReviewUiEvent.ShowToast -> {
+                    Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    if (state.isPasswordProtected) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = viewModel::dismissPasswordDialog,
+            title = {
+                Text(
+                    text = "Password-Protected PDF",
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Navy900
+                )
+            },
+            text = {
+                Column {
+                    Text(
+                        text = "This policy document is encrypted with a password (e.g. vehicle registration, birth year, or PAN). Enter it to decrypt and extract details.",
+                        fontSize = 13.sp,
+                        color = Slate600
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = state.passwordInput,
+                        onValueChange = viewModel::onPasswordChanged,
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Document Password") },
+                        singleLine = true,
+                        shape = RoundedCornerShape(8.dp),
+                        colors = formFieldColors()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = viewModel::submitPassword,
+                    enabled = state.passwordInput.isNotBlank(),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = SapphireBlue)
+                ) {
+                    Text("Unlock & Extract")
+                }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = viewModel::dismissPasswordDialog) {
+                    Text("Cancel", color = Slate600)
+                }
+            },
+            containerColor = CardBackground,
+            shape = RoundedCornerShape(14.dp)
+        )
+    }
+
+    Scaffold(
+        topBar = {
+            com.policydesk.app.ui.components.LiquidGlassTopBar(
+                title = "PDF Policy Review",
+                subtitle = if (state.queue.size > 1) "Document ${state.queueIndex + 1} of ${state.queue.size}" else null,
+                onNavigateBack = onNavigateBack,
+                actions = {
+                    if (state.queue.size > 1 && state.pdfUri != null) {
+                        androidx.compose.material3.TextButton(onClick = viewModel::skipCurrentPdf) {
+                            Text(
+                                text = if (state.queueIndex + 1 < state.queue.size) "Skip" else "Finish",
+                                color = com.policydesk.app.ui.theme.AppleSystemBlue,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            )
+        },
+        containerColor = com.policydesk.app.ui.theme.IosSystemBackground
+    ) { paddingValues ->
+        if (state.pdfUri == null) {
+            // Pick PDF Screen
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(72.dp)
+                        .background(StatusOverdueRedBg, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PictureAsPdf,
+                        contentDescription = null,
+                        tint = StatusOverdueRed,
+                        modifier = Modifier.size(36.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(18.dp))
+                Text(
+                    text = "Import Policy PDF",
+                    fontSize = 19.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Navy900
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Pick one or multiple insurer PDFs from storage or share directly to PolicyDesk from WhatsApp or Gmail.",
+                    fontSize = 13.sp,
+                    color = Slate600,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(28.dp))
+
+                Button(
+                    onClick = { pdfPickerLauncher.launch(arrayOf("application/pdf")) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = SapphireBlue)
+                ) {
+                    Icon(imageVector = Icons.Default.UploadFile, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Select Policy PDF(s)", fontWeight = FontWeight.Bold)
+                }
+            }
+        } else if (state.isExtracting) {
+            // Extracting in progress
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                CircularProgressIndicator(color = SapphireBlue, strokeWidth = 3.dp)
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Reading policy document...",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Navy900
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "Extracting customer, vehicle & expiry dates with your AI key",
+                    fontSize = 12.sp,
+                    color = Slate600
+                )
+            }
+        } else if (state.extractionError != null) {
+            // Error Screen
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Warning,
+                    contentDescription = null,
+                    tint = StatusOverdueRed,
+                    modifier = Modifier.size(48.dp)
+                )
+                Spacer(modifier = Modifier.height(14.dp))
+                Text(
+                    text = "Extraction Issue",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Navy900
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = state.extractionError ?: "Unknown error",
+                    fontSize = 13.sp,
+                    color = Slate600,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Button(
+                    onClick = { pdfPickerLauncher.launch(arrayOf("application/pdf")) },
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = SapphireBlue)
+                ) {
+                    Text("Try Another PDF")
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Button(
+                    onClick = onNavigateToSettings,
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Slate200)
+                ) {
+                    Text("Open AI Settings", color = Navy900)
+                }
+            }
+        } else {
+            // Review & Confirm Screen
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(StatusActiveGreenBg, RoundedCornerShape(8.dp))
+                        .padding(12.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = null,
+                            tint = StatusActiveGreen,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Values extracted from PDF. Review carefully before saving.",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = StatusActiveGreen
+                        )
+                    }
+                }
+
+                // Section 1: Vehicle Details
+                FormSectionCard(title = "Vehicle Information") {
+                    OutlinedTextField(
+                        value = state.regNo,
+                        onValueChange = { viewModel.onFieldChanged("regNo", it) },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Registration No *") },
+                        singleLine = true,
+                        shape = RoundedCornerShape(10.dp),
+                        colors = formFieldColors()
+                    )
+
+                    OutlinedTextField(
+                        value = state.makeModel,
+                        onValueChange = { viewModel.onFieldChanged("makeModel", it) },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Make & Model") },
+                        singleLine = true,
+                        shape = RoundedCornerShape(10.dp),
+                        colors = formFieldColors()
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = state.vin,
+                            onValueChange = { viewModel.onFieldChanged("vin", it) },
+                            modifier = Modifier.weight(1f),
+                            label = { Text("Chassis No (VIN)") },
+                            singleLine = true,
+                            shape = RoundedCornerShape(10.dp),
+                            colors = formFieldColors()
+                        )
+                        OutlinedTextField(
+                            value = state.engineNo,
+                            onValueChange = { viewModel.onFieldChanged("engineNo", it) },
+                            modifier = Modifier.weight(1f),
+                            label = { Text("Engine Number") },
+                            singleLine = true,
+                            shape = RoundedCornerShape(10.dp),
+                            colors = formFieldColors()
+                        )
+                    }
+                }
+
+                // Section 2: Policy Details
+                FormSectionCard(title = "Policy Details") {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        SectorOptionPill(
+                            label = "PSU Company",
+                            selected = state.sector == Sector.PSU,
+                            onClick = { viewModel.onSectorSelected(Sector.PSU) },
+                            modifier = Modifier.weight(1f)
+                        )
+                        SectorOptionPill(
+                            label = "Private Company",
+                            selected = state.sector == Sector.PRIVATE,
+                            onClick = { viewModel.onSectorSelected(Sector.PRIVATE) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+
+                    OutlinedTextField(
+                        value = state.insurer,
+                        onValueChange = { viewModel.onFieldChanged("insurer", it) },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Insurer Name *") },
+                        singleLine = true,
+                        shape = RoundedCornerShape(10.dp),
+                        colors = formFieldColors()
+                    )
+
+                    OutlinedTextField(
+                        value = state.policyNumber,
+                        onValueChange = { viewModel.onFieldChanged("policyNumber", it) },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Policy Number *") },
+                        singleLine = true,
+                        shape = RoundedCornerShape(10.dp),
+                        colors = formFieldColors()
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = state.expiryDate,
+                            onValueChange = { viewModel.onFieldChanged("expiryDate", it) },
+                            modifier = Modifier.weight(1.2f),
+                            label = { Text("Expiry (DD/MM/YYYY) *") },
+                            singleLine = true,
+                            shape = RoundedCornerShape(10.dp),
+                            colors = formFieldColors()
+                        )
+
+                        OutlinedTextField(
+                            value = state.totalPremium,
+                            onValueChange = { viewModel.onFieldChanged("totalPremium", it) },
+                            modifier = Modifier.weight(1f),
+                            label = { Text("Total Premium *") },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = formFieldColors()
+                        )
+                    }
+                }
+
+                // Section 3: Customer Details
+                FormSectionCard(title = "Customer Details") {
+                    OutlinedTextField(
+                        value = state.customerName,
+                        onValueChange = { viewModel.onFieldChanged("customerName", it) },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Customer Name *") },
+                        singleLine = true,
+                        shape = RoundedCornerShape(10.dp),
+                        colors = formFieldColors()
+                    )
+
+                    OutlinedTextField(
+                        value = state.mobile,
+                        onValueChange = { viewModel.onFieldChanged("mobile", it) },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Mobile Number *") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = formFieldColors()
+                    )
+
+                    OutlinedTextField(
+                        value = state.address,
+                        onValueChange = { viewModel.onFieldChanged("address", it) },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Address *") },
+                        minLines = 2,
+                        shape = RoundedCornerShape(10.dp),
+                        colors = formFieldColors()
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Button(
+                    onClick = viewModel::savePolicy,
+                    enabled = state.isValid && !state.isSaving,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = SapphireBlue)
+                ) {
+                    Text(
+                        text = when {
+                            state.isSaving -> "Saving..."
+                            state.queue.size > 1 && state.queueIndex + 1 < state.queue.size ->
+                                "Confirm & Next Document (${state.queueIndex + 1}/${state.queue.size})"
+                            else -> "Confirm & Save Policy"
+                        },
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+            }
+        }
+    }
+}
