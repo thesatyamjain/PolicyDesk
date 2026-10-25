@@ -1048,3 +1048,291 @@ fun AppleAlertDialog(
     }
 }
 
+/**
+ * Authentic High-Security Registration Plate (HSRP) for Indian Motor Vehicles
+ * Renders the blue IND band with emblem and sharp, embossed monospaced vehicle registration.
+ */
+@Composable
+fun HsrpNumberPlate(
+    regNo: String,
+    isCommercial: Boolean = false,
+    modifier: Modifier = Modifier
+) {
+    val plateShape = RoundedCornerShape(6.dp)
+    val plateBg = if (isCommercial) Color(0xFFFDE047) else Color(0xFFF8FAFC)
+    val plateTextColor = Color(0xFF0F172A)
+
+    val clean = regNo.replace(" ", "").uppercase()
+    val formatted = remember(clean) {
+        when {
+            clean.length == 10 && clean.substring(0, 2).all { it.isLetter() } && clean.substring(2, 4).all { it.isDigit() } -> {
+                "${clean.substring(0, 2)} ${clean.substring(2, 4)} ${clean.substring(4, 6)} ${clean.substring(6)}"
+            }
+            clean.length == 9 && clean.substring(0, 2).all { it.isLetter() } && clean.substring(2, 4).all { it.isDigit() } -> {
+                "${clean.substring(0, 2)} ${clean.substring(2, 4)} ${clean.substring(4, 5)} ${clean.substring(5)}"
+            }
+            clean.contains("BH") && clean.length == 10 -> {
+                "${clean.substring(0, 2)} BH ${clean.substring(4, 8)} ${clean.substring(8)}"
+            }
+            else -> clean
+        }
+    }
+
+    Row(
+        modifier = modifier
+            .clip(plateShape)
+            .background(plateBg, plateShape)
+            .border(
+                width = 1.dp,
+                color = if (isCommercial) Color(0xFFCA8A04) else Color(0xFF94A3B8),
+                shape = plateShape
+            )
+            .height(28.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Left Blue IND Stripe
+        Box(
+            modifier = Modifier
+                .width(18.dp)
+                .fillMaxHeight()
+                .background(Color(0xFF003399)),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(4.dp)
+                        .background(Color(0xFFFDE047), CircleShape)
+                )
+                Spacer(modifier = Modifier.height(1.dp))
+                Text(
+                    text = "IND",
+                    fontSize = 6.sp,
+                    fontWeight = FontWeight.Black,
+                    color = Color.White,
+                    letterSpacing = 0.5.sp,
+                    lineHeight = 7.sp
+                )
+            }
+        }
+
+        // Registration Plate Numbers
+        Box(
+            modifier = Modifier
+                .padding(horizontal = 8.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = formatted,
+                fontSize = 13.sp,
+                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                fontWeight = FontWeight.ExtraBold,
+                color = plateTextColor,
+                letterSpacing = 1.sp
+            )
+        }
+    }
+}
+
+enum class DockTab {
+    DASHBOARD,
+    CUSTOMERS,
+    TIMELINE,
+    REPORTS,
+    SETTINGS
+}
+
+/**
+ * Floating Cupertino Glass Dock (Bottom Navigation)
+ * Grounds the terminal experience with frosted acrylic blur, specular highlight, and haptic touch.
+ */
+@Composable
+fun LiquidGlassDock(
+    currentTab: DockTab,
+    onTabSelected: (DockTab) -> Unit,
+    onAddClicked: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val isDark = isSystemInDarkTheme()
+    val dockShape = RoundedCornerShape(26.dp)
+    val haptic = LocalHapticFeedback.current
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .shadow(
+                elevation = 16.dp,
+                shape = dockShape,
+                ambientColor = if (isDark) Color(0x99000000) else Color(0x33000000),
+                spotColor = if (isDark) Color(0x99000000) else Color(0x33000000)
+            )
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = if (isDark) {
+                        listOf(Color(0xEE1C1C1E), Color(0xEE141416))
+                    } else {
+                        listOf(Color(0xF5FFFFFF), Color(0xEFF2F2F7))
+                    }
+                ),
+                shape = dockShape
+            )
+            .border(
+                width = 1.dp,
+                brush = Brush.verticalGradient(
+                    colors = if (isDark) {
+                        listOf(Color(0x40FFFFFF), Color(0x10FFFFFF))
+                    } else {
+                        listOf(Color(0xB3FFFFFF), Color(0x40000000))
+                    }
+                ),
+                shape = dockShape
+            )
+            .padding(horizontal = 8.dp, vertical = 6.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceAround,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            DockItem(
+                icon = AppleIcons.House,
+                label = "Policies",
+                isSelected = currentTab == DockTab.DASHBOARD,
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onTabSelected(DockTab.DASHBOARD)
+                }
+            )
+
+            DockItem(
+                icon = AppleIcons.Person2,
+                label = "Clients",
+                isSelected = currentTab == DockTab.CUSTOMERS,
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onTabSelected(DockTab.CUSTOMERS)
+                }
+            )
+
+            // Center Elevated Add Action Pill
+            val interactionSource = remember { MutableInteractionSource() }
+            val isPressed by interactionSource.collectIsPressedAsState()
+            val addScale by animateFloatAsState(
+                targetValue = if (isPressed) 0.90f else 1.0f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessMedium
+                ),
+                label = "add_btn_scale"
+            )
+
+            Box(
+                modifier = Modifier
+                    .scale(addScale)
+                    .size(46.dp)
+                    .clip(CircleShape)
+                    .background(
+                        brush = Brush.linearGradient(
+                            colors = if (isDark) {
+                                listOf(AppleDarkSystemBlue, Color(0xFF0056B3))
+                            } else {
+                                listOf(AppleSystemBlue, Color(0xFF0056B3))
+                            }
+                        )
+                    )
+                    .border(1.dp, Color.White.copy(alpha = 0.35f), CircleShape)
+                    .clickable(
+                        interactionSource = interactionSource,
+                        indication = null,
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            onAddClicked()
+                        }
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = AppleIcons.Plus,
+                    contentDescription = "Add Policy",
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+
+            DockItem(
+                icon = AppleIcons.Calendar,
+                label = "Timeline",
+                isSelected = currentTab == DockTab.TIMELINE,
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onTabSelected(DockTab.TIMELINE)
+                }
+            )
+
+            DockItem(
+                icon = AppleIcons.ChartBar,
+                label = "Analytics",
+                isSelected = currentTab == DockTab.REPORTS,
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onTabSelected(DockTab.REPORTS)
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun DockItem(
+    icon: ImageVector,
+    label: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    val isDark = isSystemInDarkTheme()
+    val activeColor = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
+    val inactiveColor = if (isDark) IosDarkLabelTertiary else IosLabelTertiary
+    val animatedColor by animateColorAsState(
+        targetValue = if (isSelected) activeColor else inactiveColor,
+        label = "dock_color"
+    )
+
+    Column(
+        modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = label,
+            tint = animatedColor,
+            modifier = Modifier.size(20.dp)
+        )
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = label,
+            fontSize = 10.sp,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+            color = animatedColor,
+            letterSpacing = (-0.1).sp
+        )
+        Spacer(modifier = Modifier.height(2.dp))
+        Box(
+            modifier = Modifier
+                .size(3.dp)
+                .background(
+                    if (isSelected) activeColor else Color.Transparent,
+                    CircleShape
+                )
+        )
+    }
+}
+
+

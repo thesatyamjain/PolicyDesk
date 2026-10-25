@@ -26,6 +26,34 @@ object AppleIcons {
         ).build()
     }
 
+    /** SF Symbol: house.fill (Cupertino home / terminal tab) */
+    val House: ImageVector by lazy {
+        buildIcon("AppleHouse") {
+            moveTo(12f, 3f)
+            lineTo(2.5f, 10.5f)
+            curveTo(2.1f, 10.8f, 2f, 11.3f, 2.3f, 11.7f)
+            curveTo(2.6f, 12f, 3.1f, 12.1f, 3.5f, 11.8f)
+            lineTo(4f, 11.4f)
+            lineTo(4f, 20f)
+            curveTo(4f, 21.1f, 4.9f, 22f, 6f, 22f)
+            lineTo(9.5f, 22f)
+            curveTo(10f, 22f, 10.5f, 21.5f, 10.5f, 21f)
+            lineTo(10.5f, 15.5f)
+            curveTo(10.5f, 14.7f, 11.2f, 14f, 12f, 14f)
+            curveTo(12.8f, 14f, 13.5f, 14.7f, 13.5f, 15.5f)
+            lineTo(13.5f, 21f)
+            curveTo(13.5f, 21.5f, 14f, 22f, 14.5f, 22f)
+            lineTo(18f, 22f)
+            curveTo(19.1f, 22f, 20f, 21.1f, 20f, 20f)
+            lineTo(20f, 11.4f)
+            lineTo(20.5f, 11.8f)
+            curveTo(20.9f, 12.1f, 21.4f, 12f, 21.7f, 11.7f)
+            curveTo(22f, 11.3f, 21.9f, 10.8f, 21.5f, 10.5f)
+            lineTo(12f, 3f)
+            close()
+        }
+    }
+
     /** SF Symbol: person.2.fill (Cupertino client contacts) */
     val Person2: ImageVector by lazy {
         buildIcon("ApplePerson2") {

@@ -1,5 +1,7 @@
 package com.policydesk.app.ui.dashboard
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -53,24 +55,30 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.policydesk.app.domain.model.RegistrationNormalizer
+import com.policydesk.app.domain.model.Sector
 import com.policydesk.app.domain.model.VehicleWithPolicies
 import com.policydesk.app.ui.components.DaysRemainingBadge
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import com.policydesk.app.ui.components.DockTab
+import com.policydesk.app.ui.components.HsrpNumberPlate
 import com.policydesk.app.ui.components.LiquidGlassCard
+import com.policydesk.app.ui.components.LiquidGlassDock
 import com.policydesk.app.ui.components.LiquidGlassFloatingButton
 import com.policydesk.app.ui.components.LiquidGlassSearchBar
 import com.policydesk.app.ui.components.LiquidGlassTopBar
 import com.policydesk.app.ui.components.UiFormatters
 import com.policydesk.app.ui.components.liquidGlass
 import com.policydesk.app.ui.theme.AppleDarkSystemBlue
+import com.policydesk.app.ui.theme.AppleDarkSystemGreen
 import com.policydesk.app.ui.theme.AppleIcons
 import com.policydesk.app.ui.theme.AppleSystemBlue
 import com.policydesk.app.ui.theme.AppleSystemGreen
@@ -209,48 +217,6 @@ fun DashboardScreen(
                     IconButton(
                         onClick = {
                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            onNavigateToCustomers()
-                        },
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        Icon(
-                            imageVector = AppleIcons.Person2,
-                            contentDescription = "Clients & Households",
-                            tint = actionTint,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                    IconButton(
-                        onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            onNavigateToMonthView()
-                        },
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        Icon(
-                            imageVector = AppleIcons.Calendar,
-                            contentDescription = "Month Timeline",
-                            tint = actionTint,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                    IconButton(
-                        onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            onNavigateToReports()
-                        },
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        Icon(
-                            imageVector = AppleIcons.ChartBar,
-                            contentDescription = "Reports & Analytics",
-                            tint = actionTint,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                    IconButton(
-                        onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             onNavigateToSettings()
                         },
                         modifier = Modifier.size(36.dp)
@@ -265,11 +231,19 @@ fun DashboardScreen(
                 }
             )
         },
-        floatingActionButton = {
-            LiquidGlassFloatingButton(
-                text = "Add Customer",
-                icon = AppleIcons.Plus,
-                onClick = { showAddChooserSheet = true }
+        bottomBar = {
+            LiquidGlassDock(
+                currentTab = DockTab.DASHBOARD,
+                onTabSelected = { tab ->
+                    when (tab) {
+                        DockTab.DASHBOARD -> { /* Already on Dashboard */ }
+                        DockTab.CUSTOMERS -> onNavigateToCustomers()
+                        DockTab.TIMELINE -> onNavigateToMonthView()
+                        DockTab.REPORTS -> onNavigateToReports()
+                        DockTab.SETTINGS -> onNavigateToSettings()
+                    }
+                },
+                onAddClicked = { showAddChooserSheet = true }
             )
         },
         containerColor = androidx.compose.material3.MaterialTheme.colorScheme.background
@@ -279,70 +253,216 @@ fun DashboardScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Metrics Summary Liquid Glass Cards
-            Row(
+            // 1. Executive Bento Hero Pulse Card (Full-Width)
+            LiquidGlassCard(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    .padding(horizontal = 16.dp, vertical = 6.dp),
+                shape = RoundedCornerShape(20.dp),
+                elevation = 4.dp,
+                onClick = { viewModel.onFilterSelected(ExpiryFilter.ALL) }
             ) {
-                LiquidGlassMetricCard(
-                    title = "Overdue",
-                    count = uiState.summary.overdueCount,
-                    accentColor = AppleSystemRed,
-                    modifier = Modifier.weight(1f),
-                    onClick = { viewModel.onFilterSelected(ExpiryFilter.OVERDUE) }
-                )
-                LiquidGlassMetricCard(
-                    title = "Next 7d",
-                    count = uiState.summary.next7DaysCount,
-                    accentColor = AppleSystemDeepOrange,
-                    modifier = Modifier.weight(1f),
-                    onClick = { viewModel.onFilterSelected(ExpiryFilter.NEXT_7_DAYS) }
-                )
-                LiquidGlassMetricCard(
-                    title = "Next 30d",
-                    count = uiState.summary.next30DaysCount,
-                    accentColor = AppleSystemOrange,
-                    modifier = Modifier.weight(1f),
-                    onClick = { viewModel.onFilterSelected(ExpiryFilter.NEXT_30_DAYS) }
-                )
-                LiquidGlassMetricCard(
-                    title = "Active",
-                    count = uiState.summary.totalActiveCount,
-                    accentColor = AppleSystemGreen,
-                    modifier = Modifier.weight(1f),
-                    onClick = { viewModel.onFilterSelected(ExpiryFilter.ALL) }
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .background(AppleSystemGreen, CircleShape)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "PORTFOLIO IN FORCE",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isDark) AppleDarkSystemGreen else AppleSystemGreen,
+                                letterSpacing = 0.8.sp
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(verticalAlignment = Alignment.Bottom) {
+                            Text(
+                                text = "${uiState.summary.totalActiveCount}",
+                                fontSize = 32.sp,
+                                fontWeight = FontWeight.Black,
+                                color = labelPrimary,
+                                letterSpacing = (-0.8).sp,
+                                lineHeight = 34.sp
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Active Vehicles",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = labelSecondary,
+                                modifier = Modifier.padding(bottom = 3.dp)
+                            )
+                        }
+                    }
+
+                    // Quick Month Timeline Pill Shortcut
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (isDark) Color(0x330A84FF) else Color(0x1F007AFF))
+                            .clickable(onClick = onNavigateToMonthView)
+                            .padding(horizontal = 10.dp, vertical = 6.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = AppleIcons.Calendar,
+                                contentDescription = null,
+                                tint = if (isDark) AppleDarkSystemBlue else AppleSystemBlue,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Timeline",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
+                            )
+                        }
+                    }
+                }
             }
 
-            // Quick Business Cards: Sales This Month & Missed Renewals
+            // 2. Urgent Action Triage Bento (2 Columns)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 2.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                // Overdue Action Card
                 LiquidGlassCard(
                     modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(14.dp),
-                    elevation = 2.dp,
-                    onClick = onNavigateToReports
+                    shape = RoundedCornerShape(18.dp),
+                    elevation = 3.dp,
+                    onClick = { viewModel.onFilterSelected(ExpiryFilter.OVERDUE) }
                 ) {
-                    Text("Sales Reports", fontSize = 11.sp, fontWeight = FontWeight.Medium, color = IosLabelSecondary)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "OVERDUE",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = AppleSystemRed,
+                            letterSpacing = 0.5.sp
+                        )
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .background(AppleSystemRed, CircleShape)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "${uiState.summary.overdueCount}",
+                        fontSize = 26.sp,
+                        fontWeight = FontWeight.Black,
+                        color = AppleSystemRed,
+                        letterSpacing = (-0.5).sp,
+                        lineHeight = 28.sp
+                    )
                     Spacer(modifier = Modifier.height(2.dp))
-                    Text("View Sales & Mix →", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = AppleSystemBlue)
+                    Text(
+                        text = "Needs immediate nudge",
+                        fontSize = 11.sp,
+                        color = labelSecondary
+                    )
                 }
 
+                // Next 7 Days Card
                 LiquidGlassCard(
                     modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(14.dp),
-                    elevation = 2.dp,
-                    onClick = onNavigateToReports
+                    shape = RoundedCornerShape(18.dp),
+                    elevation = 3.dp,
+                    onClick = { viewModel.onFilterSelected(ExpiryFilter.NEXT_7_DAYS) }
                 ) {
-                    Text("Missed Renewals", fontSize = 11.sp, fontWeight = FontWeight.Medium, color = IosLabelSecondary)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "THIS WEEK",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = AppleSystemDeepOrange,
+                            letterSpacing = 0.5.sp
+                        )
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .background(AppleSystemDeepOrange, CircleShape)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "${uiState.summary.next7DaysCount}",
+                        fontSize = 26.sp,
+                        fontWeight = FontWeight.Black,
+                        color = AppleSystemDeepOrange,
+                        letterSpacing = (-0.5).sp,
+                        lineHeight = 28.sp
+                    )
                     Spacer(modifier = Modifier.height(2.dp))
-                    Text("${uiState.summary.overdueCount} Overdue →", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = AppleSystemRed)
+                    Text(
+                        text = "Expiring in 7 days",
+                        fontSize = 11.sp,
+                        color = labelSecondary
+                    )
+                }
+            }
+
+            // 3. Next 30 Days Pipeline Banner Strip
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(if (isDark) Color(0x332C2C2E) else Color(0x66FFFFFF))
+                    .border(
+                        0.5.dp,
+                        if (isDark) Color(0x33FFFFFF) else Color(0x33000000),
+                        RoundedCornerShape(14.dp)
+                    )
+                    .clickable { viewModel.onFilterSelected(ExpiryFilter.NEXT_30_DAYS) }
+                    .padding(horizontal = 14.dp, vertical = 9.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(7.dp)
+                                .background(AppleSystemOrange, CircleShape)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "30-Day Renewal Pipeline",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = labelPrimary
+                        )
+                    }
+                    Text(
+                        text = "${uiState.summary.next30DaysCount} policies →",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = AppleSystemOrange
+                    )
                 }
             }
 
@@ -351,7 +471,7 @@ fun DashboardScreen(
                 query = uiState.searchQuery,
                 onQueryChange = viewModel::onSearchQueryChanged,
                 placeholder = "Search registration, customer, phone...",
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
             )
 
             // Expiry & Sector Filter Glass Pills
@@ -579,9 +699,12 @@ fun VehicleExpiryCard(
     val isDark = isSystemInDarkTheme()
     val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
     val labelSecondary = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
+    val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
     val policy = item.currentPolicy
     val daysRemaining = policy?.computeDaysRemaining() ?: 0
     val status = policy?.computeCurrentStatus() ?: com.policydesk.app.domain.model.PolicyStatus.ACTIVE
+    val mobile = item.vehicle.customer.mobile
 
     LiquidGlassCard(
         shape = RoundedCornerShape(18.dp),
@@ -593,21 +716,10 @@ fun VehicleExpiryCard(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Vehicle Registration Plate Pill
-            Box(
-                modifier = Modifier
-                    .background(if (isDark) Color(0xFF332E00) else Color(0xFFFEF9C3).copy(alpha = 0.60f), RoundedCornerShape(8.dp))
-                    .border(0.75.dp, if (isDark) Color(0xFFEAB308) else Color(0xFFCA8A04).copy(alpha = 0.6f), RoundedCornerShape(8.dp))
-                    .padding(horizontal = 9.dp, vertical = 3.dp)
-            ) {
-                Text(
-                    text = RegistrationNormalizer.formatForDisplay(item.vehicle.regNo),
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.6.sp,
-                    color = if (isDark) Color(0xFFFEF08A) else IosLabelPrimary
-                )
-            }
+            // Authentic Indian HSRP Number Plate
+            HsrpNumberPlate(
+                regNo = item.vehicle.regNo
+            )
 
             DaysRemainingBadge(
                 daysRemaining = daysRemaining,
@@ -626,12 +738,13 @@ fun VehicleExpiryCard(
                 Text(
                     text = item.vehicle.customer.name,
                     fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                     color = labelPrimary,
-                    letterSpacing = (-0.2).sp
+                    letterSpacing = (-0.3).sp
                 )
                 item.vehicle.makeModel?.let { make ->
                     if (make.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = make,
                             fontSize = 13.sp,
@@ -647,7 +760,7 @@ fun VehicleExpiryCard(
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     color = if (isDark) AppleDarkSystemBlue else AppleSystemBlue,
-                    letterSpacing = (-0.2).sp
+                    letterSpacing = (-0.3).sp
                 )
             }
         }
@@ -659,20 +772,77 @@ fun VehicleExpiryCard(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = policy?.insurer ?: "No Active Policy",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
-                color = labelSecondary
-            )
-
-            if (policy != null) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
                 Text(
-                    text = "Exp: ${UiFormatters.formatDate(policy.expiryDate)}",
+                    text = policy?.insurer ?: "No Active Policy",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
-                    color = if (daysRemaining <= 7) AppleSystemRed else labelSecondary
+                    color = labelSecondary
                 )
+                if (policy != null) {
+                    Text(
+                        text = "• Exp: ${UiFormatters.formatDate(policy.expiryDate)}",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = if (daysRemaining <= 7) AppleSystemRed else labelSecondary
+                    )
+                }
+            }
+
+            // Quick Direct Action Shortcuts (WhatsApp & Phone)
+            if (mobile.isNotBlank()) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(30.dp)
+                            .clip(CircleShape)
+                            .background(if (isDark) Color(0x3330D158) else Color(0x1F34C759))
+                            .clickable {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                val cleanMobile = mobile.filter { it.isDigit() }
+                                val phoneWithCountry = if (cleanMobile.length == 10) "91$cleanMobile" else cleanMobile
+                                val expText = policy?.expiryDate?.let { " expiring on ${UiFormatters.formatDate(it)}" } ?: ""
+                                val message = "Hello ${item.vehicle.customer.name}, regarding your vehicle ${item.vehicle.regNo} policy$expText. Kindly share details for renewal."
+                                val url = "https://api.whatsapp.com/send?phone=$phoneWithCountry&text=${Uri.encode(message)}"
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                                context.startActivity(intent)
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = AppleIcons.Message,
+                            contentDescription = "WhatsApp reminder",
+                            tint = if (isDark) AppleDarkSystemGreen else AppleSystemGreen,
+                            modifier = Modifier.size(15.dp)
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .size(30.dp)
+                            .clip(CircleShape)
+                            .background(if (isDark) Color(0x330A84FF) else Color(0x1F007AFF))
+                            .clickable {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$mobile"))
+                                context.startActivity(intent)
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = AppleIcons.Phone,
+                            contentDescription = "Call customer",
+                            tint = if (isDark) AppleDarkSystemBlue else AppleSystemBlue,
+                            modifier = Modifier.size(15.dp)
+                        )
+                    }
+                }
             }
         }
     }

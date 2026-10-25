@@ -6,6 +6,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,27 +24,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.Chat
-import androidx.compose.material.icons.filled.Call
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -53,38 +40,35 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.policydesk.app.domain.model.CustomerGroup
-import com.policydesk.app.domain.model.RegistrationNormalizer
 import com.policydesk.app.ui.components.DaysRemainingBadge
-import com.policydesk.app.ui.components.UiFormatters
-import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.material3.MaterialTheme
+import com.policydesk.app.ui.components.HsrpNumberPlate
+import com.policydesk.app.ui.components.LiquidGlassCard
+import com.policydesk.app.ui.components.LiquidGlassSearchBar
+import com.policydesk.app.ui.components.LiquidGlassTopBar
+import com.policydesk.app.ui.theme.AppleDarkSystemBlue
+import com.policydesk.app.ui.theme.AppleDarkSystemGreen
+import com.policydesk.app.ui.theme.AppleIcons
+import com.policydesk.app.ui.theme.AppleSystemBlue
+import com.policydesk.app.ui.theme.AppleSystemGreen
 import com.policydesk.app.ui.theme.IosDarkLabelPrimary
 import com.policydesk.app.ui.theme.IosDarkLabelSecondary
-import com.policydesk.app.ui.theme.IosDarkSecondaryGrouped
-import com.policydesk.app.ui.theme.IosDarkTertiaryGrouped
-import com.policydesk.app.ui.theme.IosDarkSeparator
+import com.policydesk.app.ui.theme.IosDarkLabelTertiary
 import com.policydesk.app.ui.theme.IosLabelPrimary
 import com.policydesk.app.ui.theme.IosLabelSecondary
-import com.policydesk.app.ui.theme.AppleIcons
-import com.policydesk.app.ui.theme.CardBackground
-import com.policydesk.app.ui.theme.Navy800
-import com.policydesk.app.ui.theme.Navy900
-import com.policydesk.app.ui.theme.SapphireBlue
-import com.policydesk.app.ui.theme.Slate100
-import com.policydesk.app.ui.theme.Slate200
-import com.policydesk.app.ui.theme.Slate400
-import com.policydesk.app.ui.theme.Slate50
-import com.policydesk.app.ui.theme.Slate600
-import com.policydesk.app.ui.theme.StatusActiveGreen
-import com.policydesk.app.ui.theme.StatusActiveGreenBg
+import com.policydesk.app.ui.theme.IosLabelTertiary
 
+/**
+ * Design Read: High-density Apple Liquid Glass Client Hub with HSRP vehicle fleets and tactile 1-tap dialer/messaging actions.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CustomersScreen(
@@ -100,25 +84,10 @@ fun CustomersScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "Clients & Households",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = labelPrimary
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = labelPrimary
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
+            LiquidGlassTopBar(
+                title = "Clients & Households",
+                subtitle = "Customer Portfolio Directory",
+                onNavigateBack = onNavigateBack
             )
         },
         containerColor = MaterialTheme.colorScheme.background
@@ -128,67 +97,63 @@ fun CustomersScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Search Input
-            OutlinedTextField(
-                value = uiState.searchQuery,
-                onValueChange = viewModel::onSearchQueryChanged,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 6.dp),
-                placeholder = {
-                    Text("Search client name, mobile, or vehicle...", fontSize = 13.sp, color = Slate400)
-                },
-                leadingIcon = {
-                    Icon(imageVector = AppleIcons.Search, contentDescription = null, tint = Slate400, modifier = Modifier.size(20.dp))
-                },
-                trailingIcon = {
-                    if (uiState.searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { viewModel.onSearchQueryChanged("") }) {
-                            Icon(imageVector = AppleIcons.Clear, contentDescription = "Clear", tint = Slate400, modifier = Modifier.size(18.dp))
-                        }
-                    }
-                },
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = if (isDark) IosDarkTertiaryGrouped else CardBackground,
-                    unfocusedContainerColor = if (isDark) IosDarkTertiaryGrouped else CardBackground,
-                    focusedTextColor = labelPrimary,
-                    unfocusedTextColor = labelPrimary,
-                    focusedIndicatorColor = SapphireBlue,
-                    unfocusedIndicatorColor = if (isDark) IosDarkSeparator else Slate200
-                )
+            // Liquid Glass Search Input
+            LiquidGlassSearchBar(
+                query = uiState.searchQuery,
+                onQueryChange = viewModel::onSearchQueryChanged,
+                placeholder = "Search client name, mobile, or vehicle...",
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
             )
 
-            // Header metric banner
+            // Telemetry Bento Overview (Total Clients & Multi-Vehicle Households)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Card(
+                LiquidGlassCard(
                     modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = CardDefaults.cardColors(containerColor = if (isDark) IosDarkSecondaryGrouped else CardBackground),
-                    border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(if (isDark) IosDarkSeparator else Slate200))
+                    shape = RoundedCornerShape(16.dp),
+                    elevation = 2.dp
                 ) {
-                    Column(modifier = Modifier.padding(10.dp)) {
-                        Text("Total Clients", fontSize = 11.sp, color = labelSecondary)
-                        Text("${uiState.totalCustomers}", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = labelPrimary)
-                    }
+                    Text(
+                        text = "TOTAL CLIENTS",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = labelSecondary,
+                        letterSpacing = 0.5.sp
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "${uiState.totalCustomers}",
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Black,
+                        color = labelPrimary,
+                        letterSpacing = (-0.4).sp
+                    )
                 }
 
-                Card(
+                LiquidGlassCard(
                     modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = CardDefaults.cardColors(containerColor = if (isDark) IosDarkSecondaryGrouped else CardBackground),
-                    border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(if (isDark) IosDarkSeparator else Slate200))
+                    shape = RoundedCornerShape(16.dp),
+                    elevation = 2.dp
                 ) {
-                    Column(modifier = Modifier.padding(10.dp)) {
-                        Text("Multi-Vehicle Clients", fontSize = 11.sp, color = labelSecondary)
-                        Text("${uiState.multiVehicleCount}", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = SapphireBlue)
-                    }
+                    Text(
+                        text = "MULTI-VEHICLE",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isDark) AppleDarkSystemBlue else AppleSystemBlue,
+                        letterSpacing = 0.5.sp
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "${uiState.multiVehicleCount} households",
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Black,
+                        color = if (isDark) AppleDarkSystemBlue else AppleSystemBlue,
+                        letterSpacing = (-0.4).sp
+                    )
                 }
             }
 
@@ -202,12 +167,40 @@ fun CustomersScreen(
                         .padding(32.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("No clients found matching query.", color = labelSecondary, fontSize = 14.sp)
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Box(
+                            modifier = Modifier
+                                .size(56.dp)
+                                .clip(CircleShape)
+                                .background(if (isDark) Color(0x332C2C2E) else Color(0x1F007AFF)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = AppleIcons.Person2,
+                                contentDescription = null,
+                                tint = if (isDark) AppleDarkSystemBlue else AppleSystemBlue,
+                                modifier = Modifier.size(28.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = if (uiState.searchQuery.isNotEmpty()) "No clients match your search" else "No clients registered yet",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = labelPrimary
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Add policies or import a sheet to populate clients.",
+                            fontSize = 12.sp,
+                            color = labelSecondary
+                        )
+                    }
                 }
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 40.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(uiState.customers, key = { it.mobile }) { customer ->
@@ -219,8 +212,9 @@ fun CustomersScreen(
                                 context.startActivity(intent)
                             },
                             onWhatsApp = {
-                                val formatted = if (customer.mobile.startsWith("91")) customer.mobile else "91${customer.mobile}"
-                                val url = "https://wa.me/$formatted?text=Hello%20${Uri.encode(customer.name)}"
+                                val clean = customer.mobile.filter { it.isDigit() }
+                                val formatted = if (clean.length == 10) "91$clean" else clean
+                                val url = "https://api.whatsapp.com/send?phone=$formatted&text=Hello%20${Uri.encode(customer.name)}"
                                 context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
                             }
                         )
@@ -240,154 +234,239 @@ fun CustomerCard(
 ) {
     var expanded by remember { mutableStateOf(false) }
     val isDark = isSystemInDarkTheme()
+    val haptic = LocalHapticFeedback.current
     val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
     val labelSecondary = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = if (isDark) IosDarkSecondaryGrouped else CardBackground),
-        border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(if (isDark) IosDarkSeparator else Slate200))
+    LiquidGlassCard(
+        shape = RoundedCornerShape(18.dp),
+        elevation = 3.dp
     ) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            // Client Header
+        // Client Header
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.weight(1f),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(38.dp)
-                            .background(SapphireBlue.copy(alpha = 0.1f), CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(imageVector = AppleIcons.Person2, contentDescription = null, tint = SapphireBlue, modifier = Modifier.size(20.dp))
-                    }
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Column {
-                        val displayName = if (customer.title.isNullOrBlank()) customer.name else "${customer.title} ${customer.name}"
-                        Text(text = displayName, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = labelPrimary)
-                        Text(text = customer.mobile, fontSize = 12.sp, color = labelSecondary)
-                    }
-                }
-
-                // Vehicle count chip
                 Box(
                     modifier = Modifier
-                        .background(if (customer.vehicles.size > 1) SapphireBlue.copy(alpha = 0.12f) else (if (isDark) Color(0x33545458) else Slate100), RoundedCornerShape(8.dp))
-                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(
+                            if (isDark) Color(0x330A84FF) else Color(0x1F007AFF)
+                        ),
+                    contentAlignment = Alignment.Center
                 ) {
+                    Icon(
+                        imageVector = AppleIcons.Person2,
+                        contentDescription = null,
+                        tint = if (isDark) AppleDarkSystemBlue else AppleSystemBlue,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(10.dp))
+                Column {
+                    val displayName = if (customer.title.isNullOrBlank()) customer.name else "${customer.title} ${customer.name}"
                     Text(
-                        text = "${customer.vehicles.size} ${if (customer.vehicles.size == 1) "Vehicle" else "Vehicles"}",
-                        fontSize = 11.sp,
+                        text = displayName,
+                        fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (customer.vehicles.size > 1) SapphireBlue else (if (isDark) IosDarkLabelPrimary else Navy800)
+                        color = labelPrimary,
+                        letterSpacing = (-0.3).sp
+                    )
+                    Spacer(modifier = Modifier.height(1.dp))
+                    Text(
+                        text = customer.mobile,
+                        fontSize = 12.sp,
+                        color = labelSecondary
                     )
                 }
             }
 
-            if (customer.address.isNotBlank()) {
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(text = customer.address, fontSize = 11.sp, color = Slate600, maxLines = 1)
+            // Fleet Count Badge
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(
+                        if (customer.vehicles.size > 1) {
+                            if (isDark) Color(0x330A84FF) else Color(0x1F007AFF)
+                        } else {
+                            if (isDark) Color(0x332C2C2E) else Color(0x1A000000)
+                        }
+                    )
+                    .padding(horizontal = 9.dp, vertical = 4.dp)
+            ) {
+                Text(
+                    text = "${customer.vehicles.size} ${if (customer.vehicles.size == 1) "Vehicle" else "Vehicles"}",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (customer.vehicles.size > 1) {
+                        if (isDark) AppleDarkSystemBlue else AppleSystemBlue
+                    } else {
+                        labelSecondary
+                    }
+                )
+            }
+        }
+
+        if (customer.address.isNotBlank()) {
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = customer.address,
+                fontSize = 11.sp,
+                color = labelSecondary,
+                maxLines = 1
+            )
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // Action Buttons & Expand Vehicle Fleet Toggle
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Call Action
+                Box(
+                    modifier = Modifier
+                        .height(30.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(if (isDark) Color(0x330A84FF) else Color(0x1F007AFF))
+                        .clickable {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            onCall()
+                        }
+                        .padding(horizontal = 10.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = AppleIcons.Phone,
+                            contentDescription = null,
+                            tint = if (isDark) AppleDarkSystemBlue else AppleSystemBlue,
+                            modifier = Modifier.size(13.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Call",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
+                        )
+                    }
+                }
+
+                // WhatsApp Action
+                Box(
+                    modifier = Modifier
+                        .height(30.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(if (isDark) Color(0x3330D158) else Color(0x1F34C759))
+                        .clickable {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            onWhatsApp()
+                        }
+                        .padding(horizontal = 10.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = AppleIcons.Message,
+                            contentDescription = null,
+                            tint = if (isDark) AppleDarkSystemGreen else AppleSystemGreen,
+                            modifier = Modifier.size(13.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "WhatsApp",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isDark) AppleDarkSystemGreen else AppleSystemGreen
+                        )
+                    }
+                }
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
-
-            // Action row & Expand toggle
+            // Expand Fleet Toggle
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        expanded = !expanded
+                    }
+                    .padding(horizontal = 8.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(
-                        onClick = onCall,
-                        shape = RoundedCornerShape(8.dp),
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                        modifier = Modifier.height(32.dp)
-                    ) {
-                        Icon(imageVector = AppleIcons.Phone, contentDescription = null, modifier = Modifier.size(13.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Call", fontSize = 11.sp)
-                    }
-
-                    OutlinedButton(
-                        onClick = onWhatsApp,
-                        shape = RoundedCornerShape(8.dp),
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                        modifier = Modifier.height(32.dp)
-                    ) {
-                        Icon(imageVector = AppleIcons.Message, contentDescription = null, modifier = Modifier.size(13.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("WhatsApp", fontSize = 11.sp)
-                    }
-                }
-
-                Row(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .clickable { expanded = !expanded }
-                        .padding(horizontal = 6.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = if (expanded) "Hide Vehicles" else "View Vehicles",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = SapphireBlue
-                    )
-                    Icon(
-                        imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                        contentDescription = null,
-                        tint = SapphireBlue,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
+                Text(
+                    text = if (expanded) "Hide Fleet" else "View Fleet",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
+                )
+                Spacer(modifier = Modifier.width(2.dp))
+                Icon(
+                    imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                    contentDescription = null,
+                    tint = if (isDark) AppleDarkSystemBlue else AppleSystemBlue,
+                    modifier = Modifier.size(16.dp)
+                )
             }
+        }
 
-            // Expanded Vehicles List
-            AnimatedVisibility(visible = expanded) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 10.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    customer.vehicles.forEach { item ->
-                        val vehicle = item.vehicle
-                        val policy = item.currentPolicy
-                        val daysLeft = policy?.computeDaysRemaining() ?: 0
+        // Expanded Fleet Vehicles
+        AnimatedVisibility(visible = expanded) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                customer.vehicles.forEach { item ->
+                    val vehicle = item.vehicle
+                    val policy = item.currentPolicy
+                    val daysLeft = policy?.computeDaysRemaining() ?: 0
 
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(if (isDark) IosDarkTertiaryGrouped else Slate50)
-                                .border(1.dp, if (isDark) IosDarkSeparator else Slate200, RoundedCornerShape(8.dp))
-                                .clickable { onNavigateToVehicle(vehicle.regNo) }
-                                .padding(10.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (isDark) Color(0x332C2C2E) else Color(0x66FFFFFF))
+                            .border(
+                                0.5.dp,
+                                if (isDark) Color(0x33FFFFFF) else Color(0x22000000),
+                                RoundedCornerShape(12.dp)
+                            )
+                            .clickable {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                onNavigateToVehicle(vehicle.regNo)
+                            }
+                            .padding(10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = RegistrationNormalizer.formatForDisplay(vehicle.regNo),
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = labelPrimary
-                                )
-                                Text(
-                                    text = "${vehicle.makeModel ?: "Vehicle"} • ${policy?.insurer ?: "No Policy"}",
-                                    fontSize = 11.sp,
-                                    color = labelSecondary
-                                )
-                            }
+                            HsrpNumberPlate(
+                                regNo = vehicle.regNo
+                            )
+                            Text(
+                                text = "${vehicle.makeModel ?: "Vehicle"} • ${policy?.insurer ?: "No Policy"}",
+                                fontSize = 11.sp,
+                                color = labelSecondary
+                            )
+                        }
 
-                            if (policy != null) {
-                                DaysRemainingBadge(daysRemaining = daysLeft, status = policy.status)
-                            }
+                        if (policy != null) {
+                            DaysRemainingBadge(daysRemaining = daysLeft, status = policy.status)
                         }
                     }
                 }
