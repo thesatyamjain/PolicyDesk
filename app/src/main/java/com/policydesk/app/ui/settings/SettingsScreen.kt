@@ -362,7 +362,7 @@ fun SettingsScreen(
 
             // SECTION 3: GOOGLE DRIVE & CLOUD STORAGE
             LiquidGlassGroupedSection(title = "Google Drive Sync") {
-                if (state.googleAccountEmail != null) {
+                if (state.isDriveLinked) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -374,21 +374,21 @@ fun SettingsScreen(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Google Drive Connected",
+                                text = "Google Drive Linked & Active",
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = AppleSystemGreen
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = state.googleAccountEmail ?: "",
+                                text = state.driveFileName,
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = labelPrimary
                             )
                             Spacer(modifier = Modifier.height(3.dp))
                             Text(
-                                text = "Auto-Sync Active (Every policy & renewal)",
+                                text = "Syncs on demand and after policy updates",
                                 fontSize = 11.sp,
                                 color = AppleSystemGreen
                             )
@@ -401,7 +401,7 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.height(12.dp))
 
                     DetailRow(label = "Total Records", value = "${state.totalRecords} vehicles")
-                    DetailRow(label = "Sync Mode", value = "Automatic Background Sync")
+                    DetailRow(label = "Backup File", value = state.driveFileName)
                     DetailRow(label = "Last Synced Time", value = state.lastSyncTime)
 
                     state.syncMessage?.let { msg ->
@@ -431,15 +431,45 @@ fun SettingsScreen(
                         )
 
                         AppleSecondaryButton(
-                            text = "Export Backup",
-                            onClick = { backupSnapshotLauncher.launch("policydesk_backup.json") },
+                            text = "Save to Drive (Share)",
+                            onClick = {
+                                coroutineScope.launch {
+                                    val shareUri = viewModel.getShareableBackupUri()
+                                    val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                                        type = "application/json"
+                                        putExtra(Intent.EXTRA_STREAM, shareUri)
+                                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                    }
+                                    context.startActivity(Intent.createChooser(sendIntent, "Save to Google Drive"))
+                                }
+                            },
                             enabled = !state.isSyncing,
+                            modifier = Modifier.weight(1.1f)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        AppleSecondaryButton(
+                            text = "Relink Drive Location",
+                            onClick = { backupSnapshotLauncher.launch("policydesk_backup.json") },
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        AppleSecondaryButton(
+                            text = "Restore from Drive",
+                            onClick = { restoreSnapshotLauncher.launch(arrayOf("application/json", "*/*")) },
+                            tintColor = labelPrimary,
                             modifier = Modifier.weight(1f)
                         )
                     }
                 } else {
                     Text(
-                        text = "Connect your Google Account to automatically sync all your customer policies, vehicles, and renewals to your personal Google Drive in the background.",
+                        text = "Link your Google Drive storage to backup all policies, vehicles, and customer records in the cloud. Choose 'Link Google Drive Location' to set a permanent sync file, or use 'Save to Google Drive' anytime.",
                         fontSize = 13.sp,
                         lineHeight = 18.sp,
                         color = labelSecondary
@@ -447,8 +477,8 @@ fun SettingsScreen(
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    DetailRow(label = "Storage", value = "Local-First + Google Drive")
-                    DetailRow(label = "Status", value = "Not Connected")
+                    DetailRow(label = "Storage", value = "Local-First Storage")
+                    DetailRow(label = "Drive Status", value = "Not Linked")
 
                     state.syncMessage?.let { msg ->
                         Spacer(modifier = Modifier.height(8.dp))
@@ -465,50 +495,63 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.height(14.dp))
 
                     AppleButton(
-                        text = "Connect Google Drive",
+                        text = "Link Google Drive Location",
                         onClick = {
-                            try {
-                                accountPickerLauncher.launch(
-                                    com.policydesk.app.data.drive.GoogleDriveManager.getGoogleAccountChooserIntent()
-                                )
-                            } catch (e: Exception) {
-                                Toast.makeText(context, "Could not open Google account picker: ${e.message}", Toast.LENGTH_SHORT).show()
-                            }
+                            backupSnapshotLauncher.launch("policydesk_backup.json")
                         },
                         modifier = Modifier.fillMaxWidth()
                     )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        AppleSecondaryButton(
+                            text = "Save to Drive (Share)",
+                            onClick = {
+                                coroutineScope.launch {
+                                    val shareUri = viewModel.getShareableBackupUri()
+                                    val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                                        type = "application/json"
+                                        putExtra(Intent.EXTRA_STREAM, shareUri)
+                                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                    }
+                                    context.startActivity(Intent.createChooser(sendIntent, "Save directly to Google Drive"))
+                                }
+                            },
+                            tintColor = AppleSystemBlue,
+                            modifier = Modifier.weight(1.1f)
+                        )
+
+                        AppleSecondaryButton(
+                            text = "Restore from Drive",
+                            onClick = { restoreSnapshotLauncher.launch(arrayOf("application/json", "*/*")) },
+                            tintColor = labelPrimary,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    AppleSecondaryButton(
-                        text = "Export CSV",
-                        onClick = {
-                            coroutineScope.launch {
-                                val csv = viewModel.exportDatabaseCsv()
-                                val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                    type = "text/csv"
-                                    putExtra(Intent.EXTRA_SUBJECT, "PolicyDesk_Full_Export.csv")
-                                    putExtra(Intent.EXTRA_TEXT, csv)
-                                }
-                                context.startActivity(Intent.createChooser(shareIntent, "Export Records to CSV"))
+                AppleSecondaryButton(
+                    text = "Export Records to CSV",
+                    onClick = {
+                        coroutineScope.launch {
+                            val csv = viewModel.exportDatabaseCsv()
+                            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                type = "text/csv"
+                                putExtra(Intent.EXTRA_SUBJECT, "PolicyDesk_Full_Export.csv")
+                                putExtra(Intent.EXTRA_TEXT, csv)
                             }
-                        },
-                        tintColor = AppleSystemBlue,
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    AppleSecondaryButton(
-                        text = "Restore File",
-                        onClick = { restoreSnapshotLauncher.launch(arrayOf("application/json", "*/*")) },
-                        tintColor = labelPrimary,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
+                            context.startActivity(Intent.createChooser(shareIntent, "Export Records to CSV"))
+                        }
+                    },
+                    tintColor = AppleSystemBlue,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
 
             // SECTION 4: NOTIFICATIONS & REMINDERS

@@ -25,6 +25,7 @@ object GoogleDriveManager {
     private const val KEY_CONNECTED_ACCOUNT = "connected_google_account"
     private const val KEY_AUTO_SYNC_ENABLED = "auto_sync_enabled"
     private const val KEY_BACKUP_URI = "backup_file_uri"
+    private const val KEY_BACKUP_NAME = "backup_file_name"
     private const val KEY_LAST_SYNC_TIME = "last_sync_time"
 
     fun getConnectedAccount(context: Context): String? {
@@ -57,6 +58,7 @@ object GoogleDriveManager {
             .edit()
             .remove(KEY_CONNECTED_ACCOUNT)
             .remove(KEY_BACKUP_URI)
+            .remove(KEY_BACKUP_NAME)
             .putBoolean(KEY_AUTO_SYNC_ENABLED, false)
             .apply()
     }
@@ -73,17 +75,29 @@ object GoogleDriveManager {
         )
     }
 
-    fun setSavedBackupUri(context: Context, uri: Uri) {
-        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .edit()
-            .putString(KEY_BACKUP_URI, uri.toString())
-            .apply()
+    fun setSavedBackupUri(context: Context, uri: Uri, name: String? = null) {
+        val editor = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
+        editor.putString(KEY_BACKUP_URI, uri.toString())
+        if (name != null) {
+            editor.putString(KEY_BACKUP_NAME, name)
+        }
+        editor.putBoolean(KEY_AUTO_SYNC_ENABLED, true)
+        editor.apply()
     }
 
     fun getSavedBackupUri(context: Context): Uri? {
         val uriStr = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .getString(KEY_BACKUP_URI, null) ?: return null
         return Uri.parse(uriStr)
+    }
+
+    fun getSavedBackupName(context: Context): String {
+        return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .getString(KEY_BACKUP_NAME, "policydesk_backup.json") ?: "policydesk_backup.json"
+    }
+
+    fun isDriveLinked(context: Context): Boolean {
+        return getSavedBackupUri(context) != null
     }
 
     fun setLastSyncTime(context: Context, timestamp: Long) {
@@ -104,17 +118,29 @@ object GoogleDriveManager {
             val cacheFile = java.io.File(context.filesDir, "google_drive_sync_backup.json")
             cacheFile.writeText(snapshotJson, Charsets.UTF_8)
 
-            // If a persistent Drive URI was also selected, update it
+            // If a persistent Drive URI was selected, update it directly
             getSavedBackupUri(context)?.let { uri ->
-                try {
-                    context.contentResolver.openOutputStream(uri, "wt")?.use { out ->
-                        OutputStreamWriter(out, Charsets.UTF_8).use { it.write(snapshotJson) }
-                    }
-                } catch (_: Exception) {}
+                writeSnapshotToUri(context, uri, snapshotJson).getOrThrow()
             }
 
             setLastSyncTime(context, System.currentTimeMillis())
         }
+    }
+
+    /**
+     * Creates a file in the app cache directory and returns a secure FileProvider content Uri
+     * ready to be directly uploaded / shared to the Google Drive app via standard Android Intent.
+     */
+    fun createShareableBackupUri(context: Context, snapshotJson: String): Uri {
+        val backupDir = java.io.File(context.cacheDir, "backups")
+        if (!backupDir.exists()) backupDir.mkdirs()
+        val backupFile = java.io.File(backupDir, "policydesk_backup.json")
+        backupFile.writeText(snapshotJson, Charsets.UTF_8)
+        return androidx.core.content.FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            backupFile
+        )
     }
 
     suspend fun getCachedDriveBackup(context: Context): String? = withContext(Dispatchers.IO) {

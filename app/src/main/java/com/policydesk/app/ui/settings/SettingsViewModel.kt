@@ -26,6 +26,8 @@ data class SettingsUiState(
     val aiTestMessage: String? = null,
     val aiTestSuccess: Boolean = false,
     val googleAccountEmail: String? = null,
+    val isDriveLinked: Boolean = false,
+    val driveFileName: String = "policydesk_backup.json",
     val lastSyncTime: String = "Not synced yet",
     val isSyncing: Boolean = false,
     val syncStatusText: String = "Local-First Active",
@@ -52,6 +54,8 @@ class SettingsViewModel @Inject constructor(
     fun loadSettings() {
         val config = secureStorage.getAiConfig()
         val lockEnabled = com.policydesk.app.data.security.AppLockManager.isAppLockEnabled(context)
+        val isLinked = com.policydesk.app.data.drive.GoogleDriveManager.isDriveLinked(context)
+        val fileName = com.policydesk.app.data.drive.GoogleDriveManager.getSavedBackupName(context)
         val connectedAccount = com.policydesk.app.data.drive.GoogleDriveManager.getConnectedAccount(context)
         val lastSync = com.policydesk.app.data.drive.GoogleDriveManager.getLastSyncTime(context)
         val syncTimeStr = if (lastSync > 0) {
@@ -68,8 +72,10 @@ class SettingsViewModel @Inject constructor(
                     totalRecords = vehicles.size,
                     isAppLockEnabled = lockEnabled,
                     googleAccountEmail = connectedAccount,
+                    isDriveLinked = isLinked,
+                    driveFileName = fileName,
                     lastSyncTime = syncTimeStr,
-                    syncStatusText = if (connectedAccount != null) "Auto-Sync Active" else "Not Connected"
+                    syncStatusText = if (isLinked) "Google Drive Linked" else if (connectedAccount != null) "Account Linked" else "Local-First Active"
                 )
             }
         }
@@ -167,7 +173,18 @@ class SettingsViewModel @Inject constructor(
                     android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION
                 )
             } catch (_: Exception) {}
-            com.policydesk.app.data.drive.GoogleDriveManager.setSavedBackupUri(context, uri)
+
+            var displayName = "policydesk_backup.json"
+            try {
+                context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                    val nameIdx = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                    if (nameIdx != -1 && cursor.moveToFirst()) {
+                        displayName = cursor.getString(nameIdx)
+                    }
+                }
+            } catch (_: Exception) {}
+
+            com.policydesk.app.data.drive.GoogleDriveManager.setSavedBackupUri(context, uri, displayName)
 
             val json = exportSnapshotJson()
             val result = com.policydesk.app.data.drive.GoogleDriveManager.writeSnapshotToUri(context, uri, json)
@@ -178,9 +195,11 @@ class SettingsViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         isSyncing = false,
+                        isDriveLinked = true,
+                        driveFileName = displayName,
                         lastSyncTime = nowFormatted,
-                        syncStatusText = "Google Drive Auto-Sync Active",
-                        syncMessage = "Backup saved to your Google Drive! Daily auto-sync is now active."
+                        syncStatusText = "Google Drive Linked & Synced",
+                        syncMessage = "Backup successfully linked to Google Drive ($displayName)!"
                     )
                 }
             }.onFailure { err ->
@@ -233,11 +252,10 @@ class SettingsViewModel @Inject constructor(
         _uiState.update {
             it.copy(
                 googleAccountEmail = email,
-                syncStatusText = "Auto-Sync Active",
-                syncMessage = "Google Drive connected ($email)! Auto-sync is now active."
+                syncStatusText = "Account Linked",
+                syncMessage = "Account linked ($email). Tap 'Link Drive File' below to designate your Google Drive backup file."
             )
         }
-        triggerSyncNow()
     }
 
     fun disconnectGoogleDrive() {
@@ -245,31 +263,58 @@ class SettingsViewModel @Inject constructor(
         _uiState.update {
             it.copy(
                 googleAccountEmail = null,
-                syncStatusText = "Not Connected",
+                isDriveLinked = false,
+                driveFileName = "policydesk_backup.json",
+                syncStatusText = "Local-First Active",
                 syncMessage = "Google Drive disconnected. Data is stored safely on this device."
             )
         }
     }
 
     fun triggerSyncNow() {
-        val account = _uiState.value.googleAccountEmail
+        val driveUri = com.policydesk.app.data.drive.GoogleDriveManager.getSavedBackupUri(context)
         _uiState.update { it.copy(isSyncing = true, syncMessage = null) }
         viewModelScope.launch {
             val snapshot = exportSnapshotJson()
-            if (account != null) {
+            if (driveUri != null) {
+                val writeResult = com.policydesk.app.data.drive.GoogleDriveManager.writeSnapshotToUri(context, driveUri, snapshot)
+                val nowFormatted = java.time.LocalDateTime.now()
+                    .format(java.time.format.DateTimeFormatter.ofPattern("dd MMM, hh:mm a"))
+                writeResult.onSuccess {
+                    com.policydesk.app.data.drive.GoogleDriveManager.setLastSyncTime(context, System.currentTimeMillis())
+                    _uiState.update {
+                        it.copy(
+                            isSyncing = false,
+                            lastSyncTime = nowFormatted,
+                            syncStatusText = "Google Drive Synced",
+                            syncMessage = "All ${_uiState.value.totalRecords} records synced to Google Drive file successfully!"
+                        )
+                    }
+                }.onFailure { err ->
+                    _uiState.update {
+                        it.copy(
+                            isSyncing = false,
+                            syncStatusText = "Sync Warning",
+                            syncMessage = "Could not write to linked Drive location: ${err.message}. Please tap 'Link Drive Location' to re-select."
+                        )
+                    }
+                }
+            } else {
                 com.policydesk.app.data.drive.GoogleDriveManager.performAutoSync(context, snapshot)
-            }
-            val nowFormatted = java.time.LocalDateTime.now()
-                .format(java.time.format.DateTimeFormatter.ofPattern("dd MMM, hh:mm a"))
-            _uiState.update {
-                it.copy(
-                    isSyncing = false,
-                    lastSyncTime = nowFormatted,
-                    syncStatusText = if (account != null) "Auto-Sync Active" else "Local-First Active",
-                    syncMessage = if (account != null) "All records successfully synced to Google Drive!" else "Data backed up locally on device."
-                )
+                _uiState.update {
+                    it.copy(
+                        isSyncing = false,
+                        syncStatusText = "Local-First Active",
+                        syncMessage = "Data saved to device cache. Tap 'Link Drive Location' or 'Share to Drive' to store directly on Google Drive."
+                    )
+                }
             }
         }
+    }
+
+    suspend fun getShareableBackupUri(): android.net.Uri {
+        val json = exportSnapshotJson()
+        return com.policydesk.app.data.drive.GoogleDriveManager.createShareableBackupUri(context, json)
     }
 
     suspend fun exportDatabaseCsv(): String = withContext(Dispatchers.IO) {
