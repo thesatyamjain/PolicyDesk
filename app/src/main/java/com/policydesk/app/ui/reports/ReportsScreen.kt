@@ -54,17 +54,14 @@ import com.policydesk.app.ui.components.DaysRemainingBadge
 import com.policydesk.app.ui.components.UiFormatters
 import com.policydesk.app.ui.dashboard.VehicleExpiryCard
 import com.policydesk.app.ui.detail.DetailRow
-import com.policydesk.app.ui.theme.CardBackground
-import com.policydesk.app.ui.theme.Navy700
-import com.policydesk.app.ui.theme.Navy800
-import com.policydesk.app.ui.theme.Navy900
+import androidx.compose.foundation.isSystemInDarkTheme
+import com.policydesk.app.ui.theme.IosDarkLabelPrimary
+import com.policydesk.app.ui.theme.IosDarkLabelSecondary
+import com.policydesk.app.ui.theme.IosDarkLabelTertiary
+import com.policydesk.app.ui.theme.IosLabelPrimary
+import com.policydesk.app.ui.theme.IosLabelSecondary
+import com.policydesk.app.ui.theme.IosLabelTertiary
 import com.policydesk.app.ui.theme.SapphireBlue
-import com.policydesk.app.ui.theme.SapphireBlueLight
-import com.policydesk.app.ui.theme.Slate100
-import com.policydesk.app.ui.theme.Slate200
-import com.policydesk.app.ui.theme.Slate400
-import com.policydesk.app.ui.theme.Slate50
-import com.policydesk.app.ui.theme.Slate600
 import com.policydesk.app.ui.theme.StatusActiveGreen
 import com.policydesk.app.ui.theme.StatusActiveGreenBg
 import com.policydesk.app.ui.theme.StatusExpiringAmber
@@ -160,9 +157,13 @@ fun ReportsScreen(
                 }
             }
 
+            val isDark = isSystemInDarkTheme()
+            val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
+            val labelSecondary = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
+
             if (aggregate == null) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Loading report data...", color = Slate600)
+                    Text("Loading report data...", color = labelSecondary)
                 }
             } else {
                 when (selectedTab) {
@@ -191,10 +192,13 @@ fun SalesTabContent(
     onNavigateToVehicleDetail: (String) -> Unit
 ) {
     val sales = aggregate.sales
+    val isDark = isSystemInDarkTheme()
+    val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
+    val labelSecondary = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 36.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         // Summary Cards Row
@@ -207,7 +211,7 @@ fun SalesTabContent(
                     modifier = Modifier.weight(1f)
                 ) {
                     Column(modifier = Modifier.padding(14.dp)) {
-                        Text("Total Premium Sold", fontSize = 11.sp, color = Slate600)
+                        Text("Total Premium Sold", fontSize = 11.sp, color = labelSecondary)
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = UiFormatters.formatCurrency(sales.totalPremium),
@@ -222,13 +226,13 @@ fun SalesTabContent(
                     modifier = Modifier.weight(1f)
                 ) {
                     Column(modifier = Modifier.padding(14.dp)) {
-                        Text("Policies Sold", fontSize = 11.sp, color = Slate600)
+                        Text("Policies Sold", fontSize = 11.sp, color = labelSecondary)
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = sales.totalCount.toString(),
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Navy900
+                            color = labelPrimary
                         )
                     }
                 }
@@ -241,7 +245,7 @@ fun SalesTabContent(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Sale Type Split", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Navy900)
+                    Text("Sale Type Split", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = labelPrimary)
                     Spacer(modifier = Modifier.height(10.dp))
                     DetailRow(label = "New Business", value = "${sales.newBusinessCount} policies")
                     DetailRow(label = "Renewals", value = "${sales.renewalCount} policies")
@@ -256,7 +260,7 @@ fun SalesTabContent(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Premium by Insurer", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Navy900)
+                        Text("Premium by Insurer", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = labelPrimary)
                         sales.splitByInsurer.forEach { (insurer, prem) ->
                             DetailRow(label = insurer, value = UiFormatters.formatCurrency(prem))
                         }
@@ -274,12 +278,12 @@ fun SalesTabContent(
 
         // Policies List
         item {
-            Text("Policies Sold in Period (${sales.soldPolicies.size})", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Navy900)
+            Text("Policies Sold in Period (${sales.soldPolicies.size})", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = labelPrimary)
         }
 
         if (sales.soldPolicies.isEmpty()) {
             item {
-                Text("No sales recorded in this period.", color = Slate600, fontSize = 13.sp)
+                Text("No sales recorded in this period.", color = labelSecondary, fontSize = 13.sp)
             }
         } else {
             items(sales.soldPolicies, key = { it.vehicle.regNo }) { item ->
@@ -304,6 +308,9 @@ fun MissedRenewalsTabContent(
     val missed = aggregate.missed
     val performance = aggregate.performance
     val context = LocalContext.current
+    val isDark = isSystemInDarkTheme()
+    val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
+    val labelSecondary = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
 
     val displayedList = when (activeFilter) {
         OverdueFilter.ALL -> missed.allMissed
@@ -314,7 +321,7 @@ fun MissedRenewalsTabContent(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 36.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         // Summary Cards: Premium at Risk & Overdue Count
@@ -327,7 +334,7 @@ fun MissedRenewalsTabContent(
                     modifier = Modifier.weight(1f)
                 ) {
                     Column(modifier = Modifier.padding(14.dp)) {
-                        Text("Premium at Risk", fontSize = 11.sp, color = Slate600)
+                        Text("Premium at Risk", fontSize = 11.sp, color = labelSecondary)
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = UiFormatters.formatCurrency(missed.premiumAtRisk),
@@ -342,7 +349,7 @@ fun MissedRenewalsTabContent(
                     modifier = Modifier.weight(1f)
                 ) {
                     Column(modifier = Modifier.padding(14.dp)) {
-                        Text("Overdue Policies", fontSize = 11.sp, color = Slate600)
+                        Text("Overdue Policies", fontSize = 11.sp, color = labelSecondary)
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = missed.totalCount.toString(),
@@ -366,7 +373,7 @@ fun MissedRenewalsTabContent(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Renewal Rate", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Navy900)
+                        Text("Renewal Rate", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = labelPrimary)
                         Text(
                             text = "${String.format("%.1f", performance.renewalRatePercent)}%",
                             fontSize = 18.sp,
@@ -382,7 +389,7 @@ fun MissedRenewalsTabContent(
                             .height(8.dp)
                             .clip(RoundedCornerShape(4.dp)),
                         color = SapphireBlue,
-                        trackColor = Slate100
+                        trackColor = if (isDark) Color(0xFF2C2C2E) else Color(0xFFE5E5EA)
                     )
                     Spacer(modifier = Modifier.height(10.dp))
                     DetailRow(label = "Policies Due", value = "${performance.policiesDue}")
@@ -398,10 +405,9 @@ fun MissedRenewalsTabContent(
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(OverdueFilter.values()) { filter ->
                     val isSelected = activeFilter == filter
-                    val isDark = androidx.compose.foundation.isSystemInDarkTheme()
                     val selectedBg = if (isDark) com.policydesk.app.ui.theme.AppleDarkSystemBlue else com.policydesk.app.ui.theme.AppleSystemBlue
-                    val unselectedBg = if (isDark) Color(0x33545458) else com.policydesk.app.ui.theme.Slate100
-                    val unselectedText = if (isDark) com.policydesk.app.ui.theme.IosDarkLabelPrimary else com.policydesk.app.ui.theme.Navy700
+                    val unselectedBg = if (isDark) Color(0x33545458) else Color(0xFFE5E5EA)
+                    val unselectedText = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
 
                     Box(
                         modifier = Modifier
@@ -424,7 +430,7 @@ fun MissedRenewalsTabContent(
         // Missed Policies List
         if (displayedList.isEmpty()) {
             item {
-                Text("No overdue policies in this category.", color = Slate600, fontSize = 13.sp)
+                Text("No overdue policies in this category.", color = labelSecondary, fontSize = 13.sp)
             }
         } else {
             items(displayedList, key = { it.vehicle.regNo }) { item ->
@@ -461,6 +467,10 @@ fun MissedRenewalCard(
     val daysRemaining = policy?.computeDaysRemaining() ?: 0
     val daysOverdue = -daysRemaining
 
+    val isDark = isSystemInDarkTheme()
+    val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
+    val labelSecondary = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
+
     LiquidGlassCard(
         modifier = Modifier.fillMaxWidth(),
         onClick = onNavigateToDetail
@@ -475,7 +485,7 @@ fun MissedRenewalCard(
                     text = item.vehicle.regNo,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
-                    color = com.policydesk.app.ui.theme.IosLabelPrimary
+                    color = labelPrimary
                 )
                 Box(
                     modifier = Modifier
@@ -492,8 +502,8 @@ fun MissedRenewalCard(
             }
 
             Spacer(modifier = Modifier.height(4.dp))
-            Text(text = item.vehicle.customer.name, fontSize = 13.sp, color = com.policydesk.app.ui.theme.IosLabelPrimary)
-            Text(text = "${policy?.insurer} • Expired ${policy?.expiryDate?.let { UiFormatters.formatDate(it) }}", fontSize = 11.sp, color = com.policydesk.app.ui.theme.IosLabelSecondary)
+            Text(text = item.vehicle.customer.name, fontSize = 13.sp, color = labelPrimary)
+            Text(text = "${policy?.insurer} • Expired ${policy?.expiryDate?.let { UiFormatters.formatDate(it) }}", fontSize = 11.sp, color = labelSecondary)
             if (policy != null) {
                 Text(text = "Premium at risk: ${UiFormatters.formatCurrency(policy.totalPremium)}", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = StatusOverdueRed)
             }
@@ -509,7 +519,7 @@ fun MissedRenewalCard(
                     text = "Call",
                     onClick = onCall,
                     icon = AppleIcons.Phone,
-                    tintColor = com.policydesk.app.ui.theme.AppleSystemBlue,
+                    tintColor = if (isDark) com.policydesk.app.ui.theme.AppleDarkSystemBlue else com.policydesk.app.ui.theme.AppleSystemBlue,
                     height = 36.dp,
                     modifier = Modifier.weight(1f)
                 )
@@ -518,7 +528,7 @@ fun MissedRenewalCard(
                     text = "WhatsApp",
                     onClick = onWhatsApp,
                     icon = AppleIcons.Message,
-                    tintColor = com.policydesk.app.ui.theme.AppleSystemGreen,
+                    tintColor = if (isDark) com.policydesk.app.ui.theme.AppleDarkSystemGreen else com.policydesk.app.ui.theme.AppleSystemGreen,
                     height = 36.dp,
                     modifier = Modifier.weight(1.2f)
                 )
@@ -537,10 +547,13 @@ fun MissedRenewalCard(
 @Composable
 fun AnalyticsTabContent(aggregate: ReportsAggregate) {
     val analytics = aggregate.analytics
+    val isDark = isSystemInDarkTheme()
+    val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
+    val labelSecondary = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 36.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         // Book Size Card
@@ -549,18 +562,18 @@ fun AnalyticsTabContent(aggregate: ReportsAggregate) {
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Active Book Size", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Navy900)
+                    Text("Active Book Size", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = labelPrimary)
                     Spacer(modifier = Modifier.height(10.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Column {
-                            Text("Active Vehicles", fontSize = 11.sp, color = Slate600)
-                            Text(text = "${analytics.bookSizeVehicles}", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Navy900)
+                            Text("Active Vehicles", fontSize = 11.sp, color = labelSecondary)
+                            Text(text = "${analytics.bookSizeVehicles}", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = labelPrimary)
                         }
                         Column {
-                            Text("Book Value", fontSize = 11.sp, color = Slate600)
+                            Text("Book Value", fontSize = 11.sp, color = labelSecondary)
                             Text(text = UiFormatters.formatCurrency(analytics.bookSizePremium), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = SapphireBlue)
                         }
                     }
@@ -574,7 +587,7 @@ fun AnalyticsTabContent(aggregate: ReportsAggregate) {
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Upcoming Renewal Pipeline", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Navy900)
+                    Text("Upcoming Renewal Pipeline", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = labelPrimary)
                     DetailRow(
                         label = "Next 3 Months",
                         value = "${analytics.renewalPipeline3Months.first} policies (${UiFormatters.formatCurrency(analytics.renewalPipeline3Months.second)})"
@@ -597,7 +610,7 @@ fun AnalyticsTabContent(aggregate: ReportsAggregate) {
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Retention Metrics", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Navy900)
+                    Text("Retention Metrics", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = labelPrimary)
                     DetailRow(
                         label = "Overall Renewal Rate",
                         value = "${String.format("%.1f", analytics.renewalRatePercent)}%"
@@ -619,6 +632,11 @@ fun AnalyticsTabContent(aggregate: ReportsAggregate) {
 @Composable
 fun MonthlySalesTrendCard(trends: List<com.policydesk.app.domain.model.MonthlyTrendItem>) {
     val maxPremium = trends.maxOfOrNull { it.totalPremium }?.coerceAtLeast(1000.0) ?: 1000.0
+    val isDark = isSystemInDarkTheme()
+    val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
+    val labelSecondary = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
+    val renewalColor = if (isDark) Color(0xFF5E5CE6) else Color(0xFF5856D6)
+    val barTrackColor = if (isDark) Color(0xFF2C2C2E) else Color(0xFFE5E5EA)
 
     LiquidGlassCard(
         modifier = Modifier.fillMaxWidth()
@@ -633,19 +651,19 @@ fun MonthlySalesTrendCard(trends: List<com.policydesk.app.domain.model.MonthlyTr
                     text = "12-Month Sales Trend",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Navy900
+                    color = labelPrimary
                 )
 
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(modifier = Modifier.size(8.dp).background(SapphireBlue, CircleShape))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("New", fontSize = 11.sp, color = Slate600)
+                        Text("New", fontSize = 11.sp, color = labelSecondary)
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(modifier = Modifier.size(8.dp).background(Navy800, CircleShape))
+                        Box(modifier = Modifier.size(8.dp).background(renewalColor, CircleShape))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Renewal", fontSize = 11.sp, color = Slate600)
+                        Text("Renewal", fontSize = 11.sp, color = labelSecondary)
                     }
                 }
             }
@@ -670,7 +688,7 @@ fun MonthlySalesTrendCard(trends: List<com.policydesk.app.domain.model.MonthlyTr
                             text = if (item.totalPremium > 0) "₹${(item.totalPremium / 1000).toInt()}k" else "₹0",
                             fontSize = 9.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = if (item.totalPremium > 0) Navy900 else Slate400,
+                            color = if (item.totalPremium > 0) labelPrimary else (if (isDark) IosDarkLabelTertiary else IosLabelTertiary),
                             maxLines = 1
                         )
                         Spacer(modifier = Modifier.height(4.dp))
@@ -679,7 +697,7 @@ fun MonthlySalesTrendCard(trends: List<com.policydesk.app.domain.model.MonthlyTr
                             modifier = Modifier
                                 .width(20.dp)
                                 .height(totalBarHeight)
-                                .background(Slate100, RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp)),
+                                .background(barTrackColor, RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp)),
                             contentAlignment = Alignment.BottomCenter
                         ) {
                             Column(
@@ -700,7 +718,7 @@ fun MonthlySalesTrendCard(trends: List<com.policydesk.app.domain.model.MonthlyTr
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .weight(renRatio)
-                                            .background(Navy800)
+                                            .background(renewalColor)
                                     )
                                 }
                             }
@@ -712,7 +730,7 @@ fun MonthlySalesTrendCard(trends: List<com.policydesk.app.domain.model.MonthlyTr
                             text = item.monthLabel,
                             fontSize = 9.sp,
                             fontWeight = FontWeight.Medium,
-                            color = Slate600,
+                            color = labelSecondary,
                             maxLines = 1
                         )
                     }

@@ -86,16 +86,7 @@ import com.policydesk.app.domain.model.InsurerCatalog
 import com.policydesk.app.domain.model.RegistrationNormalizer
 import com.policydesk.app.domain.model.Sector
 import com.policydesk.app.ui.components.UiFormatters
-import com.policydesk.app.ui.theme.CardBackground
-import com.policydesk.app.ui.theme.Navy700
-import com.policydesk.app.ui.theme.Navy800
-import com.policydesk.app.ui.theme.Navy900
 import com.policydesk.app.ui.theme.SapphireBlue
-import com.policydesk.app.ui.theme.Slate100
-import com.policydesk.app.ui.theme.Slate200
-import com.policydesk.app.ui.theme.Slate400
-import com.policydesk.app.ui.theme.Slate50
-import com.policydesk.app.ui.theme.Slate600
 import com.policydesk.app.ui.theme.StatusExpiringAmber
 import com.policydesk.app.ui.theme.StatusExpiringAmberBg
 import com.policydesk.app.ui.theme.StatusOverdueRed
@@ -647,7 +638,7 @@ fun InsurerDropdown(
         )
 
         val isDark = isSystemInDarkTheme()
-        val menuBg = if (isDark) IosDarkSecondaryGrouped else CardBackground
+        val menuBg = if (isDark) IosDarkSecondaryGrouped else Color.White
         val itemTextColor = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
 
         ExposedDropdownMenu(
@@ -704,7 +695,7 @@ fun TitleDropdown(
         )
 
         val isDark = isSystemInDarkTheme()
-        val menuBg = if (isDark) IosDarkSecondaryGrouped else CardBackground
+        val menuBg = if (isDark) IosDarkSecondaryGrouped else Color.White
         val itemTextColor = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
 
         ExposedDropdownMenu(
@@ -759,7 +750,7 @@ fun MakeModelAutocomplete(
 
         if (filtered.isNotEmpty()) {
             val isDark = isSystemInDarkTheme()
-            val menuBg = if (isDark) IosDarkSecondaryGrouped else CardBackground
+            val menuBg = if (isDark) IosDarkSecondaryGrouped else Color.White
             val itemTextColor = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
 
             ExposedDropdownMenu(

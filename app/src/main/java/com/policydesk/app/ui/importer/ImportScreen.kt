@@ -62,16 +62,17 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.policydesk.app.data.importer.SpreadsheetParser
 import com.policydesk.app.ui.addpolicy.formFieldColors
+import androidx.compose.foundation.isSystemInDarkTheme
+import com.policydesk.app.ui.components.LiquidGlassCard
 import com.policydesk.app.ui.detail.DetailRow
-import com.policydesk.app.ui.theme.CardBackground
-import com.policydesk.app.ui.theme.Navy800
-import com.policydesk.app.ui.theme.Navy900
+import com.policydesk.app.ui.theme.AppleDarkSystemBlue
+import com.policydesk.app.ui.theme.IosDarkLabelPrimary
+import com.policydesk.app.ui.theme.IosDarkLabelSecondary
+import com.policydesk.app.ui.theme.IosDarkLabelTertiary
+import com.policydesk.app.ui.theme.IosLabelPrimary
+import com.policydesk.app.ui.theme.IosLabelSecondary
+import com.policydesk.app.ui.theme.IosLabelTertiary
 import com.policydesk.app.ui.theme.SapphireBlue
-import com.policydesk.app.ui.theme.Slate100
-import com.policydesk.app.ui.theme.Slate200
-import com.policydesk.app.ui.theme.Slate400
-import com.policydesk.app.ui.theme.Slate50
-import com.policydesk.app.ui.theme.Slate600
 import com.policydesk.app.ui.theme.StatusActiveGreen
 import com.policydesk.app.ui.theme.StatusActiveGreenBg
 import com.policydesk.app.ui.theme.StatusExpiringAmber
@@ -184,6 +185,10 @@ fun SelectFileStep(
     onDownloadTemplate: () -> Unit,
     errorMessage: String?
 ) {
+    val isDark = isSystemInDarkTheme()
+    val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
+    val labelSecondary = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -210,13 +215,13 @@ fun SelectFileStep(
             text = "Import Existing Spreadsheet",
             fontSize = 19.sp,
             fontWeight = FontWeight.Bold,
-            color = Navy900
+            color = labelPrimary
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = "Migrate your records in a single session. Supports Excel (.xlsx) and CSV files up to 5,000 rows.",
             fontSize = 13.sp,
-            color = Slate600,
+            color = labelSecondary,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center
         )
 
@@ -258,6 +263,10 @@ fun MapColumnsStep(
     onRemap: (Int, String) -> Unit,
     onProceed: () -> Unit
 ) {
+    val isDark = isSystemInDarkTheme()
+    val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
+    val labelSecondary = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
+
     val schemaFields = listOf(
         "" to "-- Ignore Column --",
         "regNo" to "Vehicle Registration No *",
@@ -291,12 +300,12 @@ fun MapColumnsStep(
             text = "Review Column Mapping",
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold,
-            color = Navy900
+            color = labelPrimary
         )
         Text(
             text = "File: $fileName (${headers.size} columns detected)",
             fontSize = 12.sp,
-            color = Slate600
+            color = labelSecondary
         )
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -309,16 +318,13 @@ fun MapColumnsStep(
                 val headerName = headers[colIdx]
                 val currentMapping = columnMapping[colIdx] ?: ""
 
-                Card(
+                LiquidGlassCard(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = CardDefaults.cardColors(containerColor = CardBackground),
-                    border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(Slate200))
+                    shape = RoundedCornerShape(14.dp),
+                    elevation = 2.dp
                 ) {
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(12.dp),
+                        modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -327,7 +333,7 @@ fun MapColumnsStep(
                                 text = "Header: \"$headerName\"",
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = Navy900
+                                color = labelPrimary
                             )
                         }
 
@@ -380,14 +386,18 @@ fun ColumnMappingDropdown(
             colors = formFieldColors()
         )
 
+        val isDark = isSystemInDarkTheme()
+        val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
+        val menuBg = if (isDark) Color(0xFF1C1C1E) else Color.White
+
         ExposedDropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false },
-            modifier = Modifier.background(CardBackground)
+            modifier = Modifier.background(menuBg)
         ) {
             options.forEach { (key, label) ->
                 DropdownMenuItem(
-                    text = { Text(label, fontSize = 12.sp, color = Navy900) },
+                    text = { Text(label, fontSize = 12.sp, color = labelPrimary) },
                     onClick = {
                         onSelect(key)
                         expanded = false
@@ -405,14 +415,17 @@ fun PreviewStep(
     onExecuteImport: () -> Unit
 ) {
     val preview = state.previewResult ?: return
+    val isDark = isSystemInDarkTheme()
+    val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
+    val labelSecondary = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        Text("Validation Preview", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Navy900)
-        Text("Total ${preview.totalRows} rows ready to process", fontSize = 12.sp, color = Slate600)
+        Text("Validation Preview", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = labelPrimary)
+        Text("Total ${preview.totalRows} rows ready to process", fontSize = 12.sp, color = labelSecondary)
 
         Spacer(modifier = Modifier.height(12.dp))
 
@@ -424,20 +437,24 @@ fun PreviewStep(
             StatPill("Valid: ${preview.validRows.size}", StatusActiveGreen, StatusActiveGreenBg, Modifier.weight(1f))
             StatPill("Warnings: ${preview.warningRows.size}", StatusExpiringAmber, StatusExpiringAmberBg, Modifier.weight(1f))
             StatPill("Errors: ${preview.errorRows.size}", StatusOverdueRed, StatusOverdueRedBg, Modifier.weight(1f))
-            StatPill("Duplicate: ${preview.duplicateRows.size}", SapphireBlue, Slate100, Modifier.weight(1f))
+            StatPill(
+                "Duplicate: ${preview.duplicateRows.size}",
+                if (isDark) AppleDarkSystemBlue else SapphireBlue,
+                if (isDark) Color(0x330A84FF) else Color(0x1F007AFF),
+                Modifier.weight(1f)
+            )
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
         // Duplicate Handling Option
-        Card(
+        LiquidGlassCard(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = CardBackground),
-            border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(Slate200))
+            shape = RoundedCornerShape(14.dp),
+            elevation = 2.dp
         ) {
-            Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Duplicate Registration Handling", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Navy900)
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Duplicate Registration Handling", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = labelPrimary)
                 DuplicateStrategy.values().forEach { strategy ->
                     Row(
                         modifier = Modifier
@@ -453,8 +470,8 @@ fun PreviewStep(
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Column {
-                            Text(strategy.title, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Navy900)
-                            Text(strategy.description, fontSize = 11.sp, color = Slate600)
+                            Text(strategy.title, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = labelPrimary)
+                            Text(strategy.description, fontSize = 11.sp, color = labelSecondary)
                         }
                     }
                 }
@@ -464,7 +481,7 @@ fun PreviewStep(
         Spacer(modifier = Modifier.height(12.dp))
 
         // Error & Problem Rows List
-        Text("Problem Details (${preview.errorRows.size + preview.warningRows.size})", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Navy900)
+        Text("Problem Details (${preview.errorRows.size + preview.warningRows.size})", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = labelPrimary)
         Spacer(modifier = Modifier.height(6.dp))
 
         LazyColumn(
@@ -505,9 +522,13 @@ fun StatPill(label: String, textColor: Color, bgColor: Color, modifier: Modifier
 
 @Composable
 fun RowErrorCard(row: com.policydesk.app.data.importer.ParsedRow, isError: Boolean) {
+    val isDark = isSystemInDarkTheme()
+    val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
+    val labelSecondary = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
+
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(8.dp),
+        shape = RoundedCornerShape(10.dp),
         colors = CardDefaults.cardColors(containerColor = if (isError) StatusOverdueRedBg else StatusExpiringAmberBg),
         border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(if (isError) StatusOverdueRed.copy(alpha = 0.3f) else StatusExpiringAmber.copy(alpha = 0.3f)))
     ) {
@@ -516,11 +537,11 @@ fun RowErrorCard(row: com.policydesk.app.data.importer.ParsedRow, isError: Boole
                 text = "Row ${row.rowNumber}: ${if (row.regNo.isNotBlank()) row.regNo else "Missing Reg No"} (${row.customerName})",
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
-                color = if (isError) StatusOverdueRed else Navy900
+                color = if (isError) StatusOverdueRed else labelPrimary
             )
             val issues = if (isError) row.errors else row.warnings
             issues.forEach { issue ->
-                Text(text = "• $issue", fontSize = 11.sp, color = Slate600)
+                Text(text = "• $issue", fontSize = 11.sp, color = labelSecondary)
             }
         }
     }
@@ -528,6 +549,10 @@ fun RowErrorCard(row: com.policydesk.app.data.importer.ParsedRow, isError: Boole
 
 @Composable
 fun ImportingStep(progress: Float) {
+    val isDark = isSystemInDarkTheme()
+    val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
+    val labelSecondary = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -535,7 +560,7 @@ fun ImportingStep(progress: Float) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text("Importing Records...", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Navy900)
+        Text("Importing Records...", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = labelPrimary)
         Spacer(modifier = Modifier.height(16.dp))
         LinearProgressIndicator(
             progress = { progress },
@@ -544,10 +569,10 @@ fun ImportingStep(progress: Float) {
                 .height(8.dp)
                 .clip(RoundedCornerShape(4.dp)),
             color = SapphireBlue,
-            trackColor = Slate100
+            trackColor = if (isDark) Color(0xFF2C2C2E) else Color(0xFFE5E5EA)
         )
         Spacer(modifier = Modifier.height(8.dp))
-        Text("${(progress * 100).toInt()}% completed", fontSize = 13.sp, color = Slate600)
+        Text("${(progress * 100).toInt()}% completed", fontSize = 13.sp, color = labelSecondary)
     }
 }
 
@@ -558,6 +583,9 @@ fun SummaryStep(
     onDownloadFailedCsv: () -> Unit,
     onDone: () -> Unit
 ) {
+    val isDark = isSystemInDarkTheme()
+    val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -580,17 +608,16 @@ fun SummaryStep(
         }
 
         Spacer(modifier = Modifier.height(16.dp))
-        Text("Import Complete!", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Navy900)
+        Text("Import Complete!", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = labelPrimary)
         Spacer(modifier = Modifier.height(18.dp))
 
         if (summary != null) {
-            Card(
+            LiquidGlassCard(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = CardBackground),
-                border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(Slate200))
+                shape = RoundedCornerShape(14.dp),
+                elevation = 2.dp
             ) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     DetailRow(label = "New Records Added", value = "${summary.addedCount}")
                     DetailRow(label = "Existing Records Updated", value = "${summary.updatedCount}")
                     if (summary.renewedCount > 0) {

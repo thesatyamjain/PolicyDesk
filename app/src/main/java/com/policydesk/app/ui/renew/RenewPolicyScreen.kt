@@ -60,12 +60,14 @@ import com.policydesk.app.ui.addpolicy.formDisabledFieldColors
 import com.policydesk.app.ui.addpolicy.formFieldColors
 import com.policydesk.app.ui.components.UiFormatters
 import com.policydesk.app.ui.detail.DetailRow
-import com.policydesk.app.ui.theme.CardBackground
-import com.policydesk.app.ui.theme.Navy900
+import androidx.compose.foundation.isSystemInDarkTheme
+import com.policydesk.app.ui.components.HsrpNumberPlate
+import com.policydesk.app.ui.components.LiquidGlassCard
+import com.policydesk.app.ui.theme.IosDarkLabelPrimary
+import com.policydesk.app.ui.theme.IosDarkLabelSecondary
+import com.policydesk.app.ui.theme.IosLabelPrimary
+import com.policydesk.app.ui.theme.IosLabelSecondary
 import com.policydesk.app.ui.theme.SapphireBlue
-import com.policydesk.app.ui.theme.Slate200
-import com.policydesk.app.ui.theme.Slate50
-import com.policydesk.app.ui.theme.Slate600
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -130,6 +132,10 @@ fun RenewPolicyScreen(
         },
         containerColor = androidx.compose.material3.MaterialTheme.colorScheme.background
     ) { paddingValues ->
+        val isDark = isSystemInDarkTheme()
+        val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
+        val labelSecondary = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
+
         val item = state.currentVehicle
         if (item == null) {
             Box(
@@ -138,7 +144,7 @@ fun RenewPolicyScreen(
                     .padding(paddingValues),
                 contentAlignment = Alignment.Center
             ) {
-                Text("Loading renewal form...", color = Slate600)
+                Text("Loading renewal form...", color = labelSecondary)
             }
         } else {
             val vehicle = item.vehicle
@@ -153,14 +159,12 @@ fun RenewPolicyScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 // Vehicle Header Card
-                Card(
+                LiquidGlassCard(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(containerColor = CardBackground),
-                    border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(Slate200))
+                    shape = RoundedCornerShape(18.dp),
+                    elevation = 2.dp
                 ) {
                     Column(
-                        modifier = Modifier.padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Row(
@@ -168,28 +172,19 @@ fun RenewPolicyScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .background(Color(0xFFFEF08A).copy(alpha = 0.35f), RoundedCornerShape(6.dp))
-                                    .border(1.dp, Color(0xFFCA8A04), RoundedCornerShape(6.dp))
-                                    .padding(horizontal = 10.dp, vertical = 4.dp)
-                            ) {
-                                Text(
-                                    text = RegistrationNormalizer.formatForDisplay(vehicle.regNo),
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Navy900
-                                )
-                            }
+                            HsrpNumberPlate(
+                                regNo = vehicle.regNo
+                            )
                             Text(
                                 text = vehicle.customer.name,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = Navy900
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = labelPrimary
                             )
                         }
 
                         if (prevPolicy != null) {
+                            Spacer(modifier = Modifier.height(4.dp))
                             DetailRow(label = "Current Insurer", value = prevPolicy.insurer)
                             DetailRow(label = "Expiring / Expired On", value = UiFormatters.formatDate(prevPolicy.expiryDate))
                         }

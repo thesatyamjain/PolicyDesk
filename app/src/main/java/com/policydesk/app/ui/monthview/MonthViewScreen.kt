@@ -63,10 +63,6 @@ import com.policydesk.app.ui.theme.IosLabelSecondary
 import com.policydesk.app.ui.theme.IosLabelTertiary
 import com.policydesk.app.ui.theme.IosSeparator
 import com.policydesk.app.ui.theme.IosSystemBackground
-import com.policydesk.app.ui.theme.Slate100
-import com.policydesk.app.ui.theme.Slate200
-import com.policydesk.app.ui.theme.Slate400
-import com.policydesk.app.ui.theme.Slate600
 import java.time.LocalDate
 
 enum class MonthDisplayMode(val label: String) {
@@ -240,6 +236,8 @@ fun CalendarGridView(
     val daysInMonth = firstDayOfMonth.lengthOfMonth()
     val dayOfWeekOffset = firstDayOfMonth.dayOfWeek.value - 1
     val daysOfWeek = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+    val isDark = isSystemInDarkTheme()
+    val dayHeaderColor = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
 
     Column(
         modifier = Modifier
@@ -256,7 +254,7 @@ fun CalendarGridView(
                     text = dayName,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = IosLabelSecondary,
+                    color = dayHeaderColor,
                     modifier = Modifier.weight(1f),
                     textAlign = TextAlign.Center
                 )

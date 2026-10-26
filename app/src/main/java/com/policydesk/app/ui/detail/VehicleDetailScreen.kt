@@ -72,16 +72,14 @@ import com.policydesk.app.ui.theme.AppleSystemRed
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import com.policydesk.app.ui.theme.IosDarkLabelPrimary
+import com.policydesk.app.ui.components.HsrpNumberPlate
+import com.policydesk.app.ui.theme.AppleDarkSystemBlue
+import com.policydesk.app.ui.theme.IosDarkLabelPrimary
 import com.policydesk.app.ui.theme.IosDarkLabelSecondary
 import com.policydesk.app.ui.theme.IosLabelPrimary
 import com.policydesk.app.ui.theme.IosLabelSecondary
 import com.policydesk.app.ui.theme.IosLabelTertiary
 import com.policydesk.app.ui.theme.IosSystemBackground
-import com.policydesk.app.ui.theme.Navy900
-import com.policydesk.app.ui.theme.Slate100
-import com.policydesk.app.ui.theme.Slate200
-import com.policydesk.app.ui.theme.Slate400
-import com.policydesk.app.ui.theme.Slate600
 
 @Composable
 fun VehicleDetailScreen(
@@ -118,6 +116,10 @@ fun VehicleDetailScreen(
         )
         var selectedReason by remember { mutableStateOf(closeReasons.first()) }
 
+        val isDark = isSystemInDarkTheme()
+        val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
+        val accentBlue = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
+
         AppleAlertDialog(
             onDismissRequest = { showCloseDialog = false },
             title = "Close Vehicle Policy",
@@ -137,7 +139,7 @@ fun VehicleDetailScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(8.dp))
-                                .background(if (selectedReason == reason) AppleSystemBlue.copy(alpha = 0.12f) else Color.Transparent)
+                                .background(if (selectedReason == reason) accentBlue.copy(alpha = 0.12f) else Color.Transparent)
                                 .clickable { selectedReason = reason }
                                 .padding(8.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -146,7 +148,7 @@ fun VehicleDetailScreen(
                                 text = reason,
                                 fontSize = 13.sp,
                                 fontWeight = if (selectedReason == reason) FontWeight.Bold else FontWeight.Normal,
-                                color = if (selectedReason == reason) AppleSystemBlue else IosLabelPrimary
+                                color = if (selectedReason == reason) accentBlue else labelPrimary
                             )
                         }
                     }
@@ -154,6 +156,10 @@ fun VehicleDetailScreen(
             }
         )
     }
+
+    val isDark = isSystemInDarkTheme()
+    val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
+    val labelSecondary = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
 
     Scaffold(
         topBar = {
@@ -165,7 +171,7 @@ fun VehicleDetailScreen(
                         Icon(
                             imageVector = Icons.Default.MoreVert,
                             contentDescription = "Options",
-                            tint = IosLabelPrimary
+                            tint = labelPrimary
                         )
                     }
                     DropdownMenu(
@@ -200,7 +206,7 @@ fun VehicleDetailScreen(
                     .padding(paddingValues),
                 contentAlignment = Alignment.Center
             ) {
-                Text("Loading vehicle details...", color = IosLabelSecondary)
+                Text("Loading vehicle details...", color = labelSecondary)
             }
         } else {
             val vehicle = data.vehicle
@@ -226,21 +232,10 @@ fun VehicleDetailScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Indian Number Plate badge
-                        Box(
-                            modifier = Modifier
-                                .background(Color(0xFFFEF9C3).copy(alpha = 0.65f), RoundedCornerShape(8.dp))
-                                .border(0.75.dp, Color(0xFFCA8A04).copy(alpha = 0.6f), RoundedCornerShape(8.dp))
-                                .padding(horizontal = 11.dp, vertical = 5.dp)
-                        ) {
-                            Text(
-                                text = RegistrationNormalizer.formatForDisplay(vehicle.regNo),
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 0.6.sp,
-                                color = IosLabelPrimary
-                            )
-                        }
+                        // Authentic Indian HSRP Number Plate
+                        HsrpNumberPlate(
+                            regNo = vehicle.regNo
+                        )
 
                         DaysRemainingBadge(
                             daysRemaining = daysRemaining,
@@ -255,7 +250,7 @@ fun VehicleDetailScreen(
                                 text = make,
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = IosLabelSecondary
+                                color = labelSecondary
                             )
                         }
                     }
@@ -343,28 +338,34 @@ fun CountdownLiveBanner(
     expiryDate: Long?
 ) {
     val expiryStr = expiryDate?.let { UiFormatters.formatDate(it) } ?: "Unknown"
+    val isDark = isSystemInDarkTheme()
+    val secondaryLabel = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
+    val green = if (isDark) com.policydesk.app.ui.theme.AppleDarkSystemGreen else AppleSystemGreen
+    val red = if (isDark) com.policydesk.app.ui.theme.AppleDarkSystemRed else AppleSystemRed
+    val deepOrange = if (isDark) com.policydesk.app.ui.theme.AppleDarkSystemDeepOrange else AppleSystemDeepOrange
+    val orange = if (isDark) com.policydesk.app.ui.theme.AppleDarkSystemOrange else AppleSystemOrange
 
     val (accentColor, text) = when {
-        status == PolicyStatus.CLOSED -> Pair(IosLabelSecondary, "Vehicle is Closed")
-        status == PolicyStatus.RENEWED -> Pair(AppleSystemGreen, "Policy is Renewed")
+        status == PolicyStatus.CLOSED -> Pair(secondaryLabel, "Vehicle is Closed")
+        status == PolicyStatus.RENEWED -> Pair(green, "Policy is Renewed")
         daysRemaining < 0 -> Pair(
-            AppleSystemRed,
+            red,
             "Expired on $expiryStr (Overdue by ${-daysRemaining} days)"
         )
         daysRemaining == 0L -> Pair(
-            AppleSystemRed,
+            red,
             "Policy expires TODAY ($expiryStr)"
         )
         daysRemaining <= 7 -> Pair(
-            AppleSystemDeepOrange,
+            deepOrange,
             "Urgent: Expires in $daysRemaining days on $expiryStr"
         )
         daysRemaining <= 30 -> Pair(
-            AppleSystemOrange,
+            orange,
             "Expiring Soon: $daysRemaining days left (Expires $expiryStr)"
         )
         else -> Pair(
-            AppleSystemGreen,
+            green,
             "Policy Active: $daysRemaining days remaining (Expires $expiryStr)"
         )
     }

@@ -96,13 +96,6 @@ import com.policydesk.app.ui.theme.IosLabelSecondary
 import com.policydesk.app.ui.theme.IosLabelTertiary
 import com.policydesk.app.ui.theme.IosSeparator
 import com.policydesk.app.ui.theme.IosSystemBackground
-import com.policydesk.app.ui.theme.Navy800
-import com.policydesk.app.ui.theme.Navy900
-import com.policydesk.app.ui.theme.Slate100
-import com.policydesk.app.ui.theme.Slate200
-import com.policydesk.app.ui.theme.Slate400
-import com.policydesk.app.ui.theme.Slate50
-import com.policydesk.app.ui.theme.Slate600
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -54,12 +54,11 @@ import com.policydesk.app.domain.model.Sector
 import com.policydesk.app.ui.addpolicy.FormSectionCard
 import com.policydesk.app.ui.addpolicy.SectorOptionPill
 import com.policydesk.app.ui.addpolicy.formFieldColors
-import com.policydesk.app.ui.theme.CardBackground
-import com.policydesk.app.ui.theme.Navy900
-import com.policydesk.app.ui.theme.SapphireBlue
-import com.policydesk.app.ui.theme.Slate200
-import com.policydesk.app.ui.theme.Slate50
-import com.policydesk.app.ui.theme.Slate600
+import androidx.compose.foundation.isSystemInDarkTheme
+import com.policydesk.app.ui.theme.IosDarkLabelPrimary
+import com.policydesk.app.ui.theme.IosDarkLabelSecondary
+import com.policydesk.app.ui.theme.IosLabelPrimary
+import com.policydesk.app.ui.theme.IosLabelSecondary
 import com.policydesk.app.ui.theme.StatusActiveGreen
 import com.policydesk.app.ui.theme.StatusActiveGreenBg
 import com.policydesk.app.ui.theme.StatusExpiringAmber
@@ -157,6 +156,10 @@ fun PdfReviewScreen(
         },
         containerColor = androidx.compose.material3.MaterialTheme.colorScheme.background
     ) { paddingValues ->
+        val isDark = isSystemInDarkTheme()
+        val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
+        val labelSecondary = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
+
         if (state.pdfUri == null) {
             // Pick PDF Screen
             Column(
@@ -186,13 +189,13 @@ fun PdfReviewScreen(
                     text = "Import Policy PDF",
                     fontSize = 19.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Navy900
+                    color = labelPrimary
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = "Pick one or multiple insurer PDFs from storage or share directly to PolicyDesk from WhatsApp or Gmail.",
                     fontSize = 13.sp,
-                    color = Slate600,
+                    color = labelSecondary,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center
                 )
 
@@ -214,19 +217,22 @@ fun PdfReviewScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                CircularProgressIndicator(color = SapphireBlue, strokeWidth = 3.dp)
+                CircularProgressIndicator(
+                    color = if (isDark) com.policydesk.app.ui.theme.AppleDarkSystemBlue else com.policydesk.app.ui.theme.AppleSystemBlue,
+                    strokeWidth = 3.dp
+                )
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     text = "Reading policy document...",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = Navy900
+                    color = labelPrimary
                 )
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
                     text = "Extracting customer, vehicle & expiry dates with your AI key",
                     fontSize = 12.sp,
-                    color = Slate600
+                    color = labelSecondary
                 )
             }
         } else if (state.extractionError != null) {
@@ -250,13 +256,13 @@ fun PdfReviewScreen(
                     text = "Extraction Issue",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Navy900
+                    color = labelPrimary
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = state.extractionError ?: "Unknown error",
                     fontSize = 13.sp,
-                    color = Slate600,
+                    color = labelSecondary,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center
                 )
                 Spacer(modifier = Modifier.height(24.dp))

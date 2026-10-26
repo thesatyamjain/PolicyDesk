@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import com.policydesk.app.ui.theme.AppleDarkSystemBlue
 import com.policydesk.app.ui.theme.AppleIcons
 import com.policydesk.app.ui.components.AppleButton
 import com.policydesk.app.ui.components.AppleSecondaryButton
@@ -79,10 +80,7 @@ import com.policydesk.app.ui.theme.IosSystemBackground
 import com.policydesk.app.ui.theme.IosTertiaryGrouped
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
-import com.policydesk.app.ui.theme.Navy900
-import com.policydesk.app.ui.theme.Slate200
-import com.policydesk.app.ui.theme.Slate400
-import com.policydesk.app.ui.theme.Slate50
+import com.policydesk.app.ui.theme.IosLabelTertiary
 import kotlinx.coroutines.launch
 
 @Composable
@@ -212,14 +210,15 @@ fun SettingsScreen(
                     AiProvider.values().forEach { provider ->
                         val isSelected = state.aiConfig.provider == provider
                         val pillShape = RoundedCornerShape(10.dp)
+                        val activeBlue = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
                         Box(
                             modifier = Modifier
                                 .weight(1f)
                                 .clip(pillShape)
-                                .background(if (isSelected) AppleSystemBlue else (if (isDark) Color(0x33545458) else Color(0x14767680)), pillShape)
+                                .background(if (isSelected) activeBlue else (if (isDark) Color(0x33545458) else Color(0x14767680)), pillShape)
                                 .border(
                                     width = 1.dp,
-                                    color = if (isSelected) AppleSystemBlue else (if (isDark) Color(0x33FFFFFF) else Slate200),
+                                    color = if (isSelected) activeBlue else (if (isDark) Color(0x33FFFFFF) else Color(0x2E000000)),
                                     shape = pillShape
                                 )
                                 .clickable { viewModel.onProviderSelected(provider) }
@@ -252,7 +251,7 @@ fun SettingsScreen(
                             Icon(
                                 imageVector = if (showKey) Icons.Default.VisibilityOff else Icons.Default.Visibility,
                                 contentDescription = "Toggle Key",
-                                tint = Slate400
+                                tint = if (isDark) IosDarkLabelTertiary else IosLabelTertiary
                             )
                         }
                     },
