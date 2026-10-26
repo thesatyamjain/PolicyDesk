@@ -196,7 +196,7 @@ fun VehicleDetailScreen(
                 )
             }
         },
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = Color.Transparent
     ) { paddingValues ->
         val data = vehicleWithPolicies
         if (data == null) {

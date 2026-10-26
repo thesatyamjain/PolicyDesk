@@ -130,7 +130,7 @@ fun RenewPolicyScreen(
                 onNavigateBack = onNavigateBack
             )
         },
-        containerColor = androidx.compose.material3.MaterialTheme.colorScheme.background
+        containerColor = Color.Transparent
     ) { paddingValues ->
         val isDark = isSystemInDarkTheme()
         val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary

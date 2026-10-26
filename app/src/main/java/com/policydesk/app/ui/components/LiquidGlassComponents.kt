@@ -87,39 +87,97 @@ import com.policydesk.app.ui.theme.IosDarkLabelTertiary
 import com.policydesk.app.ui.theme.IosDarkSeparator
 import com.policydesk.app.ui.theme.IosLabelPrimary
 import com.policydesk.app.ui.theme.IosLabelSecondary
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import com.policydesk.app.ui.theme.IosLabelTertiary
 import com.policydesk.app.ui.theme.IosSeparator
 
 /**
- * Modifier that applies True Apple Liquid Glass properties:
+ * Root Ambient Aurora Mesh Canvas for Apple Liquid Glass (iOS 26 HIG).
+ * Radiates subtle sapphire, indigo, and emerald atmospheric light pools behind the viewport,
+ * providing the authentic chromatic refractive depth that liquid glass surfaces bend and scatter.
+ */
+@Composable
+fun LiquidGlassCanvas(
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    val isDark = isSystemInDarkTheme()
+
+    val baseBg = if (isDark) Color(0xFF0A0B0E) else Color(0xFFF2F4F8)
+    val auroraTopRight = if (isDark) Color(0xFF0A4074).copy(alpha = 0.38f) else Color(0xFF007AFF).copy(alpha = 0.08f)
+    val auroraCenterLeft = if (isDark) Color(0xFF381E72).copy(alpha = 0.32f) else Color(0xFF5856D6).copy(alpha = 0.06f)
+    val auroraBottomRight = if (isDark) Color(0xFF0B2D48).copy(alpha = 0.25f) else Color(0xFF34C759).copy(alpha = 0.05f)
+
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(baseBg)
+            .drawBehind {
+                // Top-Right Sapphire Radiant Glow
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(auroraTopRight, Color.Transparent),
+                        center = Offset(size.width * 0.95f, size.height * 0.12f),
+                        radius = size.width * 0.95f
+                    )
+                )
+                // Center-Left Indigo / Violet Soft Caustic
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(auroraCenterLeft, Color.Transparent),
+                        center = Offset(size.width * 0.05f, size.height * 0.45f),
+                        radius = size.width * 0.85f
+                    )
+                )
+                // Bottom-Right Ambient Pool
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(auroraBottomRight, Color.Transparent),
+                        center = Offset(size.width * 0.85f, size.height * 0.85f),
+                        radius = size.width * 0.90f
+                    )
+                )
+            }
+    ) {
+        content()
+    }
+}
+
+/**
+ * Modifier that applies True Apple Liquid Glass (iOS 26+ HIG specification):
  * 1. Soft diffused ambient & spot shadow
- * 2. Multi-stop translucent frosted gradient fill (Dark or Light)
- * 3. Directional specular refraction rim border
+ * 2. Crystalline translucent substrate with gradient refraction
+ * 3. Directional multi-stop specular Fresnel rim border (intense reflection at top)
+ * 4. Specular inner bevel highlight reflection along the top curved rim
  */
 fun Modifier.liquidGlass(
     shape: Shape = RoundedCornerShape(18.dp),
-    elevation: Dp = 3.dp,
+    elevation: Dp = 4.dp,
     isDark: Boolean = false,
-    fillAlphaTop: Float = if (isDark) 0.88f else 0.96f,
-    fillAlphaBottom: Float = if (isDark) 0.72f else 0.88f,
-    borderAlphaTop: Float = if (isDark) 0.28f else 0.95f,
-    borderAlphaBottom: Float = if (isDark) 0.06f else 0.65f
+    fillAlphaTop: Float = if (isDark) 0.68f else 0.82f,
+    fillAlphaBottom: Float = if (isDark) 0.46f else 0.64f,
+    borderAlphaTop: Float = if (isDark) 0.35f else 0.95f,
+    borderAlphaBottom: Float = if (isDark) 0.08f else 0.30f
 ): Modifier {
-    val topFill = if (isDark) Color(0xFF242426).copy(alpha = fillAlphaTop) else Color.White.copy(alpha = fillAlphaTop)
-    val bottomFill = if (isDark) Color(0xFF161618).copy(alpha = fillAlphaBottom) else Color(0xFFF9F9FB).copy(alpha = fillAlphaBottom)
+    val topFill = if (isDark) Color(0xFF222226).copy(alpha = fillAlphaTop) else Color.White.copy(alpha = fillAlphaTop)
+    val bottomFill = if (isDark) Color(0xFF141416).copy(alpha = fillAlphaBottom) else Color(0xFFF6F6F9).copy(alpha = fillAlphaBottom)
     val shadowColor = if (isDark) GlassDarkShadow else GlassShadow
 
     val borderColors = if (isDark) {
         listOf(
             Color.White.copy(alpha = borderAlphaTop),
-            Color.White.copy(alpha = borderAlphaTop * 0.4f),
+            Color.White.copy(alpha = borderAlphaTop * 0.45f),
             Color.White.copy(alpha = borderAlphaBottom)
         )
     } else {
         listOf(
             Color.White.copy(alpha = borderAlphaTop),
-            Color(0xFFE5E5EA).copy(alpha = 0.85f),
-            Color(0xFFD1D1D6).copy(alpha = borderAlphaBottom)
+            Color(0xFFE5E5EA).copy(alpha = 0.80f),
+            Color(0xFFC7C7CC).copy(alpha = borderAlphaBottom)
         )
     }
 
@@ -130,14 +188,28 @@ fun Modifier.liquidGlass(
             ambientColor = shadowColor,
             spotColor = shadowColor
         )
+        .clip(shape)
         .background(
             brush = Brush.verticalGradient(
                 colors = listOf(topFill, bottomFill)
             ),
             shape = shape
         )
+        .drawWithContent {
+            drawContent()
+            // Inner specular bevel reflection along the top rim
+            val specularColor = if (isDark) Color.White.copy(alpha = 0.16f) else Color.White.copy(alpha = 0.55f)
+            drawRect(
+                brush = Brush.verticalGradient(
+                    colors = listOf(specularColor, Color.Transparent),
+                    startY = 0f,
+                    endY = 16.dp.toPx()
+                ),
+                size = Size(size.width, 16.dp.toPx())
+            )
+        }
         .border(
-            width = 1.dp,
+            width = 1.2.dp,
             brush = Brush.verticalGradient(
                 colors = borderColors
             ),
@@ -664,9 +736,9 @@ fun LiquidGlassFloatingButton(
 }
 
 /**
- * Apple Primary Action Button (iOS 18 HIG)
- * Features squircle corners (12dp), spring press downstate, tactile haptic feedback,
- * and high-contrast typography.
+ * Apple Primary Action Button (iOS 26 HIG .glassProminent)
+ * Luminous vertical gradient, specular top highlight, soft radiant shadow,
+ * spring press physics and Cupertino haptic actuation.
  */
 @Composable
 fun AppleButton(
@@ -679,7 +751,7 @@ fun AppleButton(
     icon: ImageVector? = null,
     isLoading: Boolean = false,
     height: Dp = 50.dp,
-    shape: Shape = RoundedCornerShape(12.dp)
+    shape: Shape = RoundedCornerShape(14.dp)
 ) {
     val isDark = isSystemInDarkTheme()
     val haptic = LocalHapticFeedback.current
@@ -687,7 +759,7 @@ fun AppleButton(
     val isPressed by interactionSource.collectIsPressedAsState()
 
     val scale by animateFloatAsState(
-        targetValue = if (isPressed && enabled && !isLoading) 0.97f else 1f,
+        targetValue = if (isPressed && enabled && !isLoading) 0.965f else 1f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessMediumLow
@@ -707,12 +779,55 @@ fun AppleButton(
         contentColor
     }
 
+    val buttonBrush = if (!enabled) {
+        SolidColor(actualContainerColor)
+    } else {
+        val topBlue = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
+        val bottomBlue = if (isDark) Color(0xFF0056B3) else Color(0xFF005AC1)
+        Brush.verticalGradient(listOf(topBlue, bottomBlue))
+    }
+
+    val shadowColor = if (enabled) {
+        if (isDark) AppleDarkSystemBlue.copy(alpha = 0.35f) else AppleSystemBlue.copy(alpha = 0.30f)
+    } else Color.Transparent
+
     Box(
         modifier = modifier
             .scale(scale)
             .height(height)
-            .background(actualContainerColor, shape)
+            .shadow(
+                elevation = if (enabled) 5.dp else 0.dp,
+                shape = shape,
+                ambientColor = shadowColor,
+                spotColor = shadowColor
+            )
             .clip(shape)
+            .background(buttonBrush, shape)
+            .drawWithContent {
+                drawContent()
+                if (enabled) {
+                    // Specular rim light on top of button
+                    drawRect(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(Color.White.copy(alpha = 0.35f), Color.Transparent),
+                            startY = 0f,
+                            endY = 12.dp.toPx()
+                        ),
+                        size = Size(size.width, 12.dp.toPx())
+                    )
+                }
+            }
+            .border(
+                width = 1.dp,
+                brush = Brush.verticalGradient(
+                    colors = if (enabled) {
+                        listOf(Color.White.copy(alpha = 0.45f), Color.White.copy(alpha = 0.12f))
+                    } else {
+                        listOf(Color.Transparent, Color.Transparent)
+                    }
+                ),
+                shape = shape
+            )
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
@@ -758,8 +873,8 @@ fun AppleButton(
 }
 
 /**
- * Apple Secondary / Tinted Action Button (iOS 18 HIG)
- * Translucent tint background with colored text and spring downstate.
+ * Apple Secondary / Frosted Glass Action Button (iOS 26 HIG .glass)
+ * Translucent frosted glass capsule with directional specular border and haptic actuation.
  */
 @Composable
 fun AppleSecondaryButton(
@@ -786,10 +901,18 @@ fun AppleSecondaryButton(
         label = "apple_sec_button_spring"
     )
 
-    val bgColor = if (!enabled) {
-        if (isDark) Color(0x1AFFFFFF) else Color(0x0A000000)
+    val bgBrush = if (!enabled) {
+        SolidColor(if (isDark) Color(0x1AFFFFFF) else Color(0x0A000000))
     } else {
-        tintColor.copy(alpha = if (isDark) 0.18f else 0.10f)
+        if (isDark) {
+            Brush.verticalGradient(
+                listOf(Color(0xFF2C2C2E).copy(alpha = 0.65f), Color(0xFF1C1C1E).copy(alpha = 0.45f))
+            )
+        } else {
+            Brush.verticalGradient(
+                listOf(Color.White.copy(alpha = 0.85f), Color(0xFFF2F2F7).copy(alpha = 0.65f))
+            )
+        }
     }
 
     val contentColor = if (!enabled) {
@@ -798,15 +921,29 @@ fun AppleSecondaryButton(
         tintColor
     }
 
-    val borderColor = if (enabled) tintColor.copy(alpha = 0.25f) else Color.Transparent
+    val borderBrush = if (enabled) {
+        if (isDark) {
+            Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.28f), Color.White.copy(alpha = 0.08f)))
+        } else {
+            Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.95f), Color(0xFFD1D1D6).copy(alpha = 0.40f)))
+        }
+    } else {
+        SolidColor(Color.Transparent)
+    }
 
     Box(
         modifier = modifier
             .scale(scale)
             .height(height)
-            .background(bgColor, shape)
-            .border(0.5.dp, borderColor, shape)
+            .shadow(
+                elevation = if (enabled) 2.dp else 0.dp,
+                shape = shape,
+                ambientColor = if (isDark) GlassDarkShadow else GlassShadow,
+                spotColor = if (isDark) GlassDarkShadow else GlassShadow
+            )
             .clip(shape)
+            .background(bgBrush, shape)
+            .border(1.dp, borderBrush, shape)
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
@@ -1147,8 +1284,9 @@ enum class DockTab {
 }
 
 /**
- * Floating Cupertino Glass Dock (Bottom Navigation)
- * Grounds the terminal experience with frosted acrylic blur, specular highlight, and haptic touch.
+ * Floating Cupertino Glass Dock (Bottom Navigation - iOS 26 HIG)
+ * Suspended optical substrate with crystalline refraction, specular rim,
+ * illuminated selection pill, and responsive spring physics.
  */
 @Composable
 fun LiquidGlassDock(
@@ -1172,23 +1310,37 @@ fun LiquidGlassDock(
                 ambientColor = if (isDark) Color(0x99000000) else Color(0x33000000),
                 spotColor = if (isDark) Color(0x99000000) else Color(0x33000000)
             )
+            .clip(dockShape)
             .background(
                 brush = Brush.verticalGradient(
                     colors = if (isDark) {
-                        listOf(Color(0xEE1C1C1E), Color(0xEE141416))
+                        listOf(Color(0xFF222226).copy(alpha = 0.75f), Color(0xFF141416).copy(alpha = 0.65f))
                     } else {
-                        listOf(Color(0xF5FFFFFF), Color(0xEFF2F2F7))
+                        listOf(Color.White.copy(alpha = 0.82f), Color(0xFFF2F2F7).copy(alpha = 0.70f))
                     }
                 ),
                 shape = dockShape
             )
+            .drawWithContent {
+                drawContent()
+                // Top inner specular rim reflection
+                val specularColor = if (isDark) Color.White.copy(alpha = 0.20f) else Color.White.copy(alpha = 0.65f)
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(specularColor, Color.Transparent),
+                        startY = 0f,
+                        endY = 14.dp.toPx()
+                    ),
+                    size = Size(size.width, 14.dp.toPx())
+                )
+            }
             .border(
-                width = 1.dp,
+                width = 1.2.dp,
                 brush = Brush.verticalGradient(
                     colors = if (isDark) {
-                        listOf(Color(0x40FFFFFF), Color(0x10FFFFFF))
+                        listOf(Color.White.copy(alpha = 0.35f), Color.White.copy(alpha = 0.08f))
                     } else {
-                        listOf(Color(0xB3FFFFFF), Color(0x40000000))
+                        listOf(Color.White.copy(alpha = 0.95f), Color(0xFFC7C7CC).copy(alpha = 0.35f))
                     }
                 ),
                 shape = dockShape
@@ -1303,11 +1455,19 @@ private fun DockItem(
         label = "dock_color"
     )
 
+    val itemShape = RoundedCornerShape(16.dp)
+    val pillBg = if (isSelected) {
+        if (isDark) Color(0x330A84FF) else Color(0x18007AFF)
+    } else {
+        Color.Transparent
+    }
+
     Column(
         modifier = Modifier
-            .clip(RoundedCornerShape(12.dp))
+            .clip(itemShape)
+            .background(pillBg, itemShape)
             .clickable(onClick = onClick)
-            .padding(horizontal = 8.dp, vertical = 4.dp),
+            .padding(horizontal = 10.dp, vertical = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {

@@ -239,7 +239,7 @@ fun DashboardScreen(
                 onAddClicked = { showAddChooserSheet = true }
             )
         },
-        containerColor = androidx.compose.material3.MaterialTheme.colorScheme.background
+        containerColor = Color.Transparent
     ) { paddingValues ->
         Column(
             modifier = Modifier

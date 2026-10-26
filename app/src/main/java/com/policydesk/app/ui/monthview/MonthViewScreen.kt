@@ -99,7 +99,7 @@ fun MonthViewScreen(
                 }
             )
         },
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = Color.Transparent
     ) { paddingValues ->
         val isDark = isSystemInDarkTheme()
         val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
