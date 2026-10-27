@@ -3,7 +3,9 @@ package com.policydesk.app.ui.navigation
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -16,6 +18,7 @@ import androidx.navigation.navArgument
 import com.policydesk.app.ui.addpolicy.AddPolicyScreen
 import com.policydesk.app.ui.components.DockTab
 import com.policydesk.app.ui.components.LiquidGlassDock
+import com.policydesk.app.ui.components.LocalHazeState
 import com.policydesk.app.ui.customers.CustomersScreen
 import com.policydesk.app.ui.dashboard.DashboardScreen
 import com.policydesk.app.ui.detail.VehicleDetailScreen
@@ -25,6 +28,8 @@ import com.policydesk.app.ui.pdfreview.PdfReviewScreen
 import com.policydesk.app.ui.renew.RenewPolicyScreen
 import com.policydesk.app.ui.reports.ReportsScreen
 import com.policydesk.app.ui.settings.SettingsScreen
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 
 sealed class Screen(val route: String) {
     object Dashboard : Screen("dashboard")
@@ -67,12 +72,17 @@ fun PolicyDeskNavHost(
     }
 
     val isTopLevelTab = currentTab != null
+    val hazeState = remember { HazeState() }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        NavHost(
-            navController = navController,
-            startDestination = startDestination
-        ) {
+    CompositionLocalProvider(LocalHazeState provides hazeState) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            NavHost(
+                navController = navController,
+                startDestination = startDestination,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .hazeSource(state = hazeState)
+            ) {
             composable(Screen.Dashboard.route) {
                 DashboardScreen(
                     onNavigateToAddPolicy = {
@@ -238,8 +248,10 @@ fun PolicyDeskNavHost(
                         }
                     }
                 },
+                hazeState = hazeState,
                 modifier = Modifier.align(Alignment.BottomCenter)
             )
         }
     }
+}
 }

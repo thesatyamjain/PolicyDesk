@@ -36,8 +36,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.HazeStyle
+import dev.chrisbanes.haze.HazeTint
+import dev.chrisbanes.haze.hazeEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -96,6 +101,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import com.policydesk.app.ui.theme.IosLabelTertiary
 import com.policydesk.app.ui.theme.IosSeparator
+
+val LocalHazeState = compositionLocalOf<HazeState?> { null }
 
 /**
  * Root Ambient Aurora Mesh Canvas for Apple Liquid Glass (iOS HIG).
@@ -1274,11 +1281,13 @@ fun LiquidGlassDock(
     currentTab: DockTab,
     onTabSelected: (DockTab) -> Unit,
     modifier: Modifier = Modifier,
-    onAddClicked: (() -> Unit)? = null
+    onAddClicked: (() -> Unit)? = null,
+    hazeState: HazeState? = null
 ) {
     val isDark = isSystemInDarkTheme()
     val dockShape = RoundedCornerShape(28.dp)
     val haptic = LocalHapticFeedback.current
+    val activeHaze = hazeState ?: LocalHazeState.current
 
     val tabs = remember {
         listOf(
@@ -1290,6 +1299,19 @@ fun LiquidGlassDock(
     }
 
     val selectedIndex = tabs.indexOfFirst { it.first == currentTab }.coerceAtLeast(0)
+
+    val hazeMod = if (activeHaze != null) {
+        Modifier.hazeEffect(
+            state = activeHaze,
+            style = HazeStyle(
+                blurRadius = 26.dp,
+                tints = listOf(
+                    HazeTint(if (isDark) Color(0xFF121215).copy(alpha = 0.58f) else Color.White.copy(alpha = 0.62f))
+                ),
+                noiseFactor = 0.05f
+            )
+        )
+    } else Modifier
 
     Box(
         modifier = modifier
@@ -1310,21 +1332,22 @@ fun LiquidGlassDock(
                     spotColor = if (isDark) Color(0x66000000) else Color(0x14000000)
                 )
                 .clip(dockShape)
+                .then(hazeMod)
                 .background(
                     brush = Brush.linearGradient(
                         colors = if (isDark) {
                             listOf(
-                                Color(0xFF242428).copy(alpha = 0.80f),
-                                Color(0xFF161618).copy(alpha = 0.50f),
-                                Color(0xFF101012).copy(alpha = 0.35f),
-                                Color(0xFF1E1E22).copy(alpha = 0.55f)
+                                Color(0xFF242428).copy(alpha = if (activeHaze != null) 0.38f else 0.80f),
+                                Color(0xFF161618).copy(alpha = if (activeHaze != null) 0.28f else 0.50f),
+                                Color(0xFF101012).copy(alpha = if (activeHaze != null) 0.18f else 0.35f),
+                                Color(0xFF1E1E22).copy(alpha = if (activeHaze != null) 0.28f else 0.55f)
                             )
                         } else {
                             listOf(
-                                Color.White.copy(alpha = 0.82f),
-                                Color.White.copy(alpha = 0.46f),
-                                Color.White.copy(alpha = 0.35f),
-                                Color.White.copy(alpha = 0.55f)
+                                Color.White.copy(alpha = if (activeHaze != null) 0.45f else 0.82f),
+                                Color.White.copy(alpha = if (activeHaze != null) 0.30f else 0.46f),
+                                Color.White.copy(alpha = if (activeHaze != null) 0.20f else 0.35f),
+                                Color.White.copy(alpha = if (activeHaze != null) 0.30f else 0.55f)
                             )
                         },
                         start = Offset.Zero,
@@ -1334,7 +1357,17 @@ fun LiquidGlassDock(
                 )
                 .border(
                     width = 1.1.dp,
-                    color = if (isDark) Color.White.copy(alpha = 0.25f) else Color.White.copy(alpha = 0.90f),
+                    brush = Brush.verticalGradient(
+                        colors = if (isDark) listOf(
+                            Color.White.copy(alpha = 0.35f),
+                            Color.White.copy(alpha = 0.12f),
+                            Color.White.copy(alpha = 0.04f)
+                        ) else listOf(
+                            Color.White.copy(alpha = 0.90f),
+                            Color.White.copy(alpha = 0.35f),
+                            Color.White.copy(alpha = 0.15f)
+                        )
+                    ),
                     shape = dockShape
                 )
                 .padding(4.dp)
