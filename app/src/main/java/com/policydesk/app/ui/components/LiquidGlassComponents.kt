@@ -277,17 +277,33 @@ fun LiquidGlassTopBar(
     val primaryText = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
     val secondaryText = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
     val accentBlue = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
+    val separatorColor = if (isDark) IosDarkSeparator else IosSeparator
 
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .liquidGlass(
-                shape = RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp),
-                elevation = 3.dp,
-                isDark = isDark,
-                fillAlphaTop = if (isDark) 0.94f else 0.96f,
-                fillAlphaBottom = if (isDark) 0.84f else 0.90f
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = if (isDark) listOf(
+                        Color(0xF0000000),
+                        Color(0xD0000000),
+                        Color(0x99000000)
+                    ) else listOf(
+                        Color(0xF5FFFFFF),
+                        Color(0xE0FFFFFF),
+                        Color(0xB3FFFFFF)
+                    )
+                )
             )
+            .drawBehind {
+                // Subtle Apple hairline bottom divider only (no top/side card borders)
+                drawLine(
+                    color = separatorColor.copy(alpha = 0.45f),
+                    start = Offset(0f, size.height),
+                    end = Offset(size.width, size.height),
+                    strokeWidth = 0.5.dp.toPx()
+                )
+            }
             .statusBarsPadding()
             .padding(horizontal = 16.dp, vertical = 10.dp)
     ) {
