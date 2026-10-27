@@ -1,5 +1,13 @@
 package com.policydesk.app.ui.navigation
 
+import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -81,7 +89,31 @@ fun PolicyDeskNavHost(
                 startDestination = startDestination,
                 modifier = Modifier
                     .fillMaxSize()
-                    .hazeSource(state = hazeState)
+                    .hazeSource(state = hazeState),
+                enterTransition = {
+                    slideInHorizontally(
+                        initialOffsetX = { fullWidth -> (fullWidth * 0.32f).toInt() },
+                        animationSpec = spring(dampingRatio = 0.86f, stiffness = 420f)
+                    ) + fadeIn(animationSpec = tween(220, easing = LinearOutSlowInEasing))
+                },
+                exitTransition = {
+                    slideOutHorizontally(
+                        targetOffsetX = { fullWidth -> -(fullWidth * 0.18f).toInt() },
+                        animationSpec = spring(dampingRatio = 0.86f, stiffness = 420f)
+                    ) + fadeOut(animationSpec = tween(180, easing = FastOutLinearInEasing))
+                },
+                popEnterTransition = {
+                    slideInHorizontally(
+                        initialOffsetX = { fullWidth -> -(fullWidth * 0.18f).toInt() },
+                        animationSpec = spring(dampingRatio = 0.86f, stiffness = 420f)
+                    ) + fadeIn(animationSpec = tween(220, easing = LinearOutSlowInEasing))
+                },
+                popExitTransition = {
+                    slideOutHorizontally(
+                        targetOffsetX = { fullWidth -> (fullWidth * 0.32f).toInt() },
+                        animationSpec = spring(dampingRatio = 0.86f, stiffness = 420f)
+                    ) + fadeOut(animationSpec = tween(180, easing = FastOutLinearInEasing))
+                }
             ) {
             composable(Screen.Dashboard.route) {
                 DashboardScreen(

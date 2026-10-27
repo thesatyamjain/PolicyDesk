@@ -2,6 +2,11 @@ package com.policydesk.app.ui.dashboard
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.ui.draw.scale
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -496,17 +501,26 @@ fun DashboardScreen(
                         val haptic = LocalHapticFeedback.current
                         val isDark = isSystemInDarkTheme()
 
+                        val pillScale by animateFloatAsState(
+                            targetValue = if (isSelected) 1.04f else 1.0f,
+                            animationSpec = spring(dampingRatio = 0.65f, stiffness = Spring.StiffnessMedium),
+                            label = "expiry_pill_scale"
+                        )
+                        val pillBg by animateColorAsState(
+                            targetValue = if (isSelected) {
+                                if (isDark) AppleDarkSystemBlue else AppleSystemBlue
+                            } else {
+                                if (isDark) Color(0xFF2C2C2E) else Color.White
+                            },
+                            animationSpec = spring(dampingRatio = 0.8f),
+                            label = "expiry_pill_bg"
+                        )
+
                         Box(
                             modifier = Modifier
+                                .scale(pillScale)
                                 .clip(pillShape)
-                                .background(
-                                    color = if (isSelected) {
-                                        if (isDark) AppleDarkSystemBlue else AppleSystemBlue
-                                    } else {
-                                        if (isDark) Color(0xFF2C2C2E) else Color.White
-                                    },
-                                    shape = pillShape
-                                )
+                                .background(pillBg, pillShape)
                                 .border(
                                     width = 1.dp,
                                     color = if (isSelected) {
@@ -550,17 +564,26 @@ fun DashboardScreen(
                         val haptic = LocalHapticFeedback.current
                         val isDark = isSystemInDarkTheme()
 
+                        val pillScale by animateFloatAsState(
+                            targetValue = if (isSelected) 1.04f else 1.0f,
+                            animationSpec = spring(dampingRatio = 0.65f, stiffness = Spring.StiffnessMedium),
+                            label = "sector_pill_scale"
+                        )
+                        val pillBg by animateColorAsState(
+                            targetValue = if (isSelected) {
+                                (if (isDark) AppleDarkSystemBlue else AppleSystemBlue).copy(alpha = 0.16f)
+                            } else {
+                                if (isDark) Color(0xFF2C2C2E) else Color.White
+                            },
+                            animationSpec = spring(dampingRatio = 0.8f),
+                            label = "sector_pill_bg"
+                        )
+
                         Box(
                             modifier = Modifier
+                                .scale(pillScale)
                                 .clip(pillShape)
-                                .background(
-                                    color = if (isSelected) {
-                                        (if (isDark) AppleDarkSystemBlue else AppleSystemBlue).copy(alpha = 0.16f)
-                                    } else {
-                                        if (isDark) Color(0xFF2C2C2E) else Color.White
-                                    },
-                                    shape = pillShape
-                                )
+                                .background(pillBg, pillShape)
                                 .border(
                                     width = 1.dp,
                                     color = if (isSelected) {

@@ -224,10 +224,10 @@ fun LiquidGlassCard(
     val isPressed by interactionSource.collectIsPressedAsState()
 
     val scale by animateFloatAsState(
-        targetValue = if (isPressed && onClick != null) 0.975f else 1f,
+        targetValue = if (isPressed && onClick != null) 0.962f else 1f,
         animationSpec = spring(
-            dampingRatio = Spring.DampingRatioLowBouncy,
-            stiffness = Spring.StiffnessMediumLow
+            dampingRatio = 0.78f,
+            stiffness = 380f
         ),
         label = "glass_card_spring"
     )
@@ -1393,8 +1393,8 @@ fun LiquidGlassDock(
                 val pillOffset by animateDpAsState(
                     targetValue = itemWidth * selectedIndex,
                     animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioLowBouncy,
-                        stiffness = Spring.StiffnessMediumLow
+                        dampingRatio = 0.76f,
+                        stiffness = 380f
                     ),
                     label = "dock_gliding_pill"
                 )
@@ -1442,6 +1442,15 @@ fun LiquidGlassDock(
                         val activeColor = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
                         val inactiveColor = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
 
+                        val iconScale by animateFloatAsState(
+                            targetValue = if (isSelected) 1.14f else 1.0f,
+                            animationSpec = spring(
+                                dampingRatio = 0.52f,
+                                stiffness = Spring.StiffnessMediumLow
+                            ),
+                            label = "dock_icon_pop"
+                        )
+
                         Box(
                             modifier = Modifier
                                 .weight(1f)
@@ -1464,7 +1473,9 @@ fun LiquidGlassDock(
                                     imageVector = icon,
                                     contentDescription = label,
                                     tint = if (isSelected) activeColor else inactiveColor,
-                                    modifier = Modifier.size(19.dp)
+                                    modifier = Modifier
+                                        .size(19.dp)
+                                        .scale(iconScale)
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
