@@ -244,21 +244,6 @@ fun DashboardScreen(
                 }
             )
         },
-        bottomBar = {
-            LiquidGlassDock(
-                currentTab = DockTab.DASHBOARD,
-                onTabSelected = { tab ->
-                    when (tab) {
-                        DockTab.DASHBOARD -> { /* Already on Dashboard */ }
-                        DockTab.CUSTOMERS -> onNavigateToCustomers()
-                        DockTab.TIMELINE -> onNavigateToMonthView()
-                        DockTab.REPORTS -> onNavigateToReports()
-                        DockTab.SETTINGS -> onNavigateToSettings()
-                    }
-                },
-                onAddClicked = { showAddChooserSheet = true }
-            )
-        },
         containerColor = Color.Transparent
     ) { paddingValues ->
         LazyColumn(
