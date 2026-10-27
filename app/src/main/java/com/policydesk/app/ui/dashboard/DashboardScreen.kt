@@ -207,6 +207,26 @@ fun DashboardScreen(
                     val haptic = LocalHapticFeedback.current
                     val actionTint = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
 
+                    // Prominent Apple Glass Add Button (My Warranties style)
+                    Box(
+                        modifier = Modifier
+                            .size(34.dp)
+                            .clip(CircleShape)
+                            .background(if (isDark) AppleDarkSystemBlue else AppleSystemBlue, CircleShape)
+                            .clickable {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                showAddChooserSheet = true
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = AppleIcons.Plus,
+                            contentDescription = "Add Policy",
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
                     IconButton(
                         onClick = {
                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -241,357 +261,366 @@ fun DashboardScreen(
         },
         containerColor = Color.Transparent
     ) { paddingValues ->
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                .padding(paddingValues),
+            contentPadding = PaddingValues(top = 8.dp, bottom = 96.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            // 1. Executive Bento Hero Pulse Card (Full-Width)
-            LiquidGlassCard(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 6.dp),
-                shape = RoundedCornerShape(20.dp),
-                elevation = 4.dp,
-                onClick = { viewModel.onFilterSelected(ExpiryFilter.ALL) }
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+            // 1. Executive Bento Hero Pulse Card (Full-Width, Scrollable)
+            item {
+                LiquidGlassCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    elevation = 4.dp,
+                    onClick = { viewModel.onFilterSelected(ExpiryFilter.ALL) }
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .size(8.dp)
-                                    .background(AppleSystemGreen, CircleShape)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .background(AppleSystemGreen, CircleShape)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "PORTFOLIO IN FORCE",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isDark) AppleDarkSystemGreen else AppleSystemGreen,
+                                    letterSpacing = 0.8.sp
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Row(verticalAlignment = Alignment.Bottom) {
+                                Text(
+                                    text = "${uiState.summary.totalActiveCount}",
+                                    fontSize = 32.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = labelPrimary,
+                                    letterSpacing = (-0.8).sp,
+                                    lineHeight = 34.sp
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Active Vehicles",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = labelSecondary,
+                                    modifier = Modifier.padding(bottom = 3.dp)
+                                )
+                            }
+                        }
+
+                        // Quick Month Timeline Pill Shortcut
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(if (isDark) Color(0x330A84FF) else Color(0x1F007AFF))
+                                .clickable(onClick = onNavigateToMonthView)
+                                .padding(horizontal = 10.dp, vertical = 6.dp)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = AppleIcons.Calendar,
+                                    contentDescription = null,
+                                    tint = if (isDark) AppleDarkSystemBlue else AppleSystemBlue,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "Timeline",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 2. Urgent Action Triage Bento (2 Columns, Scrollable)
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    // Overdue Action Card
+                    LiquidGlassCard(
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(18.dp),
+                        elevation = 3.dp,
+                        onClick = { viewModel.onFilterSelected(ExpiryFilter.OVERDUE) }
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Text(
-                                text = "PORTFOLIO IN FORCE",
+                                text = "OVERDUE",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (isDark) AppleDarkSystemGreen else AppleSystemGreen,
-                                letterSpacing = 0.8.sp
+                                color = AppleSystemRed,
+                                letterSpacing = 0.5.sp
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .size(6.dp)
+                                    .background(AppleSystemRed, CircleShape)
                             )
                         }
                         Spacer(modifier = Modifier.height(4.dp))
-                        Row(verticalAlignment = Alignment.Bottom) {
+                        Text(
+                            text = "${uiState.summary.overdueCount}",
+                            fontSize = 26.sp,
+                            fontWeight = FontWeight.Black,
+                            color = AppleSystemRed,
+                            letterSpacing = (-0.5).sp,
+                            lineHeight = 28.sp
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "Needs immediate nudge",
+                            fontSize = 11.sp,
+                            color = labelSecondary
+                        )
+                    }
+
+                    // Next 7 Days Card
+                    LiquidGlassCard(
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(18.dp),
+                        elevation = 3.dp,
+                        onClick = { viewModel.onFilterSelected(ExpiryFilter.NEXT_7_DAYS) }
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Text(
-                                text = "${uiState.summary.totalActiveCount}",
-                                fontSize = 32.sp,
-                                fontWeight = FontWeight.Black,
-                                color = labelPrimary,
-                                letterSpacing = (-0.8).sp,
-                                lineHeight = 34.sp
+                                text = "THIS WEEK",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = AppleSystemDeepOrange,
+                                letterSpacing = 0.5.sp
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .size(6.dp)
+                                    .background(AppleSystemDeepOrange, CircleShape)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "${uiState.summary.next7DaysCount}",
+                            fontSize = 26.sp,
+                            fontWeight = FontWeight.Black,
+                            color = AppleSystemDeepOrange,
+                            letterSpacing = (-0.5).sp,
+                            lineHeight = 28.sp
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "Expiring in 7 days",
+                            fontSize = 11.sp,
+                            color = labelSecondary
+                        )
+                    }
+                }
+            }
+
+            // 3. Next 30 Days Pipeline Banner Strip (Scrollable)
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(if (isDark) Color(0x332C2C2E) else Color(0x66FFFFFF))
+                        .border(
+                            0.5.dp,
+                            if (isDark) Color(0x33FFFFFF) else Color(0x33000000),
+                            RoundedCornerShape(14.dp)
+                        )
+                        .clickable { viewModel.onFilterSelected(ExpiryFilter.NEXT_30_DAYS) }
+                        .padding(horizontal = 14.dp, vertical = 9.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(7.dp)
+                                    .background(AppleSystemOrange, CircleShape)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "Active Vehicles",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = labelSecondary,
-                                modifier = Modifier.padding(bottom = 3.dp)
-                            )
-                        }
-                    }
-
-                    // Quick Month Timeline Pill Shortcut
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(if (isDark) Color(0x330A84FF) else Color(0x1F007AFF))
-                            .clickable(onClick = onNavigateToMonthView)
-                            .padding(horizontal = 10.dp, vertical = 6.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = AppleIcons.Calendar,
-                                contentDescription = null,
-                                tint = if (isDark) AppleDarkSystemBlue else AppleSystemBlue,
-                                modifier = Modifier.size(14.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "Timeline",
+                                text = "30-Day Renewal Pipeline",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
+                                color = labelPrimary
+                            )
+                        }
+                        Text(
+                            text = "${uiState.summary.next30DaysCount} policies →",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = AppleSystemOrange
+                        )
+                    }
+                }
+            }
+
+            // 4. Apple Liquid Glass Search Bar (Scrollable)
+            item {
+                LiquidGlassSearchBar(
+                    query = uiState.searchQuery,
+                    onQueryChange = viewModel::onSearchQueryChanged,
+                    placeholder = "Search registration, customer, phone...",
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp)
+                )
+            }
+
+            // 5. Expiry & Sector Filter Glass Pills (Scrollable)
+            item {
+                LazyRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    items(ExpiryFilter.values()) { filter ->
+                        val isSelected = uiState.activeFilter == filter
+                        val pillShape = RoundedCornerShape(12.dp)
+                        val haptic = LocalHapticFeedback.current
+                        val isDark = isSystemInDarkTheme()
+
+                        Box(
+                            modifier = Modifier
+                                .clip(pillShape)
+                                .background(
+                                    color = if (isSelected) {
+                                        if (isDark) AppleDarkSystemBlue else AppleSystemBlue
+                                    } else {
+                                        if (isDark) Color(0xFF2C2C2E) else Color.White
+                                    },
+                                    shape = pillShape
+                                )
+                                .border(
+                                    width = 1.dp,
+                                    color = if (isSelected) {
+                                        Color.Transparent
+                                    } else {
+                                        if (isDark) Color(0x38FFFFFF) else Color(0x24000000)
+                                    },
+                                    shape = pillShape
+                                )
+                                .clickable {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    viewModel.onFilterSelected(filter)
+                                }
+                                .padding(horizontal = 13.dp, vertical = 7.dp)
+                        ) {
+                            Text(
+                                text = filter.label,
+                                fontSize = 12.sp,
+                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+                                color = if (isSelected) Color.White else (if (isDark) IosDarkLabelPrimary else IosLabelPrimary)
+                            )
+                        }
+                    }
+
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .padding(horizontal = 4.dp)
+                                .width(1.dp)
+                                .height(18.dp)
+                                .background(
+                                    if (isSystemInDarkTheme()) IosDarkSeparator else IosSeparator,
+                                    RoundedCornerShape(1.dp)
+                                )
+                        )
+                    }
+
+                    items(SectorFilter.values()) { sector ->
+                        val isSelected = uiState.sectorFilter == sector
+                        val pillShape = RoundedCornerShape(12.dp)
+                        val haptic = LocalHapticFeedback.current
+                        val isDark = isSystemInDarkTheme()
+
+                        Box(
+                            modifier = Modifier
+                                .clip(pillShape)
+                                .background(
+                                    color = if (isSelected) {
+                                        (if (isDark) AppleDarkSystemBlue else AppleSystemBlue).copy(alpha = 0.16f)
+                                    } else {
+                                        if (isDark) Color(0xFF2C2C2E) else Color.White
+                                    },
+                                    shape = pillShape
+                                )
+                                .border(
+                                    width = 1.dp,
+                                    color = if (isSelected) {
+                                        if (isDark) AppleDarkSystemBlue else AppleSystemBlue
+                                    } else {
+                                        if (isDark) Color(0x38FFFFFF) else Color(0x24000000)
+                                    },
+                                    shape = pillShape
+                                )
+                                .clickable {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    viewModel.onSectorFilterSelected(sector)
+                                }
+                                .padding(horizontal = 13.dp, vertical = 7.dp)
+                        ) {
+                            Text(
+                                text = sector.label,
+                                fontSize = 12.sp,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                color = if (isSelected) {
+                                    if (isDark) AppleDarkSystemBlue else AppleSystemBlue
+                                } else {
+                                    if (isDark) IosDarkLabelSecondary else IosLabelSecondary
+                                }
                             )
                         }
                     }
                 }
             }
 
-            // 2. Urgent Action Triage Bento (2 Columns)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                // Overdue Action Card
-                LiquidGlassCard(
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(18.dp),
-                    elevation = 3.dp,
-                    onClick = { viewModel.onFilterSelected(ExpiryFilter.OVERDUE) }
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "OVERDUE",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = AppleSystemRed,
-                            letterSpacing = 0.5.sp
-                        )
-                        Box(
-                            modifier = Modifier
-                                .size(6.dp)
-                                .background(AppleSystemRed, CircleShape)
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "${uiState.summary.overdueCount}",
-                        fontSize = 26.sp,
-                        fontWeight = FontWeight.Black,
-                        color = AppleSystemRed,
-                        letterSpacing = (-0.5).sp,
-                        lineHeight = 28.sp
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = "Needs immediate nudge",
-                        fontSize = 11.sp,
-                        color = labelSecondary
-                    )
-                }
-
-                // Next 7 Days Card
-                LiquidGlassCard(
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(18.dp),
-                    elevation = 3.dp,
-                    onClick = { viewModel.onFilterSelected(ExpiryFilter.NEXT_7_DAYS) }
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "THIS WEEK",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = AppleSystemDeepOrange,
-                            letterSpacing = 0.5.sp
-                        )
-                        Box(
-                            modifier = Modifier
-                                .size(6.dp)
-                                .background(AppleSystemDeepOrange, CircleShape)
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "${uiState.summary.next7DaysCount}",
-                        fontSize = 26.sp,
-                        fontWeight = FontWeight.Black,
-                        color = AppleSystemDeepOrange,
-                        letterSpacing = (-0.5).sp,
-                        lineHeight = 28.sp
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = "Expiring in 7 days",
-                        fontSize = 11.sp,
-                        color = labelSecondary
-                    )
-                }
-            }
-
-            // 3. Next 30 Days Pipeline Banner Strip
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 4.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(if (isDark) Color(0x332C2C2E) else Color(0x66FFFFFF))
-                    .border(
-                        0.5.dp,
-                        if (isDark) Color(0x33FFFFFF) else Color(0x33000000),
-                        RoundedCornerShape(14.dp)
-                    )
-                    .clickable { viewModel.onFilterSelected(ExpiryFilter.NEXT_30_DAYS) }
-                    .padding(horizontal = 14.dp, vertical = 9.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(7.dp)
-                                .background(AppleSystemOrange, CircleShape)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "30-Day Renewal Pipeline",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = labelPrimary
-                        )
-                    }
-                    Text(
-                        text = "${uiState.summary.next30DaysCount} policies →",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = AppleSystemOrange
-                    )
-                }
-            }
-
-            // Apple Liquid Glass Search Bar
-            LiquidGlassSearchBar(
-                query = uiState.searchQuery,
-                onQueryChange = viewModel::onSearchQueryChanged,
-                placeholder = "Search registration, customer, phone...",
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
-            )
-
-            // Expiry & Sector Filter Glass Pills
-            LazyRow(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                items(ExpiryFilter.values()) { filter ->
-                    val isSelected = uiState.activeFilter == filter
-                    val pillShape = RoundedCornerShape(12.dp)
-                    val haptic = LocalHapticFeedback.current
-                    val isDark = isSystemInDarkTheme()
-
-                    Box(
-                        modifier = Modifier
-                            .clip(pillShape)
-                            .background(
-                                color = if (isSelected) {
-                                    if (isDark) AppleDarkSystemBlue else AppleSystemBlue
-                                } else {
-                                    if (isDark) Color(0xFF2C2C2E) else Color.White
-                                },
-                                shape = pillShape
-                            )
-                            .border(
-                                width = 1.dp,
-                                color = if (isSelected) {
-                                    Color.Transparent
-                                } else {
-                                    if (isDark) Color(0x38FFFFFF) else Color(0x24000000)
-                                },
-                                shape = pillShape
-                            )
-                            .clickable {
-                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                viewModel.onFilterSelected(filter)
-                            }
-                            .padding(horizontal = 13.dp, vertical = 7.dp)
-                    ) {
-                        Text(
-                            text = filter.label,
-                            fontSize = 12.sp,
-                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
-                            color = if (isSelected) Color.White else (if (isDark) IosDarkLabelPrimary else IosLabelPrimary)
-                        )
-                    }
-                }
-
-                item {
-                    Box(
-                        modifier = Modifier
-                            .padding(horizontal = 4.dp)
-                            .width(1.dp)
-                            .height(18.dp)
-                            .background(
-                                if (isSystemInDarkTheme()) IosDarkSeparator else IosSeparator,
-                                RoundedCornerShape(1.dp)
-                            )
-                    )
-                }
-
-                items(SectorFilter.values()) { sector ->
-                    val isSelected = uiState.sectorFilter == sector
-                    val pillShape = RoundedCornerShape(12.dp)
-                    val haptic = LocalHapticFeedback.current
-                    val isDark = isSystemInDarkTheme()
-
-                    Box(
-                        modifier = Modifier
-                            .clip(pillShape)
-                            .background(
-                                color = if (isSelected) {
-                                    (if (isDark) AppleDarkSystemBlue else AppleSystemBlue).copy(alpha = 0.16f)
-                                } else {
-                                    if (isDark) Color(0xFF2C2C2E) else Color.White
-                                },
-                                shape = pillShape
-                            )
-                            .border(
-                                width = 1.dp,
-                                color = if (isSelected) {
-                                    if (isDark) AppleDarkSystemBlue else AppleSystemBlue
-                                } else {
-                                    if (isDark) Color(0x38FFFFFF) else Color(0x24000000)
-                                },
-                                shape = pillShape
-                            )
-                            .clickable {
-                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                viewModel.onSectorFilterSelected(sector)
-                            }
-                            .padding(horizontal = 13.dp, vertical = 7.dp)
-                    ) {
-                        Text(
-                            text = sector.label,
-                            fontSize = 12.sp,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                            color = if (isSelected) {
-                                if (isDark) AppleDarkSystemBlue else AppleSystemBlue
-                            } else {
-                                if (isDark) IosDarkLabelSecondary else IosLabelSecondary
-                            }
-                        )
-                    }
-                }
-            }
-
-            // Vehicle Expiry List
+            // 6. Vehicle Expiry List
             if (uiState.filteredList.isEmpty()) {
-                EmptyStateView(
-                    hasQuery = uiState.searchQuery.isNotEmpty(),
-                    onAddCustomerClicked = { showAddChooserSheet = true },
-                    onNavigateToSettings = onNavigateToSettings
-                )
+                item {
+                    EmptyStateView(
+                        hasQuery = uiState.searchQuery.isNotEmpty(),
+                        onAddCustomerClicked = { showAddChooserSheet = true },
+                        onNavigateToSettings = onNavigateToSettings
+                    )
+                }
             } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 88.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    items(
-                        items = uiState.filteredList,
-                        key = { it.vehicle.regNo }
-                    ) { item ->
+                items(
+                    items = uiState.filteredList,
+                    key = { it.vehicle.regNo }
+                ) { item ->
+                    Box(modifier = Modifier.padding(horizontal = 16.dp)) {
                         VehicleExpiryCard(
                             item = item,
                             onClick = { onNavigateToVehicleDetail(item.vehicle.regNo) }

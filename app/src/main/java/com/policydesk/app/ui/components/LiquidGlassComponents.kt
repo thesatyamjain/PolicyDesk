@@ -87,6 +87,8 @@ import com.policydesk.app.ui.theme.IosDarkLabelTertiary
 import com.policydesk.app.ui.theme.IosDarkSeparator
 import com.policydesk.app.ui.theme.IosLabelPrimary
 import com.policydesk.app.ui.theme.IosLabelSecondary
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
@@ -96,9 +98,9 @@ import com.policydesk.app.ui.theme.IosLabelTertiary
 import com.policydesk.app.ui.theme.IosSeparator
 
 /**
- * Root Ambient Aurora Mesh Canvas for Apple Liquid Glass (iOS 26 HIG).
- * Radiates subtle sapphire, indigo, and emerald atmospheric light pools behind the viewport,
- * providing the authentic chromatic refractive depth that liquid glass surfaces bend and scatter.
+ * Root Ambient Aurora Mesh Canvas for Apple Liquid Glass (iOS HIG).
+ * Recreates the exact My Warranties continuous full-screen diagonal pastel wash (glassBackdrop).
+ * Zero circular orbs or spotted blobs; completely seamless and luminous.
  */
 @Composable
 fun LiquidGlassCanvas(
@@ -107,79 +109,72 @@ fun LiquidGlassCanvas(
 ) {
     val isDark = isSystemInDarkTheme()
 
-    val baseBg = if (isDark) Color(0xFF0A0B0E) else Color(0xFFF2F4F8)
-    val auroraTopRight = if (isDark) Color(0xFF0A4074).copy(alpha = 0.38f) else Color(0xFF007AFF).copy(alpha = 0.08f)
-    val auroraCenterLeft = if (isDark) Color(0xFF381E72).copy(alpha = 0.32f) else Color(0xFF5856D6).copy(alpha = 0.06f)
-    val auroraBottomRight = if (isDark) Color(0xFF0B2D48).copy(alpha = 0.25f) else Color(0xFF34C759).copy(alpha = 0.05f)
+    val backdropBrush = if (isDark) {
+        Brush.linearGradient(
+            colors = listOf(
+                Color(0xFF0C0E14), // Midnight Obsidian
+                Color(0xFF141726), // Deep Indigo tint
+                Color(0xFF0F121C), // Neutral refraction center
+                Color(0xFF0A0B0E)  // OLED base
+            ),
+            start = Offset.Zero,
+            end = Offset.Infinite
+        )
+    } else {
+        Brush.linearGradient(
+            colors = listOf(
+                Color(0xFFD6E6FE), // Apple Soft Ice Blue
+                Color(0xFFEBE7FB), // Soft Lavender/Iris glow
+                Color(0xFFF5F3FA), // Neutral Refraction center
+                Color(0xFFFDE7EE)  // Apple Subtle Quartz Pink
+            ),
+            start = Offset.Zero,
+            end = Offset.Infinite
+        )
+    }
 
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(baseBg)
-            .drawBehind {
-                // Top-Right Sapphire Radiant Glow
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(auroraTopRight, Color.Transparent),
-                        center = Offset(size.width * 0.95f, size.height * 0.12f),
-                        radius = size.width * 0.95f
-                    )
-                )
-                // Center-Left Indigo / Violet Soft Caustic
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(auroraCenterLeft, Color.Transparent),
-                        center = Offset(size.width * 0.05f, size.height * 0.45f),
-                        radius = size.width * 0.85f
-                    )
-                )
-                // Bottom-Right Ambient Pool
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(auroraBottomRight, Color.Transparent),
-                        center = Offset(size.width * 0.85f, size.height * 0.85f),
-                        radius = size.width * 0.90f
-                    )
-                )
-            }
+            .background(brush = backdropBrush)
     ) {
         content()
     }
 }
 
 /**
- * Modifier that applies True Apple Liquid Glass (iOS 26+ HIG specification):
- * 1. Soft diffused ambient & spot shadow
- * 2. Crystalline translucent substrate with gradient refraction
- * 3. Directional multi-stop specular Fresnel rim border (intense reflection at top)
- * 4. Specular inner bevel highlight reflection along the top curved rim
+ * Modifier that applies True Apple Liquid Glass (matching My Warranties):
+ * 1. Dual-layer ambient & contact edge shadow
+ * 2. 4-stop diagonal meniscus refraction gradient
+ * 3. 1.1dp 92% white dual-incident specular border
  */
 fun Modifier.liquidGlass(
     shape: Shape = RoundedCornerShape(18.dp),
     elevation: Dp = 4.dp,
     isDark: Boolean = false,
     fillAlphaTop: Float = if (isDark) 0.68f else 0.82f,
-    fillAlphaBottom: Float = if (isDark) 0.46f else 0.64f,
-    borderAlphaTop: Float = if (isDark) 0.35f else 0.95f,
-    borderAlphaBottom: Float = if (isDark) 0.08f else 0.30f
+    fillAlphaBottom: Float = if (isDark) 0.46f else 0.55f,
+    borderAlphaTop: Float = if (isDark) 0.28f else 0.92f,
+    borderAlphaBottom: Float = if (isDark) 0.08f else 0.50f
 ): Modifier {
-    val topFill = if (isDark) Color(0xFF222226).copy(alpha = fillAlphaTop) else Color.White.copy(alpha = fillAlphaTop)
-    val bottomFill = if (isDark) Color(0xFF141416).copy(alpha = fillAlphaBottom) else Color(0xFFF6F6F9).copy(alpha = fillAlphaBottom)
-    val shadowColor = if (isDark) GlassDarkShadow else GlassShadow
-
-    val borderColors = if (isDark) {
+    val meniscusColors = if (isDark) {
         listOf(
-            Color.White.copy(alpha = borderAlphaTop),
-            Color.White.copy(alpha = borderAlphaTop * 0.45f),
-            Color.White.copy(alpha = borderAlphaBottom)
+            Color(0xFF2C2C30).copy(alpha = 0.78f),
+            Color(0xFF1E1E22).copy(alpha = 0.46f),
+            Color(0xFF141416).copy(alpha = 0.35f),
+            Color(0xFF222226).copy(alpha = 0.55f)
         )
     } else {
         listOf(
-            Color.White.copy(alpha = borderAlphaTop),
-            Color(0xFFE5E5EA).copy(alpha = 0.80f),
-            Color(0xFFC7C7CC).copy(alpha = borderAlphaBottom)
+            Color.White.copy(alpha = 0.82f),
+            Color.White.copy(alpha = 0.46f),
+            Color.White.copy(alpha = 0.35f),
+            Color.White.copy(alpha = 0.55f)
         )
     }
+
+    val shadowColor = if (isDark) Color(0x66000000) else Color(0x140F172A)
+    val borderColor = if (isDark) Color.White.copy(alpha = borderAlphaTop) else Color.White.copy(alpha = borderAlphaTop)
 
     return this
         .shadow(
@@ -190,29 +185,16 @@ fun Modifier.liquidGlass(
         )
         .clip(shape)
         .background(
-            brush = Brush.verticalGradient(
-                colors = listOf(topFill, bottomFill)
+            brush = Brush.linearGradient(
+                colors = meniscusColors,
+                start = Offset.Zero,
+                end = Offset.Infinite
             ),
             shape = shape
         )
-        .drawWithContent {
-            drawContent()
-            // Inner specular bevel reflection along the top rim
-            val specularColor = if (isDark) Color.White.copy(alpha = 0.16f) else Color.White.copy(alpha = 0.55f)
-            drawRect(
-                brush = Brush.verticalGradient(
-                    colors = listOf(specularColor, Color.Transparent),
-                    startY = 0f,
-                    endY = 16.dp.toPx()
-                ),
-                size = Size(size.width, 16.dp.toPx())
-            )
-        }
         .border(
-            width = 1.2.dp,
-            brush = Brush.verticalGradient(
-                colors = borderColors
-            ),
+            width = 1.1.dp,
+            color = borderColor,
             shape = shape
         )
 }
@@ -1284,216 +1266,171 @@ enum class DockTab {
 }
 
 /**
- * Floating Cupertino Glass Dock (Bottom Navigation - iOS 26 HIG)
- * Suspended optical substrate with crystalline refraction, specular rim,
- * illuminated selection pill, and responsive spring physics.
+ * Floating Cupertino Glass Dock (Bottom Navigation - iOS HIG)
+ * Exact recreation of My Warranties floating glass dock with gliding animated selection pill.
  */
 @Composable
 fun LiquidGlassDock(
     currentTab: DockTab,
     onTabSelected: (DockTab) -> Unit,
-    onAddClicked: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onAddClicked: (() -> Unit)? = null
 ) {
     val isDark = isSystemInDarkTheme()
-    val dockShape = RoundedCornerShape(26.dp)
+    val dockShape = RoundedCornerShape(28.dp)
     val haptic = LocalHapticFeedback.current
+
+    val tabs = remember {
+        listOf(
+            DockTab.DASHBOARD to ("Policies" to AppleIcons.House),
+            DockTab.CUSTOMERS to ("Clients" to AppleIcons.Person2),
+            DockTab.TIMELINE to ("Timeline" to AppleIcons.Calendar),
+            DockTab.REPORTS to ("Analytics" to AppleIcons.ChartBar)
+        )
+    }
+
+    val selectedIndex = tabs.indexOfFirst { it.first == currentTab }.coerceAtLeast(0)
 
     Box(
         modifier = modifier
             .fillMaxWidth()
             .navigationBarsPadding()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            .shadow(
-                elevation = 16.dp,
-                shape = dockShape,
-                ambientColor = if (isDark) Color(0x99000000) else Color(0x33000000),
-                spotColor = if (isDark) Color(0x99000000) else Color(0x33000000)
-            )
-            .clip(dockShape)
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = if (isDark) {
-                        listOf(Color(0xFF222226).copy(alpha = 0.75f), Color(0xFF141416).copy(alpha = 0.65f))
-                    } else {
-                        listOf(Color.White.copy(alpha = 0.82f), Color(0xFFF2F2F7).copy(alpha = 0.70f))
-                    }
-                ),
-                shape = dockShape
-            )
-            .drawWithContent {
-                drawContent()
-                // Top inner specular rim reflection
-                val specularColor = if (isDark) Color.White.copy(alpha = 0.20f) else Color.White.copy(alpha = 0.65f)
-                drawRect(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(specularColor, Color.Transparent),
-                        startY = 0f,
-                        endY = 14.dp.toPx()
-                    ),
-                    size = Size(size.width, 14.dp.toPx())
-                )
-            }
-            .border(
-                width = 1.2.dp,
-                brush = Brush.verticalGradient(
-                    colors = if (isDark) {
-                        listOf(Color.White.copy(alpha = 0.35f), Color.White.copy(alpha = 0.08f))
-                    } else {
-                        listOf(Color.White.copy(alpha = 0.95f), Color(0xFFC7C7CC).copy(alpha = 0.35f))
-                    }
-                ),
-                shape = dockShape
-            )
-            .padding(horizontal = 8.dp, vertical = 6.dp)
+            .padding(horizontal = 20.dp, vertical = 8.dp),
+        contentAlignment = Alignment.Center
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceAround,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            DockItem(
-                icon = AppleIcons.House,
-                label = "Policies",
-                isSelected = currentTab == DockTab.DASHBOARD,
-                onClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    onTabSelected(DockTab.DASHBOARD)
-                }
-            )
-
-            DockItem(
-                icon = AppleIcons.Person2,
-                label = "Clients",
-                isSelected = currentTab == DockTab.CUSTOMERS,
-                onClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    onTabSelected(DockTab.CUSTOMERS)
-                }
-            )
-
-            // Center Elevated Add Action Pill
-            val interactionSource = remember { MutableInteractionSource() }
-            val isPressed by interactionSource.collectIsPressedAsState()
-            val addScale by animateFloatAsState(
-                targetValue = if (isPressed) 0.90f else 1.0f,
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessMedium
-                ),
-                label = "add_btn_scale"
-            )
-
-            Box(
-                modifier = Modifier
-                    .scale(addScale)
-                    .size(46.dp)
-                    .clip(CircleShape)
-                    .background(
-                        brush = Brush.linearGradient(
-                            colors = if (isDark) {
-                                listOf(AppleDarkSystemBlue, Color(0xFF0056B3))
-                            } else {
-                                listOf(AppleSystemBlue, Color(0xFF0056B3))
-                            }
-                        )
-                    )
-                    .border(1.dp, Color.White.copy(alpha = 0.35f), CircleShape)
-                    .clickable(
-                        interactionSource = interactionSource,
-                        indication = null,
-                        onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            onAddClicked()
-                        }
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = AppleIcons.Plus,
-                    contentDescription = "Add Policy",
-                    tint = Color.White,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-
-            DockItem(
-                icon = AppleIcons.Calendar,
-                label = "Timeline",
-                isSelected = currentTab == DockTab.TIMELINE,
-                onClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    onTabSelected(DockTab.TIMELINE)
-                }
-            )
-
-            DockItem(
-                icon = AppleIcons.ChartBar,
-                label = "Analytics",
-                isSelected = currentTab == DockTab.REPORTS,
-                onClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    onTabSelected(DockTab.REPORTS)
-                }
-            )
-        }
-    }
-}
-
-@Composable
-private fun DockItem(
-    icon: ImageVector,
-    label: String,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
-    val isDark = isSystemInDarkTheme()
-    val activeColor = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
-    val inactiveColor = if (isDark) IosDarkLabelTertiary else IosLabelTertiary
-    val animatedColor by animateColorAsState(
-        targetValue = if (isSelected) activeColor else inactiveColor,
-        label = "dock_color"
-    )
-
-    val itemShape = RoundedCornerShape(16.dp)
-    val pillBg = if (isSelected) {
-        if (isDark) Color(0x330A84FF) else Color(0x18007AFF)
-    } else {
-        Color.Transparent
-    }
-
-    Column(
-        modifier = Modifier
-            .clip(itemShape)
-            .background(pillBg, itemShape)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 6.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = label,
-            tint = animatedColor,
-            modifier = Modifier.size(20.dp)
-        )
-        Spacer(modifier = Modifier.height(2.dp))
-        Text(
-            text = label,
-            fontSize = 10.sp,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-            color = animatedColor,
-            letterSpacing = (-0.1).sp
-        )
-        Spacer(modifier = Modifier.height(2.dp))
         Box(
             modifier = Modifier
-                .size(3.dp)
-                .background(
-                    if (isSelected) activeColor else Color.Transparent,
-                    CircleShape
+                .widthIn(max = 420.dp)
+                .fillMaxWidth()
+                .height(56.dp)
+                .shadow(
+                    elevation = 16.dp,
+                    shape = dockShape,
+                    ambientColor = if (isDark) Color(0x66000000) else Color(0x1F0F172A),
+                    spotColor = if (isDark) Color(0x66000000) else Color(0x14000000)
                 )
-        )
+                .clip(dockShape)
+                .background(
+                    brush = Brush.linearGradient(
+                        colors = if (isDark) {
+                            listOf(
+                                Color(0xFF242428).copy(alpha = 0.80f),
+                                Color(0xFF161618).copy(alpha = 0.50f),
+                                Color(0xFF101012).copy(alpha = 0.35f),
+                                Color(0xFF1E1E22).copy(alpha = 0.55f)
+                            )
+                        } else {
+                            listOf(
+                                Color.White.copy(alpha = 0.82f),
+                                Color.White.copy(alpha = 0.46f),
+                                Color.White.copy(alpha = 0.35f),
+                                Color.White.copy(alpha = 0.55f)
+                            )
+                        },
+                        start = Offset.Zero,
+                        end = Offset.Infinite
+                    ),
+                    shape = dockShape
+                )
+                .border(
+                    width = 1.1.dp,
+                    color = if (isDark) Color.White.copy(alpha = 0.25f) else Color.White.copy(alpha = 0.90f),
+                    shape = dockShape
+                )
+                .padding(4.dp)
+        ) {
+            BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                val itemWidth = maxWidth / tabs.size
+                val pillOffset by animateDpAsState(
+                    targetValue = itemWidth * selectedIndex,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioLowBouncy,
+                        stiffness = Spring.StiffnessMediumLow
+                    ),
+                    label = "dock_gliding_pill"
+                )
+
+                // 1. Gliding Animated Indicator Pill (My Warranties)
+                Box(
+                    modifier = Modifier
+                        .offset(x = pillOffset)
+                        .width(itemWidth)
+                        .fillMaxHeight()
+                        .shadow(
+                            elevation = 4.dp,
+                            shape = RoundedCornerShape(24.dp),
+                            ambientColor = if (isDark) Color(0x40000000) else AppleSystemBlue.copy(alpha = 0.08f),
+                            spotColor = if (isDark) Color(0x40000000) else Color(0x0D000000)
+                        )
+                        .clip(RoundedCornerShape(24.dp))
+                        .background(
+                            brush = Brush.linearGradient(
+                                colors = if (isDark) {
+                                    listOf(Color(0xFF38383C).copy(alpha = 0.96f), Color(0xFF28282C).copy(alpha = 0.76f))
+                                } else {
+                                    listOf(Color.White.copy(alpha = 0.96f), Color.White.copy(alpha = 0.76f))
+                                },
+                                start = Offset.Zero,
+                                end = Offset.Infinite
+                            ),
+                            shape = RoundedCornerShape(24.dp)
+                        )
+                        .border(
+                            width = 1.dp,
+                            color = if (isDark) Color.White.copy(alpha = 0.25f) else Color.White.copy(alpha = 0.90f),
+                            shape = RoundedCornerShape(24.dp)
+                        )
+                )
+
+                // 2. Interactive Tab Icons & Labels Row
+                Row(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    tabs.forEachIndexed { index, (tab, pair) ->
+                        val (label, icon) = pair
+                        val isSelected = index == selectedIndex
+                        val activeColor = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
+                        val inactiveColor = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
+
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .clip(RoundedCornerShape(24.dp))
+                                .clickable(
+                                    indication = null,
+                                    interactionSource = remember { MutableInteractionSource() }
+                                ) {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    onTabSelected(tab)
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = icon,
+                                    contentDescription = label,
+                                    tint = if (isSelected) activeColor else inactiveColor,
+                                    modifier = Modifier.size(19.dp)
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = label,
+                                    fontSize = 10.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (isSelected) activeColor else inactiveColor,
+                                    letterSpacing = (-0.1).sp
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
