@@ -51,7 +51,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -80,7 +82,9 @@ import com.policydesk.app.ui.theme.IosSystemBackground
 import com.policydesk.app.ui.theme.IosTertiaryGrouped
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
-import com.policydesk.app.ui.theme.IosLabelTertiary
+import androidx.compose.runtime.collectAsState
+import com.policydesk.app.data.theme.AppTheme
+import com.policydesk.app.data.theme.ThemeManager
 import kotlinx.coroutines.launch
 
 @Composable
@@ -142,6 +146,62 @@ fun SettingsScreen(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // SECTION 0: APPEARANCE (TRUE DARK THEME)
+            val currentThemeMode by ThemeManager.currentTheme.collectAsState()
+            val haptic = LocalHapticFeedback.current
+
+            LiquidGlassGroupedSection(title = "Appearance") {
+                Text(
+                    text = "Select your preferred visual style. True Dark uses pure OLED black for maximum contrast and battery conservation.",
+                    fontSize = 13.sp,
+                    lineHeight = 18.sp,
+                    color = labelSecondary
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    AppTheme.values().forEach { themeOption ->
+                        val isSelected = currentThemeMode == themeOption
+                        val pillShape = RoundedCornerShape(10.dp)
+                        val activeBlue = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
+
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(pillShape)
+                                .background(
+                                    if (isSelected) activeBlue else (if (isDark) Color(0x33545458) else Color(0x14767680)),
+                                    pillShape
+                                )
+                                .border(
+                                    width = 1.dp,
+                                    color = if (isSelected) activeBlue else (if (isDark) Color(0x33FFFFFF) else Color(0x2E000000)),
+                                    shape = pillShape
+                                )
+                                .clickable {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    ThemeManager.setTheme(context, themeOption)
+                                }
+                                .padding(vertical = 10.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = when (themeOption) {
+                                    AppTheme.DARK -> "True Dark"
+                                    AppTheme.LIGHT -> "Light"
+                                    AppTheme.SYSTEM -> "System"
+                                },
+                                fontSize = 12.sp,
+                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+                                color = if (isSelected) Color.White else labelPrimary
+                            )
+                        }
+                    }
+                }
+            }
+
             // SECTION 1: SECURITY & APP LOCK
             LiquidGlassGroupedSection(title = "Security & Privacy") {
                 Row(

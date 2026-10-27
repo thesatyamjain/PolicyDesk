@@ -112,10 +112,10 @@ fun LiquidGlassCanvas(
     val backdropBrush = if (isDark) {
         Brush.linearGradient(
             colors = listOf(
-                Color(0xFF0C0E14), // Midnight Obsidian
-                Color(0xFF141726), // Deep Indigo tint
-                Color(0xFF0F121C), // Neutral refraction center
-                Color(0xFF0A0B0E)  // OLED base
+                Color(0xFF000000), // Pure OLED True Black
+                Color(0xFF050608), // Ultra-deep subtle obsidian
+                Color(0xFF090A0D), // True midnight depth
+                Color(0xFF000000)  // Pure OLED True Black
             ),
             start = Offset.Zero,
             end = Offset.Infinite
@@ -159,10 +159,10 @@ fun Modifier.liquidGlass(
 ): Modifier {
     val meniscusColors = if (isDark) {
         listOf(
-            Color(0xFF2C2C30).copy(alpha = 0.78f),
-            Color(0xFF1E1E22).copy(alpha = 0.46f),
-            Color(0xFF141416).copy(alpha = 0.35f),
-            Color(0xFF222226).copy(alpha = 0.55f)
+            Color(0xFF1E1E22).copy(alpha = 0.85f),
+            Color(0xFF141416).copy(alpha = 0.65f),
+            Color(0xFF0F0F12).copy(alpha = 0.50f),
+            Color(0xFF1A1A1E).copy(alpha = 0.70f)
         )
     } else {
         listOf(

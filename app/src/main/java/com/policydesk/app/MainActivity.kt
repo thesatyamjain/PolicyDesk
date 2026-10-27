@@ -32,7 +32,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.fragment.app.FragmentActivity
+import androidx.compose.runtime.collectAsState
 import com.policydesk.app.data.security.AppLockManager
+import com.policydesk.app.data.theme.AppTheme
+import com.policydesk.app.data.theme.ThemeManager
 import com.policydesk.app.ui.navigation.PolicyDeskNavHost
 import com.policydesk.app.ui.theme.Navy900
 import com.policydesk.app.ui.theme.PolicyDeskTheme
@@ -45,6 +48,7 @@ import dagger.hilt.android.AndroidEntryPoint
 class MainActivity : FragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        ThemeManager.init(this)
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
@@ -63,7 +67,15 @@ class MainActivity : FragmentActivity() {
         val lockEnabled = AppLockManager.isAppLockEnabled(this)
 
         setContent {
-            PolicyDeskTheme {
+            val themeState by ThemeManager.currentTheme.collectAsState()
+            val isSystemDark = androidx.compose.foundation.isSystemInDarkTheme()
+            val isDark = when (themeState) {
+                AppTheme.DARK -> true
+                AppTheme.LIGHT -> false
+                AppTheme.SYSTEM -> isSystemDark
+            }
+
+            PolicyDeskTheme(darkTheme = isDark) {
                 LiquidGlassCanvas {
                     var isUnlocked by remember { mutableStateOf(!lockEnabled) }
 
