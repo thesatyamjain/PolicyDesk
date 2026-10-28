@@ -48,4 +48,14 @@ class VehicleDetailViewModel @Inject constructor(
             _uiEvent.emit(DetailUiEvent.VehicleClosed)
         }
     }
+
+    fun updateCurrentPolicyPremium(newPremium: Double) {
+        viewModelScope.launch {
+            val vehicleWithPolicies = vehicleData.value ?: return@launch
+            val policy = vehicleWithPolicies.currentPolicy ?: return@launch
+            val updated = policy.copy(totalPremium = newPremium)
+            repository.saveVehicleAndPolicy(vehicleWithPolicies.vehicle, updated)
+            _uiEvent.emit(DetailUiEvent.ShowToast("Premium updated successfully"))
+        }
+    }
 }

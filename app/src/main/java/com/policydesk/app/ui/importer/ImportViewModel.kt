@@ -29,6 +29,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.UUID
 import javax.inject.Inject
 
 enum class ImportStep {
@@ -429,34 +430,48 @@ class ImportViewModel @Inject constructor(
                 DuplicateStrategy.UPDATE -> {
                     for (row in preview.duplicateRows) {
                         try {
+                            val existing = repository.getVehicleWithPoliciesDirect(row.regNo)
+                            val currentPolicy = existing?.currentPolicy
+                            val existingPolicyId = currentPolicy?.id ?: UUID.randomUUID().toString()
+
                             val customer = Customer(
-                                title = row.title,
-                                name = row.customerName,
-                                mobile = row.mobile,
-                                email = row.email,
-                                address = row.address
+                                title = row.title ?: existing?.vehicle?.customer?.title,
+                                name = row.customerName.ifBlank { existing?.vehicle?.customer?.name ?: "" },
+                                mobile = row.mobile.ifBlank { existing?.vehicle?.customer?.mobile ?: "" },
+                                email = row.email ?: existing?.vehicle?.customer?.email,
+                                address = row.address.ifBlank { existing?.vehicle?.customer?.address ?: "" }
                             )
                             val vehicle = Vehicle(
                                 regNo = row.regNo,
                                 customer = customer,
-                                makeModel = row.makeModel,
-                                vin = row.vin,
-                                engineNo = row.engineNo,
-                                notes = row.notes,
+                                makeModel = row.makeModel ?: existing?.vehicle?.makeModel,
+                                vin = row.vin ?: existing?.vehicle?.vin,
+                                engineNo = row.engineNo ?: existing?.vehicle?.engineNo,
+                                notes = row.notes ?: existing?.vehicle?.notes,
                                 updatedAt = now
                             )
                             val policy = Policy(
+                                id = existingPolicyId,
                                 vehicleRegNo = row.regNo,
-                                companySector = row.sector ?: com.policydesk.app.domain.model.Sector.PRIVATE,
-                                insurer = row.insurer,
-                                policyNumber = row.policyNumber,
-                                expiryDate = row.expiryDateEpochMs ?: now,
-                                totalPremium = row.totalPremium ?: 0.0,
+                                companySector = row.sector ?: currentPolicy?.companySector ?: com.policydesk.app.domain.model.Sector.PRIVATE,
+                                insurer = row.insurer.ifBlank { currentPolicy?.insurer ?: "" },
+                                policyNumber = row.policyNumber.ifBlank { currentPolicy?.policyNumber ?: "" },
+                                expiryDate = row.expiryDateEpochMs ?: currentPolicy?.expiryDate ?: now,
+                                totalPremium = row.totalPremium ?: currentPolicy?.totalPremium ?: 0.0,
                                 source = PolicySource.SPREADSHEET,
                                 saleDate = row.saleDateEpochMs ?: now,
                                 countsAsSale = row.saleDateEpochMs != null
                             )
                             repository.saveVehicleAndPolicy(vehicle, policy)
+
+                            // Clean up any extra unrenewed duplicate policies from previous imports
+                            val extraPolicyIds = existing?.policies
+                                ?.filter { it.id != existingPolicyId && it.renewedOn == null && it.closeReason.isNullOrBlank() }
+                                ?.map { it.id } ?: emptyList()
+                            if (extraPolicyIds.isNotEmpty()) {
+                                repository.rollbackImport(emptyList(), extraPolicyIds)
+                            }
+
                             updated++
                             addedPolicyIds.add(policy.id)
                         } catch (e: Exception) {

@@ -75,8 +75,8 @@ data class VehicleWithPolicies(
     val currentPolicy: Policy?
         get() = policies
             .filter { it.closeReason.isNullOrBlank() && it.renewedOn == null }
-            .maxByOrNull { it.expiryDate }
-            ?: policies.maxByOrNull { it.expiryDate }
+            .maxWithOrNull(compareBy<Policy> { it.expiryDate }.thenBy { it.saleDate })
+            ?: policies.maxWithOrNull(compareBy<Policy> { it.expiryDate }.thenBy { it.saleDate })
 
     val policyHistory: List<Policy>
         get() = policies

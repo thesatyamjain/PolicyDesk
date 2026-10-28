@@ -31,6 +31,9 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Shield
 import com.policydesk.app.ui.components.AppleAlertDialog
 import com.policydesk.app.ui.components.AppleButton
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -92,6 +95,8 @@ fun VehicleDetailScreen(
 
     var showMenu by remember { mutableStateOf(false) }
     var showCloseDialog by remember { mutableStateOf(false) }
+    var showEditPremiumDialog by remember { mutableStateOf(false) }
+    var editPremiumValue by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
         viewModel.uiEvent.collect { event ->
@@ -157,6 +162,49 @@ fun VehicleDetailScreen(
         )
     }
 
+    if (showEditPremiumDialog) {
+        val accentBlue = if (isSystemInDarkTheme()) AppleDarkSystemBlue else AppleSystemBlue
+
+        AppleAlertDialog(
+            onDismissRequest = { showEditPremiumDialog = false },
+            title = "Edit Policy Premium",
+            message = "Update the policy premium for ${vehicleWithPolicies?.vehicle?.regNo ?: "vehicle"}:",
+            confirmText = "Save",
+            onConfirm = {
+                val amount = editPremiumValue.toDoubleOrNull()
+                if (amount != null && amount > 0.0) {
+                    viewModel.updateCurrentPolicyPremium(amount)
+                    showEditPremiumDialog = false
+                }
+            },
+            dismissText = "Cancel",
+            onDismiss = { showEditPremiumDialog = false },
+            isDestructive = false,
+            content = {
+                OutlinedTextField(
+                    value = editPremiumValue,
+                    onValueChange = { input ->
+                        val filtered = buildString {
+                            var hasDot = false
+                            for (ch in input) {
+                                if (ch.isDigit()) append(ch)
+                                else if (ch == '.' && !hasDot) {
+                                    append(ch)
+                                    hasDot = true
+                                }
+                            }
+                        }
+                        editPremiumValue = filtered
+                    },
+                    label = { Text("Total Premium (₹)") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        )
+    }
+
     val isDark = isSystemInDarkTheme()
     val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
     val labelSecondary = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
@@ -178,6 +226,15 @@ fun VehicleDetailScreen(
                         expanded = showMenu,
                         onDismissRequest = { showMenu = false }
                     ) {
+                        DropdownMenuItem(
+                            text = { Text("Edit Policy Premium", color = if (isDark) AppleDarkSystemBlue else AppleSystemBlue) },
+                            onClick = {
+                                showMenu = false
+                                val currentPrem = vehicleWithPolicies?.currentPolicy?.totalPremium ?: 0.0
+                                editPremiumValue = if (currentPrem % 1.0 == 0.0) currentPrem.toLong().toString() else currentPrem.toString()
+                                showEditPremiumDialog = true
+                            }
+                        )
                         DropdownMenuItem(
                             text = { Text("Close without renewal", color = AppleSystemRed) },
                             onClick = {
@@ -292,7 +349,15 @@ fun VehicleDetailScreen(
                         DetailRow(label = "Company Sector", value = policy.companySector.displayName)
                         DetailRow(label = "Policy Number", value = policy.policyNumber)
                         DetailRow(label = "Expiry Date", value = UiFormatters.formatDate(policy.expiryDate))
-                        DetailRow(label = "Total Premium Cost", value = UiFormatters.formatCurrency(policy.totalPremium))
+                        DetailRow(
+                            label = "Total Premium Cost",
+                            value = "${UiFormatters.formatCurrency(policy.totalPremium)}  ✎",
+                            onClick = {
+                                val currentPrem = policy.totalPremium
+                                editPremiumValue = if (currentPrem % 1.0 == 0.0) currentPrem.toLong().toString() else currentPrem.toString()
+                                showEditPremiumDialog = true
+                            }
+                        )
                         DetailRow(label = "Policy Status", value = status.displayName)
                     }
                 }
@@ -483,10 +548,22 @@ fun ContactActionButton(
 }
 
 @Composable
-fun DetailRow(label: String, value: String) {
+fun DetailRow(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null
+) {
     val isDark = isSystemInDarkTheme()
+    val baseModifier = if (onClick != null) {
+        modifier
+            .clip(RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick)
+    } else {
+        modifier
+    }
     Row(
-        modifier = Modifier
+        modifier = baseModifier
             .fillMaxWidth()
             .padding(vertical = 5.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
