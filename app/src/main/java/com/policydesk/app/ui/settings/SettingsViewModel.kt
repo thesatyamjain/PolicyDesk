@@ -100,8 +100,22 @@ class SettingsViewModel @Inject constructor(
 
     fun onApiKeyChanged(apiKey: String) {
         _uiState.update {
+            val updatedConfig = if (it.aiConfig.provider == AiProvider.CLOUDFLARE_AI) {
+                it.aiConfig.copy(customEndpoint = apiKey)
+            } else {
+                it.aiConfig.copy(apiKey = apiKey)
+            }
             it.copy(
-                aiConfig = it.aiConfig.copy(apiKey = apiKey),
+                aiConfig = updatedConfig,
+                aiTestMessage = null
+            )
+        }
+    }
+
+    fun onCustomEndpointChanged(endpoint: String) {
+        _uiState.update {
+            it.copy(
+                aiConfig = it.aiConfig.copy(customEndpoint = endpoint),
                 aiTestMessage = null
             )
         }

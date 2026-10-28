@@ -5,17 +5,19 @@ import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 
 enum class AiProvider(val displayName: String, val defaultModel: String) {
+    CLOUDFLARE_AI("Cloudflare Workers AI", "@cf/meta/llama-3.2-11b-vision-instruct"),
     GEMINI("Google Gemini", "gemini-2.5-flash"),
     OPENAI("OpenAI", "gpt-4o-mini"),
     CLAUDE("Anthropic Claude", "claude-3-5-haiku-20241022")
 }
 
 data class AiConfig(
-    val provider: AiProvider = AiProvider.GEMINI,
+    val provider: AiProvider = AiProvider.CLOUDFLARE_AI,
     val apiKey: String = "",
-    val model: String = AiProvider.GEMINI.defaultModel
+    val model: String = AiProvider.CLOUDFLARE_AI.defaultModel,
+    val customEndpoint: String = ""
 ) {
-    val isConfigured: Boolean get() = apiKey.isNotBlank()
+    val isConfigured: Boolean get() = provider == AiProvider.CLOUDFLARE_AI || apiKey.isNotBlank()
 }
 
 class SecureKeyStorage(context: Context) {
@@ -47,15 +49,16 @@ class SecureKeyStorage(context: Context) {
     }
 
     fun getAiConfig(): AiConfig {
-        val providerStr = prefs.getString("ai_provider", AiProvider.GEMINI.name) ?: AiProvider.GEMINI.name
-        val provider = try { AiProvider.valueOf(providerStr) } catch (_: Exception) { AiProvider.GEMINI }
+        val providerStr = prefs.getString("ai_provider", AiProvider.CLOUDFLARE_AI.name) ?: AiProvider.CLOUDFLARE_AI.name
+        val provider = try { AiProvider.valueOf(providerStr) } catch (_: Exception) { AiProvider.CLOUDFLARE_AI }
         val apiKey = prefs.getString("ai_api_key", "") ?: ""
         var model = prefs.getString("ai_model", provider.defaultModel) ?: provider.defaultModel
+        val customEndpoint = prefs.getString("ai_custom_endpoint", "") ?: ""
         // Auto-migrate retired Gemini 1.5 models to stable gemini-2.5-flash
         if (provider == AiProvider.GEMINI && (model.isBlank() || model == "gemini-1.5-flash" || model == "models/gemini-1.5-flash")) {
             model = "gemini-2.5-flash"
         }
-        return AiConfig(provider, apiKey, model)
+        return AiConfig(provider, apiKey, model, customEndpoint)
     }
 
     fun saveAiConfig(config: AiConfig) {
@@ -64,6 +67,7 @@ class SecureKeyStorage(context: Context) {
             .putString("ai_provider", config.provider.name)
             .putString("ai_api_key", config.apiKey.trim())
             .putString("ai_model", cleanModel)
+            .putString("ai_custom_endpoint", config.customEndpoint.trim())
             .apply()
     }
 

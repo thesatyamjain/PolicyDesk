@@ -1,6 +1,10 @@
 package com.policydesk.app.data.ai
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.pdf.PdfRenderer
 import android.net.Uri
 import android.util.Base64
 import com.policydesk.app.data.importer.SpreadsheetParser
@@ -13,6 +17,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.BufferedReader
+import java.io.ByteArrayOutputStream
 import java.io.InputStreamReader
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
@@ -44,6 +49,8 @@ sealed interface ExtractionResult {
 
 object AiExtractionClient {
 
+    const val DEFAULT_CLOUDFLARE_AI_ENDPOINT = "https://policydesk-ai.satyamjain.workers.dev"
+
     private const val SYSTEM_PROMPT = """
 You are an expert vehicle insurance policy document parser specializing in Indian motor insurance (Private Cars, Two Wheelers, Commercial Vehicles).
 Extract the policy information from the document into a JSON object matching these keys:
@@ -72,12 +79,26 @@ Rules:
 
     suspend fun testConnection(config: AiConfig): Result<String> = withContext(Dispatchers.IO) {
         val cleanKey = config.apiKey.trim()
-        if (cleanKey.isBlank()) {
+        if (config.provider != AiProvider.CLOUDFLARE_AI && cleanKey.isBlank()) {
             return@withContext Result.failure(Exception("API key cannot be empty"))
         }
 
         try {
             when (config.provider) {
+                AiProvider.CLOUDFLARE_AI -> {
+                    val endpoint = config.customEndpoint.ifBlank { DEFAULT_CLOUDFLARE_AI_ENDPOINT }
+                    val healthUrl = if (endpoint.endsWith("/")) "${endpoint}health" else "$endpoint/health"
+                    val conn = URL(healthUrl).openConnection() as HttpURLConnection
+                    conn.requestMethod = "GET"
+                    conn.connectTimeout = 10000
+                    conn.readTimeout = 10000
+                    val code = conn.responseCode
+                    if (code in 200..299) {
+                        Result.success("Connection successful! Cloudflare Workers AI active (@cf/meta/llama-3.2-11b-vision-instruct)")
+                    } else {
+                        Result.failure(Exception("Cloudflare endpoint returned HTTP $code"))
+                    }
+                }
                 AiProvider.GEMINI -> {
                     val cleanModel = config.model.trim().removePrefix("models/").ifBlank { "gemini-2.5-flash" }
                     val url = URL("https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${cleanKey}")
@@ -174,8 +195,19 @@ Rules:
             val base64Pdf = Base64.encodeToString(pdfBytes, Base64.NO_WRAP)
 
             when (config.provider) {
+                AiProvider.CLOUDFLARE_AI -> {
+                    val cfResult = extractWithCloudflare(context, pdfUri, config)
+                    if (cfResult is ExtractionResult.Success) {
+                        cfResult
+                    } else if (config.apiKey.isNotBlank()) {
+                        // Fallback to Gemini if user has personal key configured
+                        extractWithGemini(base64Pdf, config, password)
+                    } else {
+                        cfResult
+                    }
+                }
                 AiProvider.GEMINI -> extractWithGemini(base64Pdf, config, password)
-                else -> ExtractionResult.Error("Provider ${config.provider.displayName} PDF intake in beta. Please use Gemini for native PDF parsing.")
+                else -> ExtractionResult.Error("Provider ${config.provider.displayName} PDF intake in beta. Please use Gemini or Cloudflare AI for native document parsing.")
             }
         } catch (e: Exception) {
             ExtractionResult.Error("Extraction failed: ${e.message}")
@@ -287,12 +319,90 @@ Rules:
         return ExtractionResult.Error(lastError)
     }
 
-    private fun parseGeminiResponse(text: String): ExtractionResult {
+    private fun renderPdfOrImageToBase64(context: Context, uri: Uri): String? {
+        val mimeType = context.contentResolver.getType(uri) ?: ""
+        if (mimeType.startsWith("image/")) {
+            return try {
+                context.contentResolver.openInputStream(uri)?.use { stream ->
+                    Base64.encodeToString(stream.readBytes(), Base64.NO_WRAP)
+                }
+            } catch (_: Exception) { null }
+        }
+        return try {
+            context.contentResolver.openFileDescriptor(uri, "r")?.use { pfd ->
+                val renderer = PdfRenderer(pfd)
+                if (renderer.pageCount == 0) return null
+                val page = renderer.openPage(0)
+                // Render at 2x density for crisp OCR text recognition
+                val scale = 2
+                val bitmap = Bitmap.createBitmap(page.width * scale, page.height * scale, Bitmap.Config.ARGB_8888)
+                val canvas = Canvas(bitmap)
+                canvas.drawColor(Color.WHITE)
+                page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+                page.close()
+                renderer.close()
 
+                val outputStream = ByteArrayOutputStream()
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 85, outputStream)
+                bitmap.recycle()
+                Base64.encodeToString(outputStream.toByteArray(), Base64.NO_WRAP)
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun extractWithCloudflare(context: Context, pdfUri: Uri, config: AiConfig): ExtractionResult {
+        val endpoint = config.customEndpoint.ifBlank { DEFAULT_CLOUDFLARE_AI_ENDPOINT }
+        val base64Image = renderPdfOrImageToBase64(context, pdfUri)
+            ?: return ExtractionResult.Error("Could not render document for Cloudflare AI scanning.")
+
+        return try {
+            val url = URL(endpoint)
+            val conn = url.openConnection() as HttpURLConnection
+            conn.requestMethod = "POST"
+            conn.setRequestProperty("Content-Type", "application/json")
+            conn.doOutput = true
+            conn.connectTimeout = 45000
+            conn.readTimeout = 45000
+
+            val requestJson = JSONObject().apply {
+                put("image", base64Image)
+                put("mimeType", "image/jpeg")
+            }
+
+            OutputStreamWriter(conn.outputStream).use { it.write(requestJson.toString()) }
+
+            val code = conn.responseCode
+            if (code == 200) {
+                val responseText = BufferedReader(InputStreamReader(conn.inputStream)).readText()
+                val json = JSONObject(responseText)
+                if (json.has("is_policy") && !json.optBoolean("is_policy", true)) {
+                    return ExtractionResult.Error("The uploaded file does not appear to be an insurance policy document.")
+                }
+                parseExtractionJson(json, responseText)
+            } else {
+                val stream = conn.errorStream ?: conn.inputStream
+                val errText = BufferedReader(InputStreamReader(stream)).readText()
+                ExtractionResult.Error("Cloudflare Workers AI error ($code): $errText")
+            }
+        } catch (e: Exception) {
+            ExtractionResult.Error("Cloudflare Workers AI request failed: ${e.message}")
+        }
+    }
+
+    private fun parseGeminiResponse(text: String): ExtractionResult {
         return try {
             val cleanJsonStr = text.trim().removePrefix("```json").removePrefix("```").removeSuffix("```").trim()
             val parsed = JSONObject(cleanJsonStr)
+            parseExtractionJson(parsed, cleanJsonStr)
+        } catch (e: Exception) {
+            ExtractionResult.Error("Failed to parse extracted JSON: ${e.message}")
+        }
+    }
 
+    private fun parseExtractionJson(parsed: JSONObject, rawJsonStr: String): ExtractionResult {
+        return try {
             val rawReg = parsed.optString("regNo", "")
             val normalizedReg = RegistrationNormalizer.repairOcrMisreads(RegistrationNormalizer.normalize(rawReg))
 
@@ -330,7 +440,7 @@ Rules:
                 makeModel = parsed.optString("makeModel", "").trim(),
                 vin = parsed.optString("vin", "").trim().uppercase(),
                 engineNo = parsed.optString("engineNo", "").trim().uppercase(),
-                rawJson = cleanJsonStr
+                rawJson = rawJsonStr
             )
             ExtractionResult.Success(data)
         } catch (e: Exception) {

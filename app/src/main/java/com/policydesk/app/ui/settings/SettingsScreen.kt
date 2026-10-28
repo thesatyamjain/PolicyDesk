@@ -288,8 +288,13 @@ fun SettingsScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = provider.displayName.replace("Google ", "").replace("Anthropic ", ""),
-                                fontSize = 12.sp,
+                                text = when (provider) {
+                                    AiProvider.CLOUDFLARE_AI -> "Cloudflare"
+                                    AiProvider.GEMINI -> "Gemini"
+                                    AiProvider.OPENAI -> "OpenAI"
+                                    AiProvider.CLAUDE -> "Claude"
+                                },
+                                fontSize = 11.sp,
                                 fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
                                 color = if (isSelected) Color.White else labelPrimary
                             )
@@ -299,27 +304,42 @@ fun SettingsScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // API Key Field
-                OutlinedTextField(
-                    value = state.aiConfig.apiKey,
-                    onValueChange = viewModel::onApiKeyChanged,
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("API Key") },
-                    placeholder = { Text("Paste your API key here") },
-                    singleLine = true,
-                    visualTransformation = if (showKey) VisualTransformation.None else PasswordVisualTransformation(),
-                    trailingIcon = {
-                        IconButton(onClick = { showKey = !showKey }) {
-                            Icon(
-                                imageVector = if (showKey) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                contentDescription = "Toggle Key",
-                                tint = if (isDark) IosDarkLabelTertiary else IosLabelTertiary
-                            )
-                        }
-                    },
-                    shape = RoundedCornerShape(12.dp),
-                    colors = formFieldColors()
-                )
+                val isCloudflare = state.aiConfig.provider == AiProvider.CLOUDFLARE_AI
+
+                if (isCloudflare) {
+                    OutlinedTextField(
+                        value = state.aiConfig.customEndpoint,
+                        onValueChange = viewModel::onCustomEndpointChanged,
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Worker URL (Optional)") },
+                        placeholder = { Text("https://policydesk-ai.satyamjain.workers.dev") },
+                        supportingText = { Text("Zero configuration required. Free for all users.", color = AppleSystemGreen) },
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        colors = formFieldColors()
+                    )
+                } else {
+                    OutlinedTextField(
+                        value = state.aiConfig.apiKey,
+                        onValueChange = viewModel::onApiKeyChanged,
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("API Key") },
+                        placeholder = { Text("Paste your API key here") },
+                        singleLine = true,
+                        visualTransformation = if (showKey) VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            IconButton(onClick = { showKey = !showKey }) {
+                                Icon(
+                                    imageVector = if (showKey) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                    contentDescription = "Toggle Key",
+                                    tint = if (isDark) IosDarkLabelTertiary else IosLabelTertiary
+                                )
+                            }
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = formFieldColors()
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(10.dp))
 
@@ -336,6 +356,7 @@ fun SettingsScreen(
 
                 // Recommended Model Quick Selector Pills
                 val suggestedModels = when (state.aiConfig.provider) {
+                    AiProvider.CLOUDFLARE_AI -> listOf("@cf/meta/llama-3.2-11b-vision-instruct")
                     AiProvider.GEMINI -> listOf("gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash")
                     AiProvider.OPENAI -> listOf("gpt-4o-mini", "gpt-4o")
                     AiProvider.CLAUDE -> listOf("claude-3-5-haiku-20241022", "claude-3-5-sonnet-20241022")
