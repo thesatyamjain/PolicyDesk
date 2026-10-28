@@ -21,6 +21,7 @@ interface VehicleRepository {
     fun getReportsAggregate(period: com.policydesk.app.domain.model.ReportPeriod): Flow<com.policydesk.app.domain.model.ReportsAggregate>
     suspend fun closeVehicle(regNo: String, reason: String)
     suspend fun softDeleteVehicle(regNo: String)
+    suspend fun softDeleteVehicles(regNos: List<String>)
     suspend fun markPolicyRenewed(policyId: String, renewedOn: Long)
     suspend fun rollbackImport(vehicleRegNos: List<String>, policyIds: List<String>)
     fun getCustomerGroups(): Flow<List<com.policydesk.app.domain.model.CustomerGroup>>

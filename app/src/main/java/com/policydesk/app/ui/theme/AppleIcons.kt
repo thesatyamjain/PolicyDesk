@@ -759,5 +759,69 @@ object AppleIcons {
             close()
         }
     }
+
+    /** SF Symbol: trash.fill (Apple iOS Cupertino delete/trash) */
+    val Trash: ImageVector by lazy {
+        buildIcon("AppleTrash") {
+            moveTo(6f, 19f)
+            curveTo(6f, 20.1f, 6.9f, 21f, 8f, 21f)
+            lineTo(16f, 21f)
+            curveTo(17.1f, 21f, 18f, 20.1f, 18f, 19f)
+            lineTo(19f, 7f)
+            lineTo(5f, 7f)
+            lineTo(6f, 19f)
+            close()
+
+            moveTo(15.5f, 4f)
+            lineTo(14.5f, 3f)
+            lineTo(9.5f, 3f)
+            lineTo(8.5f, 4f)
+            lineTo(5f, 4f)
+            curveTo(4.4f, 4f, 4f, 4.4f, 4f, 5f)
+            curveTo(4f, 5.6f, 4.4f, 6f, 5f, 6f)
+            lineTo(19f, 6f)
+            curveTo(19.6f, 6f, 20f, 5.6f, 20f, 5f)
+            curveTo(20f, 4.4f, 19.6f, 4f, 19f, 4f)
+            lineTo(15.5f, 4f)
+            close()
+        }
+    }
+
+    /** SF Symbol: square.and.arrow.up (Apple iOS Cupertino share/export) */
+    val Share: ImageVector by lazy {
+        buildIcon("AppleShare") {
+            moveTo(19f, 11f)
+            lineTo(19f, 19f)
+            curveTo(19f, 20.1f, 18.1f, 21f, 17f, 21f)
+            lineTo(7f, 21f)
+            curveTo(5.9f, 21f, 5f, 20.1f, 5f, 19f)
+            lineTo(5f, 11f)
+            curveTo(5f, 10.4f, 5.4f, 10f, 6f, 10f)
+            curveTo(6.6f, 10f, 7f, 10.4f, 7f, 11f)
+            lineTo(7f, 19f)
+            lineTo(17f, 19f)
+            lineTo(17f, 11f)
+            curveTo(17f, 10.4f, 17.4f, 10f, 18f, 10f)
+            curveTo(18.6f, 10f, 19f, 10.4f, 19f, 11f)
+            close()
+
+            moveTo(12f, 3f)
+            curveTo(12.3f, 3f, 12.5f, 3.1f, 12.7f, 3.3f)
+            lineTo(16.7f, 7.3f)
+            curveTo(17.1f, 7.7f, 17.1f, 8.3f, 16.7f, 8.7f)
+            curveTo(16.3f, 9.1f, 15.7f, 9.1f, 15.3f, 8.7f)
+            lineTo(13f, 6.4f)
+            lineTo(13f, 14f)
+            curveTo(13f, 14.6f, 12.6f, 15f, 12f, 15f)
+            curveTo(11.4f, 15f, 11f, 14.6f, 11f, 14f)
+            lineTo(11f, 6.4f)
+            lineTo(8.7f, 8.7f)
+            curveTo(8.3f, 9.1f, 7.7f, 9.1f, 7.3f, 8.7f)
+            curveTo(6.9f, 8.3f, 6.9f, 7.7f, 7.3f, 7.3f)
+            lineTo(11.3f, 3.3f)
+            curveTo(11.5f, 3.1f, 11.7f, 3f, 12f, 3f)
+            close()
+        }
+    }
 }
 

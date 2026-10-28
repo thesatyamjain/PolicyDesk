@@ -2,10 +2,18 @@ package com.policydesk.app.ui.dashboard
 
 import android.content.Intent
 import android.net.Uri
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.ui.draw.scale
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -49,8 +57,10 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -70,6 +80,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.policydesk.app.domain.model.RegistrationNormalizer
 import com.policydesk.app.domain.model.Sector
 import com.policydesk.app.domain.model.VehicleWithPolicies
+import com.policydesk.app.ui.components.AppleAlertDialog
 import com.policydesk.app.ui.components.DaysRemainingBadge
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -80,6 +91,7 @@ import com.policydesk.app.ui.components.LiquidGlassCard
 import com.policydesk.app.ui.components.LiquidGlassDock
 import com.policydesk.app.ui.components.LiquidGlassFloatingButton
 import com.policydesk.app.ui.components.LiquidGlassSearchBar
+import com.policydesk.app.ui.components.LiquidGlassSelectionBar
 import com.policydesk.app.ui.components.LiquidGlassTopBar
 import com.policydesk.app.ui.components.UiFormatters
 import com.policydesk.app.ui.components.liquidGlass
@@ -114,15 +126,73 @@ fun DashboardScreen(
     onNavigateToPdf: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToVehicleDetail: (String) -> Unit,
+    onSelectionModeChange: (Boolean) -> Unit = {},
     viewModel: DashboardViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var showAddChooserSheet by remember { mutableStateOf(false) }
+    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState()
+    val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
 
     val isDark = isSystemInDarkTheme()
     val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
     val labelSecondary = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
+    val actionTint = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
+
+    val allSelected = uiState.filteredList.isNotEmpty() && uiState.selectedRegNos.size == uiState.filteredList.size
+
+    LaunchedEffect(uiState.isSelectionMode) {
+        onSelectionModeChange(uiState.isSelectionMode)
+    }
+
+    BackHandler(enabled = uiState.isSelectionMode) {
+        viewModel.exitSelectionMode()
+    }
+
+    val onShareSelected: () -> Unit = {
+        val selectedItems = uiState.filteredList.filter { it.vehicle.regNo in uiState.selectedRegNos }
+        if (selectedItems.isNotEmpty()) {
+            val shareText = buildString {
+                appendLine("PolicyDesk Summary (${selectedItems.size} Policies):")
+                appendLine("────────────────────────────────")
+                selectedItems.forEachIndexed { i, item ->
+                    val p = item.currentPolicy
+                    val exp = p?.expiryDate?.let { UiFormatters.formatDate(it) } ?: "N/A"
+                    val premium = p?.totalPremium?.let { UiFormatters.formatCurrency(it) } ?: "N/A"
+                    appendLine("${i + 1}. ${item.vehicle.regNo} | ${item.vehicle.customer.name}")
+                    appendLine("   Insurer: ${p?.insurer ?: "N/A"} | Exp: $exp | Premium: $premium")
+                    if (item.vehicle.customer.mobile.isNotBlank()) {
+                        appendLine("   Contact: ${item.vehicle.customer.mobile}")
+                    }
+                    appendLine()
+                }
+            }
+            val sendIntent = Intent().apply {
+                action = Intent.ACTION_SEND
+                putExtra(Intent.EXTRA_TEXT, shareText)
+                type = "text/plain"
+            }
+            context.startActivity(Intent.createChooser(sendIntent, "Share ${selectedItems.size} Policies"))
+        }
+    }
+
+    if (showDeleteConfirmDialog) {
+        AppleAlertDialog(
+            onDismissRequest = { showDeleteConfirmDialog = false },
+            title = "Delete ${uiState.selectedRegNos.size} Policies?",
+            message = "Are you sure you want to remove the selected policies? Their vehicle records will be archived.",
+            confirmText = "Delete",
+            dismissText = "Cancel",
+            isDestructive = true,
+            onConfirm = {
+                showDeleteConfirmDialog = false
+                viewModel.deleteSelected()
+            },
+            onDismiss = { showDeleteConfirmDialog = false }
+        )
+    }
 
     if (showAddChooserSheet) {
         ModalBottomSheet(
@@ -203,56 +273,109 @@ fun DashboardScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            LiquidGlassTopBar(
-                title = "PolicyDesk",
-                subtitle = "Vehicle Insurance Advisor",
-                actions = {
-                    val isDark = isSystemInDarkTheme()
-                    val haptic = LocalHapticFeedback.current
-                    val actionTint = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
-
-                    // Prominent Apple Glass Add Button (My Warranties style)
-                    Box(
-                        modifier = Modifier
-                            .size(34.dp)
-                            .clip(CircleShape)
-                            .background(if (isDark) AppleDarkSystemBlue else AppleSystemBlue, CircleShape)
-                            .clickable {
-                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                showAddChooserSheet = true
-                            },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = AppleIcons.Plus,
-                            contentDescription = "Add Policy",
-                            tint = Color.White,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-
-                    IconButton(
-                        onClick = {
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
+            topBar = {
+                if (uiState.isSelectionMode) {
+                    LiquidGlassTopBar(
+                        title = if (uiState.selectedRegNos.isEmpty()) "Select Policies" else "${uiState.selectedRegNos.size} Selected",
+                        subtitle = "${uiState.filteredList.size} policies total",
+                        onNavigateBack = {
                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            onNavigateToSettings()
+                            viewModel.exitSelectionMode()
                         },
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        Icon(
-                            imageVector = AppleIcons.GearShape,
-                            contentDescription = "Settings",
-                            tint = actionTint,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
+                        actions = {
+                            TextButton(
+                                onClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    viewModel.toggleSelectAll(uiState.filteredList.map { it.vehicle.regNo })
+                                }
+                            ) {
+                                Text(
+                                    text = if (allSelected) "Deselect All" else "Select All",
+                                    color = actionTint,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+
+                            TextButton(
+                                onClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    viewModel.exitSelectionMode()
+                                }
+                            ) {
+                                Text(
+                                    text = "Done",
+                                    color = actionTint,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    )
+                } else {
+                    LiquidGlassTopBar(
+                        title = "PolicyDesk",
+                        subtitle = "Vehicle Insurance Advisor",
+                        actions = {
+                            if (uiState.filteredList.isNotEmpty()) {
+                                TextButton(
+                                    onClick = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        viewModel.enterSelectionMode()
+                                    }
+                                ) {
+                                    Text(
+                                        text = "Select",
+                                        color = actionTint,
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+                            }
+
+                            // Prominent Apple Glass Add Button (My Warranties style)
+                            Box(
+                                modifier = Modifier
+                                    .size(34.dp)
+                                    .clip(CircleShape)
+                                    .background(if (isDark) AppleDarkSystemBlue else AppleSystemBlue, CircleShape)
+                                    .clickable {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        showAddChooserSheet = true
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = AppleIcons.Plus,
+                                    contentDescription = "Add Policy",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+
+                            IconButton(
+                                onClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    onNavigateToSettings()
+                                },
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Icon(
+                                    imageVector = AppleIcons.GearShape,
+                                    contentDescription = "Settings",
+                                    tint = actionTint,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                    )
                 }
-            )
-        },
-        containerColor = Color.Transparent,
-        contentWindowInsets = WindowInsets(0, 0, 0, 0)
-    ) { paddingValues ->
+            },
+            containerColor = Color.Transparent,
+            contentWindowInsets = WindowInsets(0, 0, 0, 0)
+        ) { paddingValues ->
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(top = paddingValues.calculateTopPadding() + 8.dp, bottom = 120.dp),
@@ -628,14 +751,44 @@ fun DashboardScreen(
                     items = uiState.filteredList,
                     key = { it.vehicle.regNo }
                 ) { item ->
+                    val isSelected = uiState.selectedRegNos.contains(item.vehicle.regNo)
                     Box(modifier = Modifier.padding(horizontal = 16.dp)) {
                         VehicleExpiryCard(
                             item = item,
-                            onClick = { onNavigateToVehicleDetail(item.vehicle.regNo) }
+                            onClick = { onNavigateToVehicleDetail(item.vehicle.regNo) },
+                            isSelectionMode = uiState.isSelectionMode,
+                            isSelected = isSelected,
+                            onToggleSelect = { viewModel.toggleSelect(item.vehicle.regNo) },
+                            onLongClick = { viewModel.enterSelectionMode(item.vehicle.regNo) }
                         )
                     }
                 }
             }
+        }
+    }
+
+    // Floating Selection Bar (Slides up when in selection mode)
+        AnimatedVisibility(
+            visible = uiState.isSelectionMode,
+            enter = slideInVertically(
+                initialOffsetY = { it },
+                animationSpec = spring(dampingRatio = 0.82f, stiffness = 400f)
+            ) + fadeIn(),
+            exit = slideOutVertically(
+                targetOffsetY = { it },
+                animationSpec = spring(dampingRatio = 0.82f, stiffness = 400f)
+            ) + fadeOut(),
+            modifier = Modifier.align(Alignment.BottomCenter)
+        ) {
+            LiquidGlassSelectionBar(
+                selectedCount = uiState.selectedRegNos.size,
+                totalCount = uiState.filteredList.size,
+                allSelected = allSelected,
+                onToggleSelectAll = { viewModel.toggleSelectAll(uiState.filteredList.map { it.vehicle.regNo }) },
+                onShare = onShareSelected,
+                onDelete = { showDeleteConfirmDialog = true },
+                onClose = { viewModel.exitSelectionMode() }
+            )
         }
     }
 }
@@ -724,7 +877,11 @@ fun LiquidGlassMetricCard(
 @Composable
 fun VehicleExpiryCard(
     item: VehicleWithPolicies,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    isSelectionMode: Boolean = false,
+    isSelected: Boolean = false,
+    onToggleSelect: () -> Unit = {},
+    onLongClick: () -> Unit = {}
 ) {
     val isDark = isSystemInDarkTheme()
     val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
@@ -739,17 +896,58 @@ fun VehicleExpiryCard(
     LiquidGlassCard(
         shape = RoundedCornerShape(18.dp),
         elevation = 3.dp,
-        onClick = onClick
+        onClick = {
+            if (isSelectionMode) onToggleSelect() else onClick()
+        },
+        onLongClick = {
+            if (!isSelectionMode) onLongClick()
+        }
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Authentic Indian HSRP Number Plate
-            HsrpNumberPlate(
-                regNo = item.vehicle.regNo
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                AnimatedVisibility(
+                    visible = isSelectionMode,
+                    enter = fadeIn() + expandHorizontally(),
+                    exit = fadeOut() + shrinkHorizontally()
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(24.dp)
+                            .clip(CircleShape)
+                            .background(
+                                if (isSelected) (if (isDark) AppleDarkSystemBlue else AppleSystemBlue)
+                                else Color.Transparent
+                            )
+                            .border(
+                                width = 2.dp,
+                                color = if (isSelected) Color.Transparent else (if (isDark) Color(0x66FFFFFF) else Color(0x33000000)),
+                                shape = CircleShape
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (isSelected) {
+                            Icon(
+                                imageVector = AppleIcons.Checkmark,
+                                contentDescription = "Selected",
+                                tint = Color.White,
+                                modifier = Modifier.size(13.dp)
+                            )
+                        }
+                    }
+                }
+
+                // Authentic Indian HSRP Number Plate
+                HsrpNumberPlate(
+                    regNo = item.vehicle.regNo
+                )
+            }
 
             DaysRemainingBadge(
                 daysRemaining = daysRemaining,

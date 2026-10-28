@@ -3,9 +3,11 @@ package com.policydesk.app.ui.components
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -210,12 +212,14 @@ fun Modifier.liquidGlass(
  * Apple Liquid Glass Inset Card
  * Supports fluid spring physics and Cupertino tactile haptic feedback.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun LiquidGlassCard(
     modifier: Modifier = Modifier,
     shape: Shape = RoundedCornerShape(18.dp),
     elevation: Dp = 3.dp,
     onClick: (() -> Unit)? = null,
+    onLongClick: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
     val isDark = isSystemInDarkTheme()
@@ -224,7 +228,7 @@ fun LiquidGlassCard(
     val isPressed by interactionSource.collectIsPressedAsState()
 
     val scale by animateFloatAsState(
-        targetValue = if (isPressed && onClick != null) 0.962f else 1f,
+        targetValue = if (isPressed && (onClick != null || onLongClick != null)) 0.962f else 1f,
         animationSpec = spring(
             dampingRatio = 0.78f,
             stiffness = 380f
@@ -232,14 +236,22 @@ fun LiquidGlassCard(
         label = "glass_card_spring"
     )
 
-    val clickModifier = if (onClick != null) {
-        Modifier.clickable(
+    val clickModifier = if (onClick != null || onLongClick != null) {
+        Modifier.combinedClickable(
             interactionSource = interactionSource,
             indication = null,
             onClick = {
-                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                onClick()
-            }
+                if (onClick != null) {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onClick()
+                }
+            },
+            onLongClick = if (onLongClick != null) {
+                {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onLongClick()
+                }
+            } else null
         )
     } else Modifier
 
@@ -1497,5 +1509,161 @@ fun LiquidGlassDock(
         }
     }
 }
+
+/**
+ * Apple Liquid Glass Bulk Selection Toolbar
+ * Suspended floating bar with Cupertino pill geometry and action buttons.
+ */
+@Composable
+fun LiquidGlassSelectionBar(
+    selectedCount: Int,
+    totalCount: Int,
+    allSelected: Boolean,
+    onToggleSelectAll: () -> Unit,
+    onShare: () -> Unit,
+    onDelete: () -> Unit,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val isDark = isSystemInDarkTheme()
+    val haptic = LocalHapticFeedback.current
+    val barShape = RoundedCornerShape(26.dp)
+    val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
+    val labelSecondary = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .widthIn(max = 440.dp)
+                .fillMaxWidth()
+                .height(60.dp)
+                .liquidGlass(shape = barShape, elevation = 8.dp, isDark = isDark)
+                .clip(barShape)
+                .padding(horizontal = 14.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Select All toggle pill
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(
+                            if (allSelected) (if (isDark) AppleDarkSystemBlue else AppleSystemBlue).copy(alpha = 0.2f)
+                            else (if (isDark) Color(0x33545458) else Color(0x14767680))
+                        )
+                        .clickable {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            onToggleSelectAll()
+                        }
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(18.dp)
+                            .clip(CircleShape)
+                            .background(
+                                if (allSelected) (if (isDark) AppleDarkSystemBlue else AppleSystemBlue)
+                                else Color.Transparent
+                            )
+                            .border(
+                                width = 1.5.dp,
+                                color = if (allSelected) Color.Transparent else (if (isDark) Color(0x88FFFFFF) else Color(0x44000000)),
+                                shape = CircleShape
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (allSelected) {
+                            Icon(
+                                imageVector = AppleIcons.Checkmark,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(11.dp)
+                            )
+                        }
+                    }
+                    Text(
+                        text = if (allSelected) "All ($totalCount)" else "$selectedCount / $totalCount",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (allSelected) (if (isDark) AppleDarkSystemBlue else AppleSystemBlue) else labelPrimary
+                    )
+                }
+
+                // Actions: Share, Delete, Done
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Share
+                    IconButton(
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            onShare()
+                        },
+                        enabled = selectedCount > 0,
+                        modifier = Modifier.size(38.dp)
+                    ) {
+                        Icon(
+                            imageVector = AppleIcons.Share,
+                            contentDescription = "Share selected",
+                            tint = if (selectedCount > 0) (if (isDark) AppleDarkSystemBlue else AppleSystemBlue) else labelSecondary.copy(alpha = 0.4f),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
+                    // Delete
+                    IconButton(
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            onDelete()
+                        },
+                        enabled = selectedCount > 0,
+                        modifier = Modifier.size(38.dp)
+                    ) {
+                        Icon(
+                            imageVector = AppleIcons.Trash,
+                            contentDescription = "Delete selected",
+                            tint = if (selectedCount > 0) AppleSystemRed else labelSecondary.copy(alpha = 0.4f),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
+                    // Done / Close
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (isDark) Color(0x33545458) else Color(0x14767680))
+                            .clickable {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                onClose()
+                            }
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Done",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
 
 

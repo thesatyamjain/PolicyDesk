@@ -394,6 +394,14 @@ class VehicleRepositoryImpl @Inject constructor(
         triggerSilentDriveSync()
     }
 
+    override suspend fun softDeleteVehicles(regNos: List<String>) {
+        if (regNos.isNotEmpty()) {
+            val normalizedList = regNos.map { normalizeRegistration(it) }
+            vehicleDao.softDeleteVehicles(normalizedList)
+            triggerSilentDriveSync()
+        }
+    }
+
     override suspend fun markPolicyRenewed(policyId: String, renewedOn: Long) {
         vehicleDao.markPolicyRenewed(policyId, renewedOn)
         triggerSilentDriveSync()

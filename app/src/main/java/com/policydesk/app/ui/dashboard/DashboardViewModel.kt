@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 import javax.inject.Inject
 
@@ -35,7 +36,9 @@ data class DashboardUiState(
     val activeFilter: ExpiryFilter = ExpiryFilter.ALL,
     val sectorFilter: SectorFilter = SectorFilter.ALL,
     val filteredList: List<VehicleWithPolicies> = emptyList(),
-    val isLoading: Boolean = false
+    val isLoading: Boolean = false,
+    val isSelectionMode: Boolean = false,
+    val selectedRegNos: Set<String> = emptySet()
 )
 
 @HiltViewModel
@@ -46,8 +49,10 @@ class DashboardViewModel @Inject constructor(
     private val _searchQuery = MutableStateFlow("")
     private val _activeFilter = MutableStateFlow(ExpiryFilter.ALL)
     private val _sectorFilter = MutableStateFlow(SectorFilter.ALL)
+    private val _isSelectionMode = MutableStateFlow(false)
+    private val _selectedRegNos = MutableStateFlow<Set<String>>(emptySet())
 
-    val uiState: StateFlow<DashboardUiState> = combine(
+    private val _filterState = combine(
         repository.getDashboardSummary(),
         _searchQuery,
         _activeFilter,
@@ -95,6 +100,17 @@ class DashboardViewModel @Inject constructor(
             filteredList = list,
             isLoading = false
         )
+    }
+
+    val uiState: StateFlow<DashboardUiState> = combine(
+        _filterState,
+        _isSelectionMode,
+        _selectedRegNos
+    ) { baseState, isSelectionMode, selectedRegNos ->
+        baseState.copy(
+            isSelectionMode = isSelectionMode,
+            selectedRegNos = selectedRegNos
+        )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
@@ -111,5 +127,59 @@ class DashboardViewModel @Inject constructor(
 
     fun onSectorFilterSelected(sector: SectorFilter) {
         _sectorFilter.value = sector
+    }
+
+    fun enterSelectionMode(initialRegNo: String? = null) {
+        _isSelectionMode.value = true
+        _selectedRegNos.value = if (initialRegNo != null) setOf(initialRegNo) else emptySet()
+    }
+
+    fun exitSelectionMode() {
+        _isSelectionMode.value = false
+        _selectedRegNos.value = emptySet()
+    }
+
+    fun toggleSelect(regNo: String) {
+        if (!_isSelectionMode.value) {
+            _isSelectionMode.value = true
+            _selectedRegNos.value = setOf(regNo)
+            return
+        }
+        val current = _selectedRegNos.value.toMutableSet()
+        if (current.contains(regNo)) {
+            current.remove(regNo)
+        } else {
+            current.add(regNo)
+        }
+        _selectedRegNos.value = current
+    }
+
+    fun selectAll(visibleRegNos: List<String>) {
+        _isSelectionMode.value = true
+        _selectedRegNos.value = visibleRegNos.toSet()
+    }
+
+    fun deselectAll() {
+        _selectedRegNos.value = emptySet()
+    }
+
+    fun toggleSelectAll(visibleRegNos: List<String>) {
+        val current = _selectedRegNos.value
+        val allSelected = visibleRegNos.isNotEmpty() && current.containsAll(visibleRegNos)
+        if (allSelected) {
+            deselectAll()
+        } else {
+            selectAll(visibleRegNos)
+        }
+    }
+
+    fun deleteSelected(onComplete: () -> Unit = {}) {
+        val targets = _selectedRegNos.value.toList()
+        if (targets.isEmpty()) return
+        viewModelScope.launch {
+            repository.softDeleteVehicles(targets)
+            exitSelectionMode()
+            onComplete()
+        }
     }
 }

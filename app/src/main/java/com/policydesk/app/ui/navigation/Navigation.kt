@@ -1,5 +1,6 @@
 package com.policydesk.app.ui.navigation
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.spring
@@ -7,13 +8,17 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -81,6 +86,7 @@ fun PolicyDeskNavHost(
 
     val isTopLevelTab = currentTab != null
     val hazeState = remember { HazeState() }
+    var isSelectionActive by remember { mutableStateOf(false) }
 
     CompositionLocalProvider(LocalHazeState provides hazeState) {
         Box(modifier = Modifier.fillMaxSize()) {
@@ -162,7 +168,8 @@ fun PolicyDeskNavHost(
                     },
                     onNavigateToVehicleDetail = { regNo ->
                         navController.navigate(Screen.VehicleDetail.createRoute(regNo))
-                    }
+                    },
+                    onSelectionModeChange = { isSelectionActive = it }
                 )
             }
 
@@ -263,30 +270,42 @@ fun PolicyDeskNavHost(
         }
 
         // True Persistent Floating Liquid Glass Dock (Suspended over content, active across all primary tabs)
-        if (isTopLevelTab && currentTab != null) {
-            LiquidGlassDock(
-                currentTab = currentTab,
-                onTabSelected = { tab ->
-                    val targetRoute = when (tab) {
-                        DockTab.DASHBOARD -> Screen.Dashboard.route
-                        DockTab.CUSTOMERS -> Screen.Customers.route
-                        DockTab.TIMELINE -> Screen.MonthView.route
-                        DockTab.REPORTS -> Screen.Reports.route
-                        DockTab.SETTINGS -> Screen.Settings.route
-                    }
-                    if (currentRoute != targetRoute) {
-                        navController.navigate(targetRoute) {
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
-                            }
-                            launchSingleTop = true
-                            restoreState = true
+        AnimatedVisibility(
+            visible = isTopLevelTab && currentTab != null && !isSelectionActive,
+            enter = slideInVertically(
+                initialOffsetY = { it },
+                animationSpec = spring(dampingRatio = 0.82f, stiffness = 400f)
+            ) + fadeIn(animationSpec = tween(200)),
+            exit = slideOutVertically(
+                targetOffsetY = { it },
+                animationSpec = spring(dampingRatio = 0.82f, stiffness = 400f)
+            ) + fadeOut(animationSpec = tween(150)),
+            modifier = Modifier.align(Alignment.BottomCenter)
+        ) {
+            currentTab?.let { tab ->
+                LiquidGlassDock(
+                    currentTab = tab,
+                    onTabSelected = { selectedTab ->
+                        val targetRoute = when (selectedTab) {
+                            DockTab.DASHBOARD -> Screen.Dashboard.route
+                            DockTab.CUSTOMERS -> Screen.Customers.route
+                            DockTab.TIMELINE -> Screen.MonthView.route
+                            DockTab.REPORTS -> Screen.Reports.route
+                            DockTab.SETTINGS -> Screen.Settings.route
                         }
-                    }
-                },
-                hazeState = hazeState,
-                modifier = Modifier.align(Alignment.BottomCenter)
-            )
+                        if (currentRoute != targetRoute) {
+                            navController.navigate(targetRoute) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        }
+                    },
+                    hazeState = hazeState
+                )
+            }
         }
     }
 }
