@@ -1317,16 +1317,20 @@ fun LiquidGlassDock(
     val selectedIndex = tabs.indexOfFirst { it.first == currentTab }.coerceAtLeast(0)
 
     val hazeMod = if (activeHaze != null) {
-        Modifier.hazeEffect(
-            state = activeHaze,
-            style = HazeStyle(
-                blurRadius = 26.dp,
-                tints = listOf(
-                    HazeTint(if (isDark) Color(0xFF121215).copy(alpha = 0.58f) else Color.White.copy(alpha = 0.62f))
-                ),
-                noiseFactor = 0.05f
+        try {
+            val bg = (if (isDark) Color(0xFF121215) else Color.White).copy(alpha = 0.60f)
+            Modifier.hazeEffect(
+                state = activeHaze,
+                style = HazeStyle(
+                    backgroundColor = bg,
+                    blurRadius = 26.dp,
+                    tints = listOf(HazeTint(bg)),
+                    noiseFactor = 0.05f
+                )
             )
-        )
+        } catch (_: Throwable) {
+            Modifier
+        }
     } else Modifier
 
     Box(

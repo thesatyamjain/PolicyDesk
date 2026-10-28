@@ -91,10 +91,14 @@ fun PolicyDeskNavHost(
                     .fillMaxSize()
                     .hazeSource(state = hazeState),
                 enterTransition = {
-                    slideInHorizontally(
-                        initialOffsetX = { fullWidth -> (fullWidth * 0.32f).toInt() },
-                        animationSpec = spring(dampingRatio = 0.86f, stiffness = 420f)
-                    ) + fadeIn(animationSpec = tween(220, easing = LinearOutSlowInEasing))
+                    if (initialState.destination.route == null) {
+                        fadeIn(animationSpec = tween(150))
+                    } else {
+                        slideInHorizontally(
+                            initialOffsetX = { fullWidth -> (fullWidth * 0.32f).toInt() },
+                            animationSpec = spring(dampingRatio = 0.86f, stiffness = 420f)
+                        ) + fadeIn(animationSpec = tween(220, easing = LinearOutSlowInEasing))
+                    }
                 },
                 exitTransition = {
                     slideOutHorizontally(
