@@ -113,15 +113,10 @@ fun SettingsScreen(
         }
     }
 
-    val accountPickerLauncher = rememberLauncherForActivityResult(
+    val googleSignInLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        if (result.resultCode == android.app.Activity.RESULT_OK) {
-            val email = result.data?.getStringExtra(android.accounts.AccountManager.KEY_ACCOUNT_NAME)
-            if (!email.isNullOrBlank()) {
-                viewModel.connectGoogleAccount(email)
-            }
-        }
+        viewModel.handleGoogleSignInResult(result.data)
     }
 
     var showKey by remember { mutableStateOf(false) }
@@ -463,16 +458,16 @@ fun SettingsScreen(
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = state.driveFileName,
+                                text = state.googleAccountEmail ?: "Google Account",
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = labelPrimary
                             )
                             Spacer(modifier = Modifier.height(3.dp))
                             Text(
-                                text = "Syncs on demand and after policy updates",
+                                text = "Vault: PolicyDesk Vault / policydesk_backup.json",
                                 fontSize = 11.sp,
-                                color = AppleSystemGreen
+                                color = labelSecondary
                             )
                         }
                         androidx.compose.material3.TextButton(onClick = viewModel::disconnectGoogleDrive) {
@@ -483,7 +478,7 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.height(12.dp))
 
                     DetailRow(label = "Total Records", value = "${state.totalRecords} vehicles")
-                    DetailRow(label = "Backup File", value = state.driveFileName)
+                    DetailRow(label = "Cloud Vault", value = "PolicyDesk Vault")
                     DetailRow(label = "Last Synced Time", value = state.lastSyncTime)
 
                     state.syncMessage?.let { msg ->
@@ -513,6 +508,21 @@ fun SettingsScreen(
                         )
 
                         AppleSecondaryButton(
+                            text = "Restore from Vault",
+                            onClick = viewModel::restoreFromDriveVault,
+                            enabled = !state.isSyncing,
+                            tintColor = labelPrimary,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        AppleSecondaryButton(
                             text = "Save to Drive (Share)",
                             onClick = {
                                 coroutineScope.launch {
@@ -528,22 +538,9 @@ fun SettingsScreen(
                             enabled = !state.isSyncing,
                             modifier = Modifier.weight(1.1f)
                         )
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        AppleSecondaryButton(
-                            text = "Relink Drive Location",
-                            onClick = { backupSnapshotLauncher.launch("policydesk_backup.json") },
-                            modifier = Modifier.weight(1f)
-                        )
 
                         AppleSecondaryButton(
-                            text = "Restore from Drive",
+                            text = "Import JSON File",
                             onClick = { restoreSnapshotLauncher.launch(arrayOf("application/json", "*/*")) },
                             tintColor = labelPrimary,
                             modifier = Modifier.weight(1f)
@@ -551,7 +548,7 @@ fun SettingsScreen(
                     }
                 } else {
                     Text(
-                        text = "Link your Google Drive storage to backup all policies, vehicles, and customer records in the cloud. Choose 'Link Google Drive Location' to set a permanent sync file, or use 'Save to Google Drive' anytime.",
+                        text = "Sign in with your Google Account to automatically sync all policies, vehicles, and customer records to a dedicated 'PolicyDesk Vault' on your Google Drive.",
                         fontSize = 13.sp,
                         lineHeight = 18.sp,
                         color = labelSecondary
@@ -577,9 +574,9 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.height(14.dp))
 
                     AppleButton(
-                        text = "Link Google Drive Location",
+                        text = "Sign in with Google Drive",
                         onClick = {
-                            backupSnapshotLauncher.launch("policydesk_backup.json")
+                            googleSignInLauncher.launch(viewModel.getGoogleSignInIntent())
                         },
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -608,7 +605,7 @@ fun SettingsScreen(
                         )
 
                         AppleSecondaryButton(
-                            text = "Restore from Drive",
+                            text = "Import JSON File",
                             onClick = { restoreSnapshotLauncher.launch(arrayOf("application/json", "*/*")) },
                             tintColor = labelPrimary,
                             modifier = Modifier.weight(1f)

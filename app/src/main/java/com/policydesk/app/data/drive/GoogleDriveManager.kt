@@ -2,6 +2,12 @@ package com.policydesk.app.data.drive
 
 import android.content.Context
 import android.net.Uri
+import com.google.android.gms.auth.GoogleAuthUtil
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount
+import com.google.android.gms.auth.api.signin.GoogleSignInClient
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.Scope
 import com.policydesk.app.domain.model.Customer
 import com.policydesk.app.domain.model.Policy
 import com.policydesk.app.domain.model.PolicySource
@@ -17,28 +23,64 @@ import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.io.OutputStreamWriter
+import java.net.HttpURLConnection
+import java.net.URL
+import java.net.URLEncoder
 
+/**
+ * Clean Google Drive backup & restore service using personal Google Drive.
+ * Uses 'drive.file' scope so app can only create & read files it created in 'PolicyDesk Vault'.
+ */
 object GoogleDriveManager {
 
-    const val SNAPSHOT_FILE_NAME = "policydesk_snapshot.json"
+    const val SNAPSHOT_FILE_NAME = "policydesk_backup.json"
+    const val VAULT_FOLDER_NAME = "PolicyDesk Vault"
+    const val DRIVE_FILE_SCOPE = "https://www.googleapis.com/auth/drive.file"
+
     private const val PREFS_NAME = "policydesk_drive_prefs"
     private const val KEY_CONNECTED_ACCOUNT = "connected_google_account"
+    private const val KEY_CONNECTED_NAME = "connected_google_name"
     private const val KEY_AUTO_SYNC_ENABLED = "auto_sync_enabled"
+    private const val KEY_LAST_SYNC_TIME = "last_sync_time"
     private const val KEY_BACKUP_URI = "backup_file_uri"
     private const val KEY_BACKUP_NAME = "backup_file_name"
-    private const val KEY_LAST_SYNC_TIME = "last_sync_time"
 
-    fun getConnectedAccount(context: Context): String? {
-        return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .getString(KEY_CONNECTED_ACCOUNT, null)
+    fun getSignInClient(context: Context): GoogleSignInClient {
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestEmail()
+            .requestScopes(Scope(DRIVE_FILE_SCOPE))
+            .build()
+        return GoogleSignIn.getClient(context, gso)
     }
 
-    fun setConnectedAccount(context: Context, email: String?) {
+    fun getConnectedAccount(context: Context): String? {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val saved = prefs.getString(KEY_CONNECTED_ACCOUNT, null)
+        if (saved != null) return saved
+        // Check GoogleSignIn last account as fallback
+        val lastAccount = GoogleSignIn.getLastSignedInAccount(context)
+        return lastAccount?.email
+    }
+
+    fun getConnectedDisplayName(context: Context): String? {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val saved = prefs.getString(KEY_CONNECTED_NAME, null)
+        if (saved != null) return saved
+        val lastAccount = GoogleSignIn.getLastSignedInAccount(context)
+        return lastAccount?.displayName
+    }
+
+    fun setConnectedAccount(context: Context, email: String?, displayName: String? = null) {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .edit()
             .putString(KEY_CONNECTED_ACCOUNT, email)
+            .putString(KEY_CONNECTED_NAME, displayName)
             .putBoolean(KEY_AUTO_SYNC_ENABLED, email != null)
             .apply()
+    }
+
+    fun isDriveLinked(context: Context): Boolean {
+        return getConnectedAccount(context) != null
     }
 
     fun isAutoSyncEnabled(context: Context): Boolean {
@@ -54,27 +96,32 @@ object GoogleDriveManager {
     }
 
     fun disconnect(context: Context) {
+        try {
+            getSignInClient(context).signOut()
+        } catch (_: Exception) {}
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .edit()
             .remove(KEY_CONNECTED_ACCOUNT)
+            .remove(KEY_CONNECTED_NAME)
             .remove(KEY_BACKUP_URI)
             .remove(KEY_BACKUP_NAME)
             .putBoolean(KEY_AUTO_SYNC_ENABLED, false)
             .apply()
     }
 
-    fun getGoogleAccountChooserIntent(): android.content.Intent {
-        return android.accounts.AccountManager.newChooseAccountIntent(
-            null,
-            null,
-            arrayOf("com.google"),
-            null,
-            null,
-            null,
-            null
-        )
+    fun setLastSyncTime(context: Context, timestamp: Long) {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putLong(KEY_LAST_SYNC_TIME, timestamp)
+            .apply()
     }
 
+    fun getLastSyncTime(context: Context): Long {
+        return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .getLong(KEY_LAST_SYNC_TIME, 0L)
+    }
+
+    // Storage Access Framework legacy support
     fun setSavedBackupUri(context: Context, uri: Uri, name: String? = null) {
         val editor = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
         editor.putString(KEY_BACKUP_URI, uri.toString())
@@ -93,63 +140,260 @@ object GoogleDriveManager {
 
     fun getSavedBackupName(context: Context): String {
         return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .getString(KEY_BACKUP_NAME, "policydesk_backup.json") ?: "policydesk_backup.json"
+            .getString(KEY_BACKUP_NAME, SNAPSHOT_FILE_NAME) ?: SNAPSHOT_FILE_NAME
     }
 
-    fun isDriveLinked(context: Context): Boolean {
-        return getSavedBackupUri(context) != null
+    suspend fun getAccessToken(context: Context): String? = withContext(Dispatchers.IO) {
+        val account: GoogleSignInAccount = GoogleSignIn.getLastSignedInAccount(context) ?: return@withContext null
+        val androidAccount = account.account ?: return@withContext null
+        try {
+            GoogleAuthUtil.getToken(context, androidAccount, "oauth2:$DRIVE_FILE_SCOPE")
+        } catch (e: Exception) {
+            null
+        }
     }
 
-    fun setLastSyncTime(context: Context, timestamp: Long) {
-        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .edit()
-            .putLong(KEY_LAST_SYNC_TIME, timestamp)
-            .apply()
-    }
-
-    fun getLastSyncTime(context: Context): Long {
-        return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .getLong(KEY_LAST_SYNC_TIME, 0L)
-    }
-
-    suspend fun performAutoSync(context: Context, snapshotJson: String): Result<Unit> = withContext(Dispatchers.IO) {
+    /**
+     * Finds or creates the dedicated "PolicyDesk Vault" folder on the user's personal Google Drive.
+     */
+    private suspend fun getOrCreateVaultFolder(token: String): Result<String> = withContext(Dispatchers.IO) {
         runCatching {
-            // Save to internal app drive backup cache for instant offline restore / sync
-            val cacheFile = java.io.File(context.filesDir, "google_drive_sync_backup.json")
-            cacheFile.writeText(snapshotJson, Charsets.UTF_8)
+            val query = "mimeType = 'application/vnd.google-apps.folder' and name = '$VAULT_FOLDER_NAME' and trashed = false"
+            val encodedQuery = URLEncoder.encode(query, "UTF-8")
+            val searchUrl = URL("https://www.googleapis.com/drive/v3/files?q=$encodedQuery&spaces=drive&fields=files(id,name)")
 
-            // If a persistent Drive URI was selected, update it directly
-            getSavedBackupUri(context)?.let { uri ->
-                writeSnapshotToUri(context, uri, snapshotJson).getOrThrow()
+            var conn = (searchUrl.openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                setRequestProperty("Authorization", "Bearer $token")
+                connectTimeout = 15000
+                readTimeout = 15000
             }
 
+            val searchResponse = if (conn.responseCode in 200..299) {
+                conn.inputStream.bufferedReader().use { it.readText() }
+            } else {
+                val err = conn.errorStream?.bufferedReader()?.use { it.readText() }
+                throw IllegalStateException("Failed to query Drive vault: HTTP ${conn.responseCode} $err")
+            }
+
+            val searchJson = JSONObject(searchResponse)
+            val filesArray = searchJson.optJSONArray("files")
+            if (filesArray != null && filesArray.length() > 0) {
+                return@runCatching filesArray.getJSONObject(0).getString("id")
+            }
+
+            // Create folder if not found
+            val createUrl = URL("https://www.googleapis.com/drive/v3/files")
+            conn = (createUrl.openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                setRequestProperty("Authorization", "Bearer $token")
+                setRequestProperty("Content-Type", "application/json; charset=UTF-8")
+                doOutput = true
+                connectTimeout = 15000
+                readTimeout = 15000
+            }
+
+            val folderMeta = JSONObject().apply {
+                put("name", VAULT_FOLDER_NAME)
+                put("mimeType", "application/vnd.google-apps.folder")
+            }
+            conn.outputStream.bufferedWriter().use { it.write(folderMeta.toString()) }
+
+            val createResponse = if (conn.responseCode in 200..299) {
+                conn.inputStream.bufferedReader().use { it.readText() }
+            } else {
+                val err = conn.errorStream?.bufferedReader()?.use { it.readText() }
+                throw IllegalStateException("Failed to create Drive vault folder: HTTP ${conn.responseCode} $err")
+            }
+
+            JSONObject(createResponse).getString("id")
+        }
+    }
+
+    /**
+     * Uploads the policy snapshot directly into the "PolicyDesk Vault" folder on Google Drive.
+     */
+    suspend fun uploadToDriveVault(context: Context, snapshotJson: String): Result<Unit> = withContext(Dispatchers.IO) {
+        runCatching {
+            val token = getAccessToken(context)
+                ?: throw IllegalStateException("Google Drive is not linked. Please tap Sign In.")
+            val folderId = getOrCreateVaultFolder(token).getOrThrow()
+
+            // Check if policydesk_backup.json exists in the folder
+            val query = "name = '$SNAPSHOT_FILE_NAME' and '$folderId' in parents and trashed = false"
+            val encodedQuery = URLEncoder.encode(query, "UTF-8")
+            val searchUrl = URL("https://www.googleapis.com/drive/v3/files?q=$encodedQuery&spaces=drive&fields=files(id,name)")
+
+            var conn = (searchUrl.openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                setRequestProperty("Authorization", "Bearer $token")
+                connectTimeout = 15000
+                readTimeout = 15000
+            }
+
+            val searchResponse = if (conn.responseCode in 200..299) {
+                conn.inputStream.bufferedReader().use { it.readText() }
+            } else {
+                val err = conn.errorStream?.bufferedReader()?.use { it.readText() }
+                throw IllegalStateException("Failed to check backup file: HTTP ${conn.responseCode} $err")
+            }
+
+            val searchJson = JSONObject(searchResponse)
+            val filesArray = searchJson.optJSONArray("files")
+
+            val fileId: String
+            if (filesArray != null && filesArray.length() > 0) {
+                fileId = filesArray.getJSONObject(0).getString("id")
+            } else {
+                // Create file metadata in folder
+                val createUrl = URL("https://www.googleapis.com/drive/v3/files")
+                conn = (createUrl.openConnection() as HttpURLConnection).apply {
+                    requestMethod = "POST"
+                    setRequestProperty("Authorization", "Bearer $token")
+                    setRequestProperty("Content-Type", "application/json; charset=UTF-8")
+                    doOutput = true
+                    connectTimeout = 15000
+                    readTimeout = 15000
+                }
+
+                val parentsArray = JSONArray().apply { put(folderId) }
+                val fileMeta = JSONObject().apply {
+                    put("name", SNAPSHOT_FILE_NAME)
+                    put("parents", parentsArray)
+                    put("mimeType", "application/json")
+                }
+                conn.outputStream.bufferedWriter().use { it.write(fileMeta.toString()) }
+
+                val createResponse = if (conn.responseCode in 200..299) {
+                    conn.inputStream.bufferedReader().use { it.readText() }
+                } else {
+                    val err = conn.errorStream?.bufferedReader()?.use { it.readText() }
+                    throw IllegalStateException("Failed to create backup metadata: HTTP ${conn.responseCode} $err")
+                }
+                fileId = JSONObject(createResponse).getString("id")
+            }
+
+            // Upload JSON content to file media endpoint
+            val uploadUrl = URL("https://www.googleapis.com/upload/drive/v3/files/$fileId?uploadType=media")
+            conn = (uploadUrl.openConnection() as HttpURLConnection).apply {
+                requestMethod = "PATCH"
+                setRequestProperty("Authorization", "Bearer $token")
+                setRequestProperty("Content-Type", "application/json; charset=UTF-8")
+                doOutput = true
+                connectTimeout = 30000
+                readTimeout = 30000
+            }
+            conn.outputStream.bufferedWriter().use { it.write(snapshotJson) }
+
+            if (conn.responseCode !in 200..299) {
+                val err = conn.errorStream?.bufferedReader()?.use { it.readText() }
+                throw IllegalStateException("Failed to upload backup content: HTTP ${conn.responseCode} $err")
+            }
+
+            // Cache locally and save last sync timestamp
+            val cacheFile = java.io.File(context.filesDir, "google_drive_sync_backup.json")
+            cacheFile.writeText(snapshotJson, Charsets.UTF_8)
             setLastSyncTime(context, System.currentTimeMillis())
         }
     }
 
     /**
-     * Creates a file in the app cache directory and returns a secure FileProvider content Uri
-     * ready to be directly uploaded / shared to the Google Drive app via standard Android Intent.
+     * Downloads the policy backup from the "PolicyDesk Vault" folder on Google Drive.
      */
+    suspend fun restoreFromDriveVault(context: Context): Result<String> = withContext(Dispatchers.IO) {
+        runCatching {
+            val token = getAccessToken(context)
+                ?: throw IllegalStateException("Google Drive is not linked. Please tap Sign In.")
+            val folderId = getOrCreateVaultFolder(token).getOrThrow()
+
+            // Search for policydesk_backup.json in folder
+            val query = "name = '$SNAPSHOT_FILE_NAME' and '$folderId' in parents and trashed = false"
+            val encodedQuery = URLEncoder.encode(query, "UTF-8")
+            val searchUrl = URL("https://www.googleapis.com/drive/v3/files?q=$encodedQuery&spaces=drive&fields=files(id,name)")
+
+            var conn = (searchUrl.openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                setRequestProperty("Authorization", "Bearer $token")
+                connectTimeout = 15000
+                readTimeout = 15000
+            }
+
+            val searchResponse = if (conn.responseCode in 200..299) {
+                conn.inputStream.bufferedReader().use { it.readText() }
+            } else {
+                val err = conn.errorStream?.bufferedReader()?.use { it.readText() }
+                throw IllegalStateException("Failed to check backup file: HTTP ${conn.responseCode} $err")
+            }
+
+            val searchJson = JSONObject(searchResponse)
+            val filesArray = searchJson.optJSONArray("files")
+            if (filesArray == null || filesArray.length() == 0) {
+                throw IllegalStateException("No PolicyDesk backup file found in Google Drive Vault.")
+            }
+
+            val fileId = filesArray.getJSONObject(0).getString("id")
+
+            // Download media
+            val downloadUrl = URL("https://www.googleapis.com/drive/v3/files/$fileId?alt=media")
+            conn = (downloadUrl.openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                setRequestProperty("Authorization", "Bearer $token")
+                connectTimeout = 20000
+                readTimeout = 20000
+            }
+
+            if (conn.responseCode !in 200..299) {
+                val err = conn.errorStream?.bufferedReader()?.use { it.readText() }
+                throw IllegalStateException("Failed to download backup: HTTP ${conn.responseCode} $err")
+            }
+
+            val content = conn.inputStream.bufferedReader().use { it.readText() }
+
+            // Cache downloaded backup locally
+            val cacheFile = java.io.File(context.filesDir, "google_drive_sync_backup.json")
+            cacheFile.writeText(content, Charsets.UTF_8)
+            setLastSyncTime(context, System.currentTimeMillis())
+
+            content
+        }
+    }
+
+    /**
+     * Seamless auto-sync invoked on policy mutations and background workers.
+     */
+    suspend fun performAutoSync(context: Context, snapshotJson: String): Result<Unit> = withContext(Dispatchers.IO) {
+        runCatching {
+            // Internal app drive backup cache for instant offline restore / sync
+            val cacheFile = java.io.File(context.filesDir, "google_drive_sync_backup.json")
+            cacheFile.writeText(snapshotJson, Charsets.UTF_8)
+
+            // If user has signed in to Google Drive, upload to PolicyDesk Vault
+            if (isDriveLinked(context)) {
+                uploadToDriveVault(context, snapshotJson).getOrThrow()
+            }
+
+            // Also update SAF uri if one was previously configured
+            getSavedBackupUri(context)?.let { uri ->
+                writeSnapshotToUri(context, uri, snapshotJson).getOrNull()
+            }
+            Unit
+        }
+    }
+
+    suspend fun performSilentBackup(context: Context, snapshotJson: String): Result<Unit> {
+        return performAutoSync(context, snapshotJson)
+    }
+
     fun createShareableBackupUri(context: Context, snapshotJson: String): Uri {
         val backupDir = java.io.File(context.cacheDir, "backups")
         if (!backupDir.exists()) backupDir.mkdirs()
-        val backupFile = java.io.File(backupDir, "policydesk_backup.json")
+        val backupFile = java.io.File(backupDir, SNAPSHOT_FILE_NAME)
         backupFile.writeText(snapshotJson, Charsets.UTF_8)
         return androidx.core.content.FileProvider.getUriForFile(
             context,
             "${context.packageName}.fileprovider",
             backupFile
         )
-    }
-
-    suspend fun getCachedDriveBackup(context: Context): String? = withContext(Dispatchers.IO) {
-        val cacheFile = java.io.File(context.filesDir, "google_drive_sync_backup.json")
-        if (cacheFile.exists()) cacheFile.readText(Charsets.UTF_8) else null
-    }
-
-    suspend fun performSilentBackup(context: Context, snapshotJson: String): Result<Unit> {
-        return performAutoSync(context, snapshotJson)
     }
 
     suspend fun writeSnapshotToUri(context: Context, uri: Uri, snapshotJson: String): Result<Unit> = withContext(Dispatchers.IO) {

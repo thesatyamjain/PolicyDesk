@@ -80,7 +80,8 @@ class PolicyReminderWorker(
         )
 
         // Silent Background Drive Backup (PRD §5.9)
-        if (com.policydesk.app.data.drive.GoogleDriveManager.getSavedBackupUri(applicationContext) != null) {
+        if (com.policydesk.app.data.drive.GoogleDriveManager.isDriveLinked(applicationContext) ||
+            com.policydesk.app.data.drive.GoogleDriveManager.getSavedBackupUri(applicationContext) != null) {
             try {
                 val vehicles = allEntities.map { it.toDomain() }
                 val snapshot = com.policydesk.app.data.drive.GoogleDriveManager.createSnapshotJson(vehicles)
