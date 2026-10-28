@@ -40,6 +40,18 @@ class SpreadsheetAndReportsTest {
         assertEquals(14500.0, SpreadsheetParser.parsePremium("₹ 14,500.00/-") ?: 0.0, 0.001)
         assertEquals(14500.0, SpreadsheetParser.parsePremium("Rs. 14,500") ?: 0.0, 0.001)
         assertEquals(14500.0, SpreadsheetParser.parsePremium("INR 14500/-") ?: 0.0, 0.001)
+        assertEquals(14500.0, SpreadsheetParser.parsePremium("₹\u00A014,500.00") ?: 0.0, 0.001)
+        assertEquals(14500.0, SpreadsheetParser.parsePremium("Rs.\u202F14500/=") ?: 0.0, 0.001)
+    }
+
+    @Test
+    fun formatCurrency_formats_indian_numbering_system() {
+        assertEquals("₹0", com.policydesk.app.ui.components.UiFormatters.formatCurrency(0.0))
+        assertEquals("₹500", com.policydesk.app.ui.components.UiFormatters.formatCurrency(500.0))
+        assertEquals("₹15,000", com.policydesk.app.ui.components.UiFormatters.formatCurrency(15000.0))
+        assertEquals("₹1,50,000", com.policydesk.app.ui.components.UiFormatters.formatCurrency(150000.0))
+        assertEquals("₹12,34,567", com.policydesk.app.ui.components.UiFormatters.formatCurrency(1234567.0))
+        assertEquals("-₹15,000", com.policydesk.app.ui.components.UiFormatters.formatCurrency(-15000.0))
     }
 
     @Test

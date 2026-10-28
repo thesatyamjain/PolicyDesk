@@ -222,8 +222,18 @@ class AddPolicyViewModel @Inject constructor(
     }
 
     fun onTotalPremiumChanged(premium: String) {
-        // Allow only valid decimal numbers
-        val filtered = premium.filter { it.isDigit() || it == '.' }
+        // Allow only valid decimal numbers (at most one decimal point)
+        val filtered = buildString {
+            var hasDot = false
+            for (ch in premium) {
+                if (ch.isDigit()) {
+                    append(ch)
+                } else if (ch == '.' && !hasDot) {
+                    append(ch)
+                    hasDot = true
+                }
+            }
+        }
         _formState.update { it.copy(totalPremium = filtered) }
     }
 

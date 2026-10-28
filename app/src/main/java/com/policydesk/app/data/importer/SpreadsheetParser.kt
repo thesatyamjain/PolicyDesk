@@ -350,14 +350,17 @@ object SpreadsheetParser {
     }
 
     fun parsePremium(raw: String): Double? {
-        val clean = raw.trim()
+        if (raw.isBlank()) return null
+        val clean = raw
             .replace("₹", "")
             .replace("INR", "", ignoreCase = true)
             .replace("Rs.", "", ignoreCase = true)
             .replace("Rs", "", ignoreCase = true)
             .replace("/-", "")
+            .replace("/=", "")
+            .replace("/", "")
             .replace(",", "")
-            .replace(" ", "")
+            .replace(Regex("[\\s\\u00A0\\u202F\\u2007\\uFEFF]"), "")
             .trim()
         return clean.toDoubleOrNull()
     }

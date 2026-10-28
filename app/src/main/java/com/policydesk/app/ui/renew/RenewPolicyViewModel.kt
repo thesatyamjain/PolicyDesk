@@ -78,11 +78,15 @@ class RenewPolicyViewModel @Inject constructor(
                 }
                 val suggestedExpiry = baseDate.plusYears(1).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
 
+                val initialPremium = currentPolicy?.totalPremium?.let { p ->
+                    if (p % 1.0 == 0.0) p.toLong().toString() else p.toString()
+                } ?: ""
+
                 _formState.update {
                     it.copy(
                         currentVehicle = vehicle,
                         newExpiryEpochMs = suggestedExpiry,
-                        newPremium = currentPolicy?.totalPremium?.toString() ?: ""
+                        newPremium = initialPremium
                     )
                 }
             }
@@ -105,7 +109,17 @@ class RenewPolicyViewModel @Inject constructor(
     }
 
     fun onPremiumChanged(premium: String) {
-        val filtered = premium.filter { it.isDigit() || it == '.' }
+        val filtered = buildString {
+            var hasDot = false
+            for (ch in premium) {
+                if (ch.isDigit()) {
+                    append(ch)
+                } else if (ch == '.' && !hasDot) {
+                    append(ch)
+                    hasDot = true
+                }
+            }
+        }
         _formState.update { it.copy(newPremium = filtered) }
     }
 

@@ -38,9 +38,15 @@ object UiFormatters {
     }
 
     fun formatCurrency(amount: Double): String {
-        val format = java.text.NumberFormat.getCurrencyInstance(java.util.Locale("en", "IN"))
-        format.maximumFractionDigits = 0
-        return format.format(amount)
+        if (amount.isNaN() || amount.isInfinite()) return "₹0"
+        val rounded = kotlin.math.round(amount).toLong()
+        val sign = if (rounded < 0) "-" else ""
+        val absVal = kotlin.math.abs(rounded).toString()
+        if (absVal.length <= 3) return "${sign}₹$absVal"
+        val last3 = absVal.takeLast(3)
+        val remaining = absVal.dropLast(3)
+        val formattedRemaining = remaining.reversed().chunked(2).joinToString(",").reversed()
+        return "${sign}₹$formattedRemaining,$last3"
     }
 }
 
