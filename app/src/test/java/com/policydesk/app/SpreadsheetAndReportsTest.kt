@@ -55,6 +55,23 @@ class SpreadsheetAndReportsTest {
     }
 
     @Test
+    fun autoMapHeaders_does_not_map_office_code_to_premium() {
+        val headers = listOf("SR NO", "OFFICE CODE", "REGISTRATION NO", "INSURED NAME", "MOBILE", "NET PREMIUM")
+        val sampleRows = listOf(
+            listOf("1", "190000", "UP94AT2306", "NABAV ENTERPRISES", "9876543210", "45000"),
+            listOf("2", "190000", "UP84H3613", "SHAHAJAD KHAN", "9876543211", "18000")
+        )
+        val mapping = com.policydesk.app.ui.importer.ImportViewModel.autoMapHeaders(headers, sampleRows)
+
+        // OFFICE CODE (index 1) must never be mapped to totalPremium
+        assertTrue(mapping[1] != "totalPremium")
+        // NET PREMIUM (index 5) must be mapped to totalPremium
+        assertEquals("totalPremium", mapping[5])
+        // REGISTRATION NO (index 2) must be mapped to regNo
+        assertEquals("regNo", mapping[2])
+    }
+
+    @Test
     fun template_csv_generation_is_valid() {
         val template = SpreadsheetParser.generateCsvTemplate()
         assertTrue(template.contains("Registration Number"))

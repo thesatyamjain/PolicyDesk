@@ -154,7 +154,8 @@ class ImportViewModel @Inject constructor(
         return bestIndex
     }
 
-    private fun autoMapHeaders(headers: List<String>, sampleRows: List<List<String>> = emptyList()): Map<Int, String> {
+    companion object {
+        fun autoMapHeaders(headers: List<String>, sampleRows: List<List<String>> = emptyList()): Map<Int, String> {
         val mapping = mutableMapOf<Int, String>()
         val mappedFields = mutableSetOf<String>()
 
@@ -165,6 +166,13 @@ class ImportViewModel @Inject constructor(
                 .replace("-", "")
                 .replace(".", "")
                 .replace("/", "")
+
+            val isExcludedFromPremium = h.contains("office") || h.contains("branch") || h.contains("code") ||
+                    h.contains("bocode") || h.contains("docode") || h.contains("devoff") || h.contains("agent") ||
+                    h.contains("broker") || h.contains("pos") || h.contains("idv") || h.contains("suminsured") ||
+                    h.contains("claim") || h.contains("tax") || h.contains("gst") || h.contains("sno") ||
+                    h.contains("srno") || h.contains("serial") || h.contains("year") || h.contains("pincode") ||
+                    h.contains("capacity") || h.contains("seating") || h.contains("cc") || h.contains("gvw")
 
             val target = when {
                 h.contains("reg") || h.contains("vehicleno") || h.contains("vehiclenumber") ||
@@ -212,17 +220,24 @@ class ImportViewModel @Inject constructor(
                         h.contains("duedate") || h.contains("renewaldate") || h.contains("periodto") ||
                         h.contains("riskexpiry") || h == "exp" -> "expiryDate"
 
-                h.contains("tppremium") || h.contains("thirdpartypremium") || h.contains("tpprem") ||
-                        h == "tp" || h == "thirdparty" -> "tpPremium"
+                !isExcludedFromPremium && (
+                        h.contains("tppremium") || h.contains("thirdpartypremium") || h.contains("tpprem") ||
+                                h == "tp" || h == "thirdparty"
+                ) -> "tpPremium"
 
-                h.contains("odpremium") || h.contains("owndamagepremium") || h.contains("odprem") ||
-                        h == "od" || h == "owndamage" -> "odPremium"
+                !isExcludedFromPremium && (
+                        h.contains("odpremium") || h.contains("owndamagepremium") || h.contains("odprem") ||
+                                h == "od" || h == "owndamage"
+                ) -> "odPremium"
 
-                h.contains("premium") || h.contains("netpremium") || h.contains("grosspremium") ||
-                        h.contains("totalpremium") || h.contains("finalpremium") || h.contains("totalprem") ||
-                        h.contains("grossprem") || h.contains("netprem") || h.contains("amount") ||
-                        h.contains("totalamount") || h.contains("cost") || h.contains("payout") ||
-                        h.contains("payment") || h.contains("gwp") || h.contains("nwp") || h == "prem" -> "totalPremium"
+                !isExcludedFromPremium && (
+                        h.contains("premium") || h.contains("netpremium") || h.contains("grosspremium") ||
+                                h.contains("totalpremium") || h.contains("finalpremium") || h.contains("totalprem") ||
+                                h.contains("grossprem") || h.contains("netprem") ||
+                                h.contains("totalamount") || h.contains("netamount") || h.contains("grossamount") ||
+                                h.contains("finalamount") || h.contains("premiumamount") ||
+                                h.contains("gwp") || h.contains("nwp") || h == "prem"
+                ) -> "totalPremium"
 
                 h.contains("makemodel") || (h.contains("make") && h.contains("model")) ||
                         h.contains("variant") || h.contains("description") -> "makeModel"
@@ -258,6 +273,15 @@ class ImportViewModel @Inject constructor(
         if (sampleRows.isNotEmpty()) {
             val unmappedIndices = headers.indices.filter { it !in mapping }
             for (colIdx in unmappedIndices) {
+                val rawH = headers.getOrNull(colIdx)?.lowercase() ?: ""
+                val h = rawH.replace(" ", "").replace("_", "").replace("-", "")
+                val isExcluded = h.contains("office") || h.contains("branch") || h.contains("code") ||
+                        h.contains("bocode") || h.contains("docode") || h.contains("devoff") ||
+                        h.contains("idv") || h.contains("sum") || h.contains("sno") || h.contains("sr") ||
+                        h.contains("no") || h.contains("num") || h.contains("year") || h.contains("date") ||
+                        h.contains("pin") || h.contains("tax") || h.contains("gst") || h.contains("cc") ||
+                        h.contains("seat") || h.contains("cap") || h.contains("phone") || h.contains("mob")
+
                 val samples = sampleRows.take(5).mapNotNull { row ->
                     if (colIdx < row.size) row[colIdx].trim().ifBlank { null } else null
                 }
@@ -269,7 +293,9 @@ class ImportViewModel @Inject constructor(
                     "email" !in mappedFields && samples.any { it.contains("@") && FieldValidators.isValidEmail(it) } -> "email"
                     "vin" !in mappedFields && samples.any { it.length == 17 && it.all { c -> c.isLetterOrDigit() } } -> "vin"
                     "expiryDate" !in mappedFields && samples.any { SpreadsheetParser.parseDateToEpochMs(it) != null } -> "expiryDate"
-                    "totalPremium" !in mappedFields && samples.any { SpreadsheetParser.parsePremium(it)?.let { p -> p > 0 } == true } -> "totalPremium"
+                    "totalPremium" !in mappedFields && !isExcluded &&
+                            (h.contains("prem") || h.contains("cost") || h.contains("amount") || h.contains("pay") || samples.any { it.contains("₹") || it.contains("Rs", ignoreCase = true) }) &&
+                            samples.any { SpreadsheetParser.parsePremium(it)?.let { p -> p > 0 } == true } -> "totalPremium"
                     "insurer" !in mappedFields && samples.any { InsurerCatalog.matchInsurer(it) != null } -> "insurer"
                     else -> null
                 }
@@ -283,6 +309,7 @@ class ImportViewModel @Inject constructor(
 
         return mapping
     }
+}
 
     fun onColumnRemapped(columnIndex: Int, targetFieldKey: String) {
         _uiState.update { state ->
