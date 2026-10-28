@@ -58,6 +58,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.TextStyle
+import com.policydesk.app.domain.model.RegistrationNormalizer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.Dp
@@ -1219,18 +1220,7 @@ fun HsrpNumberPlate(
 
     val clean = regNo.replace(" ", "").uppercase()
     val formatted = remember(clean) {
-        when {
-            clean.length == 10 && clean.substring(0, 2).all { it.isLetter() } && clean.substring(2, 4).all { it.isDigit() } -> {
-                "${clean.substring(0, 2)} ${clean.substring(2, 4)} ${clean.substring(4, 6)} ${clean.substring(6)}"
-            }
-            clean.length == 9 && clean.substring(0, 2).all { it.isLetter() } && clean.substring(2, 4).all { it.isDigit() } -> {
-                "${clean.substring(0, 2)} ${clean.substring(2, 4)} ${clean.substring(4, 5)} ${clean.substring(5)}"
-            }
-            clean.contains("BH") && clean.length == 10 -> {
-                "${clean.substring(0, 2)} BH ${clean.substring(4, 8)} ${clean.substring(8)}"
-            }
-            else -> clean
-        }
+        RegistrationNormalizer.formatForDisplay(clean)
     }
 
     Row(

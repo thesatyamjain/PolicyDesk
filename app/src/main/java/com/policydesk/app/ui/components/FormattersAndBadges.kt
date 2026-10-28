@@ -10,10 +10,15 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.policydesk.app.domain.model.PolicyStatus
+import com.policydesk.app.domain.model.RegistrationNormalizer
 import com.policydesk.app.ui.theme.AppleDarkSystemDeepOrange
 import com.policydesk.app.ui.theme.AppleDarkSystemGreen
 import com.policydesk.app.ui.theme.AppleDarkSystemOrange
@@ -111,5 +116,59 @@ fun DaysRemainingBadge(
             fontWeight = FontWeight.SemiBold,
             letterSpacing = 0.1.sp
         )
+    }
+}
+
+/**
+ * VisualTransformation that formats raw Indian vehicle registration numbers (e.g. "MH77HH7777")
+ * into standard spaced HSRP format ("MH 77 HH 7777") with bidirectional cursor mapping.
+ */
+object RegistrationPlateVisualTransformation : VisualTransformation {
+    override fun filter(text: AnnotatedString): TransformedText {
+        val original = text.text
+        if (original.isEmpty()) {
+            return TransformedText(text, OffsetMapping.Identity)
+        }
+
+        val breaks = RegistrationNormalizer.getSpaceBreakIndices(original)
+        if (breaks.isEmpty()) {
+            return TransformedText(text, OffsetMapping.Identity)
+        }
+
+        val origLen = original.length
+        val spaceCount = breaks.count { it in 1 until origLen }
+        val transLen = origLen + spaceCount
+
+        val origToTrans = IntArray(origLen + 1)
+        val transToOrig = IntArray(transLen + 1)
+
+        val sb = StringBuilder(transLen)
+        var transIdx = 0
+
+        for (origIdx in 0 until origLen) {
+            if (origIdx in breaks) {
+                sb.append(' ')
+                transToOrig[transIdx] = origIdx
+                transIdx++
+            }
+            origToTrans[origIdx] = transIdx
+            transToOrig[transIdx] = origIdx
+            sb.append(original[origIdx])
+            transIdx++
+        }
+        origToTrans[origLen] = transIdx
+        transToOrig[transIdx] = origLen
+
+        val offsetMapping = object : OffsetMapping {
+            override fun originalToTransformed(offset: Int): Int {
+                return origToTrans[offset.coerceIn(0, origToTrans.size - 1)]
+            }
+
+            override fun transformedToOriginal(offset: Int): Int {
+                return transToOrig[offset.coerceIn(0, transToOrig.size - 1)]
+            }
+        }
+
+        return TransformedText(AnnotatedString(sb.toString()), offsetMapping)
     }
 }

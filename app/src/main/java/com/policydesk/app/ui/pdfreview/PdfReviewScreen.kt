@@ -50,10 +50,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.policydesk.app.domain.model.RegistrationNormalizer
 import com.policydesk.app.domain.model.Sector
 import com.policydesk.app.ui.addpolicy.FormSectionCard
 import com.policydesk.app.ui.addpolicy.SectorOptionPill
 import com.policydesk.app.ui.addpolicy.formFieldColors
+import com.policydesk.app.ui.components.HsrpNumberPlate
+import com.policydesk.app.ui.components.RegistrationPlateVisualTransformation
 import androidx.compose.foundation.isSystemInDarkTheme
 import com.policydesk.app.ui.theme.IosDarkLabelPrimary
 import com.policydesk.app.ui.theme.IosDarkLabelSecondary
@@ -322,9 +325,33 @@ fun PdfReviewScreen(
                         modifier = Modifier.fillMaxWidth(),
                         label = { Text("Registration No *") },
                         singleLine = true,
+                        visualTransformation = RegistrationPlateVisualTransformation,
+                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters),
                         shape = RoundedCornerShape(10.dp),
                         colors = formFieldColors()
                     )
+
+                    if (state.regNo.isNotBlank()) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 2.dp, bottom = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            HsrpNumberPlate(
+                                regNo = state.regNo
+                            )
+                            if (RegistrationNormalizer.isStandardFormat(state.regNo)) {
+                                Text(
+                                    text = "Standard Indian Plate",
+                                    style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
+                                    color = StatusActiveGreen,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+                    }
 
                     OutlinedTextField(
                         value = state.makeModel,

@@ -85,8 +85,11 @@ import com.policydesk.app.domain.model.FieldValidators
 import com.policydesk.app.domain.model.InsurerCatalog
 import com.policydesk.app.domain.model.RegistrationNormalizer
 import com.policydesk.app.domain.model.Sector
+import com.policydesk.app.ui.components.HsrpNumberPlate
+import com.policydesk.app.ui.components.RegistrationPlateVisualTransformation
 import com.policydesk.app.ui.components.UiFormatters
 import com.policydesk.app.ui.theme.SapphireBlue
+import com.policydesk.app.ui.theme.StatusActiveGreen
 import com.policydesk.app.ui.theme.StatusExpiringAmber
 import com.policydesk.app.ui.theme.StatusExpiringAmberBg
 import com.policydesk.app.ui.theme.StatusOverdueRed
@@ -212,6 +215,7 @@ fun AddPolicyScreen(
                     label = { Text("Vehicle Registration No *") },
                     placeholder = { Text("e.g. MH 12 AB 1234 or 22 BH 1234 AA") },
                     singleLine = true,
+                    visualTransformation = RegistrationPlateVisualTransformation,
                     isError = state.hasAttemptedSave && RegistrationNormalizer.normalize(state.regNo).isEmpty(),
                     supportingText = if (state.hasAttemptedSave && RegistrationNormalizer.normalize(state.regNo).isEmpty()) {
                         { Text("Registration number is required", color = StatusOverdueRed) }
@@ -220,6 +224,29 @@ fun AddPolicyScreen(
                     shape = RoundedCornerShape(10.dp),
                     colors = formFieldColors()
                 )
+
+                // Live HSRP Number Plate Preview
+                if (state.regNo.isNotBlank()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 2.dp, bottom = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        HsrpNumberPlate(
+                            regNo = state.regNo
+                        )
+                        if (RegistrationNormalizer.isStandardFormat(state.regNo)) {
+                            Text(
+                                text = "Standard Indian Plate",
+                                style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
+                                color = StatusActiveGreen,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                }
 
                 // Registration Warnings
                 if (state.regNoUnusualWarning) {

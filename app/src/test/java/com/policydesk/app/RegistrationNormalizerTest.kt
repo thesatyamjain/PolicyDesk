@@ -43,7 +43,12 @@ class RegistrationNormalizerTest {
     @Test
     fun formatForDisplay_formats_cleanly() {
         assertEquals("MH 12 AB 1234", RegistrationNormalizer.formatForDisplay("MH12AB1234"))
+        assertEquals("MH 77 HH 7777", RegistrationNormalizer.formatForDisplay("MH77HH7777"))
         assertEquals("22 BH 1234 AA", RegistrationNormalizer.formatForDisplay("22BH1234AA"))
+        assertEquals("DL 1 A 9999", RegistrationNormalizer.formatForDisplay("DL1A9999"))
+        assertEquals("KA 05 1234", RegistrationNormalizer.formatForDisplay("KA051234"))
+        assertEquals("MH 77", RegistrationNormalizer.formatForDisplay("MH77"))
+        assertEquals("MH 77 H", RegistrationNormalizer.formatForDisplay("MH77H"))
     }
 
     @Test

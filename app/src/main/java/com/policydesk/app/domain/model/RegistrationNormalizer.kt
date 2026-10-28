@@ -70,28 +70,69 @@ object RegistrationNormalizer {
         return EXTENDED_PATTERN.matches(normalized)
     }
 
+    /**
+     * Determines space break indices for Indian vehicle registration formats.
+     * Supports both progressive typing (partial strings) and full plates.
+     */
+    fun getSpaceBreakIndices(raw: String): Set<Int> {
+        val clean = normalize(raw)
+        if (clean.length < 3) return emptySet()
+
+        val breaks = mutableSetOf<Int>()
+
+        // Bharat (BH) series: e.g. 22BH1234AA
+        val isBh = clean.length >= 2 && clean[0].isDigit() && clean[1].isDigit() &&
+                (clean.length < 3 || clean[2] == 'B')
+        if (isBh) {
+            if (clean.length > 2) breaks.add(2)
+            if (clean.length > 4) breaks.add(4)
+            if (clean.length > 8) breaks.add(8)
+            return breaks
+        }
+
+        // Standard Indian format: State (2 letters) + RTO (1-2 digits) + Series (0-3 letters) + Number (1-4 digits)
+        if (clean.length >= 2 && clean[0].isLetter() && clean[1].isLetter()) {
+            var i = 2
+            // Must have digits after state code
+            if (i < clean.length && clean[i].isDigit()) {
+                breaks.add(2) // Break between State and RTO
+                while (i < clean.length && clean[i].isDigit() && (i - 2) < 2) {
+                    i++
+                }
+                val rtoEnd = i
+                // If there are letters for series
+                if (i < clean.length && clean[i].isLetter()) {
+                    breaks.add(rtoEnd) // Break between RTO and Series
+                    while (i < clean.length && clean[i].isLetter() && (i - rtoEnd) < 3) {
+                        i++
+                    }
+                    val seriesEnd = i
+                    if (i < clean.length && clean[i].isDigit()) {
+                        breaks.add(seriesEnd) // Break between Series and Number
+                    }
+                } else if (clean.length - rtoEnd >= 4 && clean.substring(rtoEnd).all { it.isDigit() }) {
+                    // No series letters (e.g. KA051234): 4 trailing digits are number
+                    val numStart = clean.length - 4
+                    if (numStart >= rtoEnd) {
+                        breaks.add(numStart)
+                    }
+                }
+            }
+        }
+        return breaks
+    }
+
     fun formatForDisplay(normalized: String): String {
         val clean = normalize(normalized)
-        // Standard pattern formatting: "MH 12 AB 1234"
-        if (STANDARD_PATTERN.matches(clean)) {
-            val state = clean.substring(0, 2)
-            var idx = 2
-            while (idx < clean.length && clean[idx].isDigit()) idx++
-            val rto = clean.substring(2, idx)
-            val numStart = clean.length - 4
-            val series = clean.substring(idx, numStart)
-            val number = clean.substring(numStart)
-            return if (series.isNotEmpty()) "$state $rto $series $number" else "$state $rto $number"
+        if (clean.length < 3) return clean
+        val breaks = getSpaceBreakIndices(clean)
+        if (breaks.isEmpty()) return clean
+        val sb = StringBuilder(clean.length + breaks.size)
+        for (i in 0 until clean.length) {
+            if (i in breaks) sb.append(' ')
+            sb.append(clean[i])
         }
-        // BH series: "22 BH 1234 AA"
-        if (BH_PATTERN.matches(clean)) {
-            val year = clean.substring(0, 2)
-            val bh = clean.substring(2, 4)
-            val number = clean.substring(4, 8)
-            val series = clean.substring(8)
-            return "$year $bh $number $series"
-        }
-        return clean
+        return sb.toString()
     }
 }
 
