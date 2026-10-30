@@ -51,8 +51,7 @@ jobs:
             if [ -z "$LATEST_TAG" ]; then
               case "$BUMP_TYPE" in
                 major) TAG="v1.0.0" ;;
-                minor) TAG="v0.1.0" ;;
-                *) TAG="v0.0.1" ;;
+                minor|*) TAG="v0.1.0" ;;
               esac
               echo "No existing tags found. Starting initial tag at: $TAG ($BUMP_TYPE)"
             else
