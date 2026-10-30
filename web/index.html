@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PolicyDesk — Every Policy. One Vault.</title>
+  <meta name="description" content="Local-first insurance policy manager for Android. Proactive expiry alerts, AI extraction, and private Google Drive backup. Zero tracking.">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Instrument+Serif:ital@0;1&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    /* ─── TOKENS ─── */
+    :root {
+      --ink:       #0E0D0B;
+      --ground:    #F5F2EB;
+      --surface:   #EDEAE1;
+      --surface-2: #E3DFD4;
+      --accent:    #1A1A1A;
+      --accent-hi: #2563EB;
+      --muted:     #6B6760;
+      --border:    rgba(14, 13, 11, 0.12);
+      --mono:      'DM Mono', monospace;
+      --display:   'Space Grotesk', sans-serif;
+      --serif:     'Instrument Serif', Georgia, serif;
+
+      --section-gap: clamp(80px, 10vw, 160px);
+      --col-pad:     clamp(20px, 5vw, 80px);
+      --radius:      4px;
+    }
+
+    /* ─── RESET ─── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--ground);
+      color: var(--ink);
+      font-family: var(--display);
+      font-size: 17px;
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: clip;
+    }
+    [id] {
+      scroll-margin-top: 80px;
+    }
+    ::selection { background: var(--ink); color: var(--ground); }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--ground); }
+    ::-webkit-scrollbar-thumb { background: var(--surface-2); border-radius: 3px; }
+
+    /* ─── GRID ─── */
+    .grid {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 0 var(--col-pad);
+    }
+
+    /* ─── NAV ─── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--ground);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-inner {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 0 var(--col-pad);
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .nav-logo {
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--ink);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .nav-logo-mark {
+      width: 28px;
+      height: 28px;
+      background: var(--ink);
+      border-radius: var(--radius);
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+    }
+    .nav-logo-mark svg { width: 14px; height: 14px; }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 28px;
+      list-style: none;
+    }
+    .nav-links a {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--muted);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    .nav-links a:hover { color: var(--ink); }
+    .nav-cta {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--ground) !important;
+      background: var(--ink);
+      padding: 7px 16px;
+      border-radius: var(--radius);
+      text-decoration: none;
+      transition: opacity 0.15s;
+    }
+    .nav-cta:hover { opacity: 0.8; }
+
+    /* ─── HERO ─── */
+    .hero {
+      min-height: calc(100dvh - 60px);
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+    }
+    .hero-left {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: clamp(48px, 6vw, 100px) var(--col-pad) clamp(48px, 6vw, 100px) var(--col-pad);
+      border-right: 1px solid var(--border);
+    }
+    .hero-kicker {
+      font-family: var(--mono);
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 28px;
+    }
+    .hero-kicker span {
+      display: inline-block;
+      width: 24px;
+      height: 1px;
+      background: var(--muted);
+      vertical-align: middle;
+      margin-right: 10px;
+    }
+    h1 {
+      font-family: var(--display);
+      font-size: clamp(44px, 5.5vw, 80px);
+      font-weight: 700;
+      line-height: 1.0;
+      letter-spacing: -0.04em;
+      color: var(--ink);
+      margin-bottom: 24px;
+    }
+    .h1-serif {
+      font-family: var(--serif);
+      font-style: italic;
+      font-weight: 400;
+    }
+    .hero-sub {
+      font-size: clamp(16px, 1.5vw, 19px);
+      line-height: 1.55;
+      color: var(--muted);
+      max-width: 52ch;
+      margin-bottom: 40px;
+    }
+    .hero-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 24px;
+      font-family: var(--display);
+      font-size: 14px;
+      font-weight: 700;
+      text-decoration: none;
+      border-radius: var(--radius);
+      transition: opacity 0.15s, transform 0.15s;
+      cursor: pointer;
+      border: none;
+    }
+    .btn:hover { opacity: 0.85; transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); opacity: 1; }
+    .btn-primary { background: var(--ink); color: var(--ground); }
+    .btn-ghost {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--ink);
+    }
+    .hero-right {
+      background: var(--surface);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: clamp(48px, 6vw, 100px) var(--col-pad);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Policy folder diagram — drawn in code, subject-specific */
+    .folder-diagram {
+      position: relative;
+      width: 100%;
+      max-width: 400px;
+      margin: 0 auto;
+    }
+    .folder-tab {
+      width: 120px;
+      height: 22px;
+      background: var(--surface-2);
+      border-radius: var(--radius) var(--radius) 0 0;
+      margin-left: 24px;
+      border: 1px solid var(--border);
+      border-bottom: none;
+      display: flex;
+      align-items: center;
+      padding: 0 10px;
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 0.04em;
+    }
+    .folder-body {
+      background: var(--ground);
+      border: 1px solid var(--border);
+      border-radius: 0 var(--radius) var(--radius) var(--radius);
+      padding: 24px;
+    }
+    .folder-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+    .folder-row:last-child { border-bottom: none; padding-bottom: 0; }
+    .folder-row:first-child { padding-top: 0; }
+    .folder-label { color: var(--muted); font-size: 12px; font-family: var(--mono); }
+    .folder-value {
+      font-weight: 700;
+      font-size: 13px;
+      font-family: var(--mono);
+      font-variant-numeric: tabular-nums;
+    }
+    .folder-value.expiring { color: #C84B31; }
+    .folder-value.active { color: #1A7A4A; }
+    .folder-stamp {
+      margin-top: 20px;
+      display: flex;
+      justify-content: flex-end;
+    }
+    .stamp {
+      border: 2px solid var(--surface-2);
+      border-radius: var(--radius);
+      padding: 8px 14px;
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--surface-2);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      transform: rotate(-3deg);
+    }
+    .hero-caption {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 28px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+    }
+
+    /* ─── STAT ROW ─── */
+    .stat-row {
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      margin: 0;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+    }
+    .stat-cell {
+      padding: 40px var(--col-pad);
+      border-right: 1px solid var(--border);
+    }
+    .stat-cell:last-child { border-right: none; }
+    .stat-number {
+      font-size: clamp(40px, 5vw, 64px);
+      font-weight: 700;
+      letter-spacing: -0.04em;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+      font-family: var(--mono);
+    }
+    .stat-label {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 8px;
+      font-weight: 500;
+    }
+
+    /* ─── FEATURES ─── */
+    .features-section {
+      padding: var(--section-gap) 0;
+    }
+    .features-header {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 0 var(--col-pad);
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 60px;
+      align-items: end;
+      margin-bottom: 60px;
+    }
+    .section-eyebrow-line {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+    .section-eyebrow-line::before {
+      content: '';
+      display: block;
+      width: 32px;
+      height: 1px;
+      background: var(--muted);
+      flex-shrink: 0;
+    }
+    h2 {
+      font-size: clamp(32px, 3.5vw, 52px);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      line-height: 1.05;
+    }
+    .features-header p {
+      font-size: 16px;
+      color: var(--muted);
+      line-height: 1.6;
+      max-width: 44ch;
+    }
+    .features-grid {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 0 var(--col-pad);
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 0;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .feature-block {
+      padding: 40px 36px;
+      border-right: 1px solid var(--border);
+      position: relative;
+    }
+    .feature-block:last-child { border-right: none; }
+    .feature-block:nth-child(1) { background: var(--ink); }
+    .feature-number {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 40px;
+      letter-spacing: 0.04em;
+    }
+    .feature-block:nth-child(1) .feature-number { color: rgba(245, 242, 235, 0.35); }
+    .feature-block:nth-child(1) .feature-number { color: rgba(245, 242, 235, 0.35); }
+    .feature-block h3 {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+      margin-bottom: 14px;
+    }
+    .feature-block:nth-child(1) h3 { color: var(--ground); }
+    .feature-block p {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+    .feature-block:nth-child(1) p { color: rgba(245, 242, 235, 0.55); }
+
+    /* ─── VAULT SECTION ─── */
+    .vault-section {
+      padding: var(--section-gap) 0;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .vault-inner {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 0 var(--col-pad);
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 80px;
+      align-items: center;
+    }
+    .vault-text h2 { margin-bottom: 20px; }
+    .vault-text p {
+      font-size: 16px;
+      color: var(--muted);
+      line-height: 1.7;
+      max-width: 48ch;
+      margin-bottom: 32px;
+    }
+    .scope-chip {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 12px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 6px 12px;
+      color: var(--ink);
+      margin-bottom: 24px;
+    }
+
+    /* vault file diagram */
+    .vault-diagram {
+      background: var(--ground);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .vault-header-bar {
+      background: var(--surface-2);
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .vault-header-bar strong { color: var(--ink); }
+    .vault-file-list { padding: 0; }
+    .vault-file {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      font-family: var(--mono);
+      font-size: 13px;
+    }
+    .vault-file:last-child { border-bottom: none; }
+    .vault-file-name { color: var(--ink); font-weight: 500; }
+    .vault-file-meta { color: var(--muted); font-size: 11px; }
+    .vault-file-size { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+    .vault-sync-bar {
+      padding: 14px 20px;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .sync-dot {
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #1A7A4A;
+      margin-right: 6px;
+    }
+
+    /* ─── AI SECTION ─── */
+    .ai-section {
+      padding: var(--section-gap) 0;
+    }
+    .ai-inner {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 0 var(--col-pad);
+    }
+    .ai-header {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 60px;
+      align-items: end;
+      margin-bottom: 56px;
+    }
+    .ai-split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+    .ai-block {
+      padding: 32px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .ai-block-label {
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+    .ai-block h3 {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 10px;
+    }
+    .ai-block p {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+    .ai-block-primary {
+      background: var(--ink);
+      border-color: transparent;
+    }
+    .ai-block-primary .ai-block-label { color: rgba(245,242,235,.4); }
+    .ai-block-primary h3 { color: var(--ground); }
+    .ai-block-primary p { color: rgba(245,242,235,.55); }
+    .ai-model-tag {
+      margin-top: 14px;
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 11px;
+      background: rgba(245,242,235,.08);
+      border: 1px solid rgba(245,242,235,.12);
+      border-radius: var(--radius);
+      padding: 4px 10px;
+      color: rgba(245,242,235,.55);
+    }
+
+    /* ─── CTA ─── */
+    .cta-section {
+      padding: var(--section-gap) 0;
+      background: var(--ink);
+      color: var(--ground);
+    }
+    .cta-inner {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 0 var(--col-pad);
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 60px;
+    }
+    .cta-inner h2 {
+      font-size: clamp(32px, 4vw, 60px);
+      letter-spacing: -0.04em;
+      line-height: 1.0;
+      color: var(--ground);
+    }
+    .cta-inner h2 em {
+      font-family: var(--serif);
+      font-style: italic;
+      font-weight: 400;
+      color: rgba(245,242,235,.5);
+    }
+    .cta-actions { display: flex; flex-direction: column; gap: 10px; align-items: flex-end; }
+    .btn-ground { background: var(--ground); color: var(--ink); }
+    .btn-outline-ground {
+      background: transparent;
+      border: 1px solid rgba(245,242,235,.2);
+      color: rgba(245,242,235,.7);
+    }
+
+    /* ─── FOOTER ─── */
+    footer {
+      border-top: 1px solid var(--border);
+      background: var(--ground);
+    }
+    .footer-inner {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 36px var(--col-pad);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+    .footer-copy {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .footer-links {
+      display: flex;
+      gap: 24px;
+      list-style: none;
+    }
+    .footer-links a {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--muted);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    .footer-links a:hover { color: var(--ink); }
+
+    /* ─── MOTION ─── */
+    @media (prefers-reduced-motion: no-preference) {
+      .reveal {
+        opacity: 0;
+        transform: translateY(20px);
+        transition: opacity 0.55s cubic-bezier(0.16, 1, 0.3, 1),
+                    transform 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      .reveal.visible { opacity: 1; transform: none; }
+      .reveal-delay-1 { transition-delay: 0.07s; }
+      .reveal-delay-2 { transition-delay: 0.14s; }
+      .reveal-delay-3 { transition-delay: 0.21s; }
+
+      /* Signature move: folder stamp ink-in on load */
+      .stamp {
+        animation: stamp-in 0.6s 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+      }
+      @keyframes stamp-in {
+        from { opacity: 0; transform: rotate(-3deg) scale(0.85); }
+        to   { opacity: 1; transform: rotate(-3deg) scale(1); }
+      }
+
+      .btn { transition: opacity 0.15s, transform 0.15s; }
+      .feature-block { transition: background 0.2s; }
+    }
+
+    /* ─── RESPONSIVE ─── */
+    @media (max-width: 900px) {
+      .hero { grid-template-columns: 1fr; min-height: auto; }
+      .hero-left { border-right: none; border-bottom: 1px solid var(--border); }
+      .hero-right { padding-top: 40px; padding-bottom: 48px; }
+      .stat-row { grid-template-columns: 1fr; }
+      .stat-cell { border-right: none; border-bottom: 1px solid var(--border); padding: 28px var(--col-pad); }
+      .stat-cell:last-child { border-bottom: none; }
+      .features-header { grid-template-columns: 1fr; gap: 20px; }
+      .features-grid { grid-template-columns: 1fr; }
+      .feature-block { border-right: none; border-bottom: 1px solid var(--border); }
+      .feature-block:last-child { border-bottom: none; }
+      .vault-inner { grid-template-columns: 1fr; gap: 40px; }
+      .ai-header { grid-template-columns: 1fr; gap: 20px; }
+      .ai-split { grid-template-columns: 1fr; }
+      .cta-inner { grid-template-columns: 1fr; gap: 32px; }
+      .cta-actions { align-items: flex-start; }
+      .nav-links { display: none; }
+    }
+
+    @media (max-width: 600px) {
+      h1 { font-size: 38px; }
+      .hero-actions { flex-direction: column; }
+      .hero-actions .btn { width: 100%; justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav aria-label="Main navigation">
+    <div class="nav-inner">
+      <a href="index.html" class="nav-logo">
+        <div class="nav-logo-mark" aria-hidden="true">
+          <svg viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="2" y="1" width="10" height="12" rx="1" fill="none" stroke="#F5F2EB" stroke-width="1.2"/>
+            <line x1="4" y1="4.5" x2="10" y2="4.5" stroke="#F5F2EB" stroke-width="1"/>
+            <line x1="4" y1="7" x2="10" y2="7" stroke="#F5F2EB" stroke-width="1"/>
+            <line x1="4" y1="9.5" x2="7" y2="9.5" stroke="#F5F2EB" stroke-width="1"/>
+          </svg>
+        </div>
+        PolicyDesk
+      </a>
+      <ul class="nav-links" role="list">
+        <li><a href="#vault">Drive Vault</a></li>
+        <li><a href="#ai">AI Extraction</a></li>
+        <li><a href="privacy.html">Privacy</a></li>
+        <li><a href="https://github.com/thesatyamjain/PolicyDesk" class="nav-cta" target="_blank" rel="noopener">GitHub</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <main>
+
+    <!-- HERO -->
+    <section class="hero" aria-labelledby="hero-heading">
+      <div class="hero-left">
+        <p class="hero-kicker"><span aria-hidden="true"></span>Vehicle Insurance Management</p>
+        <h1 id="hero-heading">
+          Every policy.<br>
+          <span class="h1-serif">One vault.</span>
+        </h1>
+        <p class="hero-sub">
+          A local-first Android app for vehicle owners and insurance agents. Proactive expiry alerts, AI document extraction, and private Google Drive backup — with no external server seeing your data.
+        </p>
+        <div class="hero-actions">
+          <a href="https://github.com/thesatyamjain/PolicyDesk" class="btn btn-primary" target="_blank" rel="noopener">
+            View on GitHub
+          </a>
+          <a href="privacy.html" class="btn btn-ghost">
+            Privacy Policy
+          </a>
+        </div>
+      </div>
+
+      <!-- Policy folder — drawn from subject -->
+      <div class="hero-right" aria-hidden="true">
+        <div class="folder-diagram">
+          <div class="folder-tab">MH-01-AB-2847</div>
+          <div class="folder-body">
+            <div class="folder-row">
+              <span class="folder-label">Insurer</span>
+              <span class="folder-value">HDFC ERGO</span>
+            </div>
+            <div class="folder-row">
+              <span class="folder-label">Policy No.</span>
+              <span class="folder-value">2825-1139-2847</span>
+            </div>
+            <div class="folder-row">
+              <span class="folder-label">Sector</span>
+              <span class="folder-value">Motor — Comp.</span>
+            </div>
+            <div class="folder-row">
+              <span class="folder-label">Premium</span>
+              <span class="folder-value">&#8377;14,200</span>
+            </div>
+            <div class="folder-row">
+              <span class="folder-label">Expiry</span>
+              <span class="folder-value expiring">12 Nov 2026 — 14 days</span>
+            </div>
+            <div class="folder-row">
+              <span class="folder-label">Status</span>
+              <span class="folder-value active">Active</span>
+            </div>
+            <div class="folder-stamp">
+              <div class="stamp">Local-First</div>
+            </div>
+          </div>
+          <p class="hero-caption">
+            All records are stored on your device. Drive sync is a private vault only you control.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- STATS -->
+    <div class="stat-row" aria-label="Key capabilities">
+      <div class="stat-cell reveal">
+        <div class="stat-number">30/15/7</div>
+        <p class="stat-label">Days before expiry — alert cadence</p>
+      </div>
+      <div class="stat-cell reveal reveal-delay-1">
+        <div class="stat-number">0</div>
+        <p class="stat-label">External servers storing your policies</p>
+      </div>
+      <div class="stat-cell reveal reveal-delay-2">
+        <div class="stat-number">1-tap</div>
+        <p class="stat-label">Google Drive Vault sync on sign-in</p>
+      </div>
+    </div>
+
+    <!-- FEATURES -->
+    <section class="features-section" aria-labelledby="features-heading">
+      <div class="features-header">
+        <div>
+          <div class="section-eyebrow-line" aria-hidden="true">Core capabilities</div>
+          <h2 id="features-heading">
+            Built for the vault.<br>Not the dashboard.
+          </h2>
+        </div>
+        <p>
+          Most policy trackers live in the cloud and sell you reminders as a feature. PolicyDesk treats your data as your property — all records stay on the device that belongs to you.
+        </p>
+      </div>
+
+      <div class="features-grid">
+        <div class="feature-block reveal">
+          <div class="feature-number">01</div>
+          <h3>Local-First Architecture</h3>
+          <p>All vehicle records, customer data, and policy documents are encrypted in a local Room SQLite database and secured using the Android Keystore. Nothing leaves your device without your direct action.</p>
+        </div>
+        <div class="feature-block reveal reveal-delay-1">
+          <div class="feature-number">02</div>
+          <h3>Proactive Expiry Alerts</h3>
+          <p>WorkManager-scheduled notifications fire at 30, 15, 7, and 1 day before expiry — and on expiry day itself. Scheduled for 9 AM daily, auto-rescheduled after device reboot.</p>
+        </div>
+        <div class="feature-block reveal reveal-delay-2">
+          <div class="feature-number">03</div>
+          <h3>AI Document Extraction</h3>
+          <p>Paste or share a policy PDF and the app extracts all key fields automatically. Powered by Cloudflare Workers AI with optional Gemini, OpenAI, or Claude using your own API key.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- VAULT -->
+    <section class="vault-section" id="vault" aria-labelledby="vault-heading">
+      <div class="vault-inner">
+        <div class="vault-text">
+          <div class="section-eyebrow-line" aria-hidden="true">Google Drive Vault</div>
+          <h2 id="vault-heading">
+            Your vault.<br>Only your files.
+          </h2>
+          <p>
+            PolicyDesk requests one narrow OAuth scope: <code>drive.file</code>. This gives the app access to only the folder it created — the <strong>PolicyDesk Vault</strong>. It cannot read, modify, or see any other file on your Google Drive, ever.
+          </p>
+          <div class="scope-chip" aria-label="OAuth scope requested">drive.file scope only</div>
+          <br>
+          <a href="privacy.html" class="btn btn-ghost">Read the full privacy policy</a>
+        </div>
+
+        <div class="vault-diagram" aria-label="PolicyDesk Vault folder diagram" role="img">
+          <div class="vault-header-bar">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+              <rect x="1" y="3" width="12" height="9" rx="1" fill="none" stroke="currentColor" stroke-width="1.2"/>
+              <path d="M1 5h4l1-2h7" stroke="currentColor" stroke-width="1.2" fill="none"/>
+            </svg>
+            Google Drive &rsaquo; <strong>PolicyDesk Vault</strong>
+          </div>
+          <ul class="vault-file-list" role="list">
+            <li class="vault-file">
+              <span class="vault-file-name">policydesk_backup.json</span>
+              <span class="vault-file-meta">Oct 30, 2026</span>
+              <span class="vault-file-size">84 KB</span>
+            </li>
+          </ul>
+          <div class="vault-sync-bar">
+            <span><span class="sync-dot" aria-hidden="true"></span>Last synced 2 minutes ago</span>
+            <span>1 file — 84 KB</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- AI SECTION -->
+    <section class="ai-section" id="ai" aria-labelledby="ai-heading">
+      <div class="ai-inner">
+        <div class="ai-header">
+          <div>
+            <div class="section-eyebrow-line" aria-hidden="true">AI Extraction</div>
+            <h2 id="ai-heading">
+              Paste a PDF.<br>Get every field.
+            </h2>
+          </div>
+          <p>
+            Share any insurance policy PDF into PolicyDesk from any app. The on-device parser — backed by your choice of AI engine — reads the document and fills all fields automatically. Your key stays on your device.
+          </p>
+        </div>
+
+        <div class="ai-split">
+          <div class="ai-block ai-block-primary reveal">
+            <div class="ai-block-label">Default — Zero Configuration</div>
+            <h3>Cloudflare Workers AI</h3>
+            <p>A private stateless edge function running Llama 3.2 Vision. No API key required. Works out of the box for all users.</p>
+            <div class="ai-model-tag">@cf/meta/llama-3.2-11b-vision-instruct</div>
+          </div>
+          <div class="ai-block reveal reveal-delay-1">
+            <div class="ai-block-label">BYOK — Bring Your Own Key</div>
+            <h3>Gemini, OpenAI, Claude</h3>
+            <p>Store your own API key inside the Android Keystore. Requests go directly from your device to the provider. PolicyDesk never touches your key.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="cta-section" aria-labelledby="cta-heading">
+      <div class="cta-inner">
+        <h2 id="cta-heading">
+          Your policies.<br>
+          <em>Your device. Your vault.</em>
+        </h2>
+        <div class="cta-actions">
+          <a href="https://github.com/thesatyamjain/PolicyDesk" class="btn btn-ground" target="_blank" rel="noopener">
+            View on GitHub
+          </a>
+          <a href="privacy.html" class="btn btn-outline-ground">
+            Privacy Policy
+          </a>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-inner">
+      <p class="footer-copy">
+        &copy; 2026 PolicyDesk &mdash; Developed by Satyam Jain &mdash; Local-first &amp; open-source.
+      </p>
+      <ul class="footer-links" role="list">
+        <li><a href="privacy.html">Privacy</a></li>
+        <li><a href="terms.html">Terms</a></li>
+        <li><a href="mailto:creativity.satyamjain@gmail.com">Contact</a></li>
+        <li><a href="https://github.com/thesatyamjain/PolicyDesk" target="_blank" rel="noopener">GitHub</a></li>
+      </ul>
+    </div>
+  </footer>
+
+  <script>
+    // Reveal on scroll — intersection observer
+    const reveals = document.querySelectorAll('.reveal');
+    if ('IntersectionObserver' in window && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      const io = new IntersectionObserver((entries) => {
+        entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); io.unobserve(e.target); } });
+      }, { threshold: 0.12 });
+      reveals.forEach(el => io.observe(el));
+    } else {
+      reveals.forEach(el => el.classList.add('visible'));
+    }
+  </script>
+</body>
+</html>

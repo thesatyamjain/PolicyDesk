@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy — PolicyDesk</title>
+  <meta name="description" content="PolicyDesk privacy policy. Local-first, zero tracking, drive.file scope only.">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Instrument+Serif:ital@0;1&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ink:       #0E0D0B;
+      --ground:    #F5F2EB;
+      --surface:   #EDEAE1;
+      --surface-2: #E3DFD4;
+      --muted:     #6B6760;
+      --border:    rgba(14, 13, 11, 0.12);
+      --mono:      'DM Mono', monospace;
+      --display:   'Space Grotesk', sans-serif;
+      --serif:     'Instrument Serif', Georgia, serif;
+      --col-pad:   clamp(20px, 5vw, 80px);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--ground);
+      color: var(--ink);
+      font-family: var(--display);
+      font-size: 16px;
+      line-height: 1.65;
+      -webkit-font-smoothing: antialiased;
+    }
+    ::selection { background: var(--ink); color: var(--ground); }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--ground); }
+    ::-webkit-scrollbar-thumb { background: var(--surface-2); border-radius: 3px; }
+
+    /* NAV */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--ground);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-inner {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 0 var(--col-pad);
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .nav-logo {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--ink);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .nav-logo svg { opacity: 0.75; }
+    .back-link {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--muted);
+      text-decoration: none;
+      letter-spacing: 0.01em;
+    }
+    .back-link:hover { color: var(--ink); }
+
+    /* CONTENT */
+    .content {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 56px var(--col-pad) 100px;
+    }
+    h1 {
+      font-family: var(--display);
+      font-size: clamp(28px, 5vw, 42px);
+      font-weight: 700;
+      letter-spacing: -0.04em;
+      line-height: 1.1;
+      margin-bottom: 10px;
+    }
+    .updated-date {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 48px;
+      letter-spacing: 0.03em;
+    }
+
+    /* GUARANTEE BLOCK */
+    .guarantee {
+      background: var(--ink);
+      color: var(--ground);
+      padding: 24px 28px;
+      margin-bottom: 48px;
+    }
+    .guarantee strong {
+      display: block;
+      font-size: 11px;
+      font-family: var(--mono);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      opacity: 0.6;
+      margin-bottom: 8px;
+    }
+    .guarantee p {
+      font-size: 15px;
+      line-height: 1.6;
+      color: var(--ground);
+      opacity: 0.9;
+      margin: 0;
+    }
+
+    h2 {
+      font-family: var(--display);
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin: 40px 0 12px;
+      padding-top: 40px;
+      border-top: 1px solid var(--border);
+    }
+    h2:first-of-type { margin-top: 0; }
+    p { color: var(--ink); font-size: 15px; margin-bottom: 14px; line-height: 1.7; }
+    ul { padding-left: 18px; margin-bottom: 18px; }
+    li { font-size: 15px; color: var(--ink); margin-bottom: 10px; line-height: 1.65; }
+    strong { font-weight: 700; }
+
+    code {
+      font-family: var(--mono);
+      font-size: 12.5px;
+      background: var(--surface-2);
+      padding: 2px 6px;
+      border-radius: 2px;
+      letter-spacing: 0.02em;
+    }
+
+    a { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+    a:hover { opacity: 0.6; }
+
+    /* FOOTER */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 28px var(--col-pad);
+      max-width: 860px;
+      margin: 0 auto;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.04em;
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="nav-inner">
+      <a href="index.html" class="nav-logo">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="2" y="1" width="14" height="16" rx="1" stroke="#0E0D0B" stroke-width="1.5"/>
+          <line x1="5" y1="6" x2="13" y2="6" stroke="#0E0D0B" stroke-width="1.2"/>
+          <line x1="5" y1="9" x2="13" y2="9" stroke="#0E0D0B" stroke-width="1.2"/>
+          <line x1="5" y1="12" x2="10" y2="12" stroke="#0E0D0B" stroke-width="1.2"/>
+        </svg>
+        PolicyDesk
+      </a>
+      <a href="index.html" class="back-link">← Back to Home</a>
+    </div>
+  </nav>
+
+  <main class="content">
+    <h1>Privacy Policy</h1>
+    <div class="updated-date">LAST UPDATED: OCTOBER 30, 2026</div>
+
+    <div class="guarantee">
+      <strong>Core Privacy Guarantee</strong>
+      <p>PolicyDesk operates on a 100% Local-First principle. We do not maintain any central database, tracking analytics, or user accounts on our servers. Your insurance policies and customer documents belong exclusively to you.</p>
+    </div>
+
+    <h2>1. Information Collection and Storage</h2>
+    <p>PolicyDesk collects information directly entered by you or extracted from insurance documents you provide:</p>
+    <ul>
+      <li><strong>Vehicle &amp; Customer Data:</strong> Vehicle registration number, make/model, VIN, engine number, customer name, mobile number, email, and address.</li>
+      <li><strong>Policy Details:</strong> Policy numbers, insurer names, policy start/expiry dates, premium figures, and attachments.</li>
+    </ul>
+    <p>All of this data is stored strictly locally on your Android device in an encrypted Room SQLite database and secured using the Android Keystore system.</p>
+
+    <h2>2. Google Drive Sync &amp; OAuth Usage</h2>
+    <p>When you choose to connect your Google Account for cloud backups:</p>
+    <ul>
+      <li>PolicyDesk requests authorization exclusively for the restricted scope: <code>https://www.googleapis.com/auth/drive.file</code>.</li>
+      <li>This scope permits PolicyDesk to <strong>only</strong> create, read, and update its own designated folder titled <code>PolicyDesk Vault</code> and backup files (<code>policydesk_backup.json</code>).</li>
+      <li>PolicyDesk <strong>cannot view, read, modify, or delete any other files, photos, or folders</strong> in your Google Drive.</li>
+      <li>Google user data (tokens and email identifiers) is cached strictly on your local device and is never transmitted to any third party or backend server.</li>
+    </ul>
+
+    <h2>3. Artificial Intelligence Document Extraction</h2>
+    <p>PolicyDesk features optional AI extraction for insurance PDFs:</p>
+    <ul>
+      <li><strong>Cloudflare Workers AI:</strong> Text and image data from submitted document pages are transmitted securely via TLS 1.3 to a stateless Cloudflare Worker endpoint for optical recognition. No document copies are permanently stored on Cloudflare servers.</li>
+      <li><strong>Bring Your Own Key (BYOK):</strong> If you choose Gemini, OpenAI, or Claude, requests are made directly from your device to the respective provider's official API using API keys encrypted locally on your Android hardware.</li>
+    </ul>
+
+    <h2>4. Third-Party Sharing &amp; Advertising</h2>
+    <p>We do not sell, rent, trade, or share your personal information with any third-party advertisers, data brokers, or marketing services. The application does not contain advertising SDKs or tracking pixels.</p>
+
+    <h2>5. Data Retention &amp; Deletion</h2>
+    <p>Because your data resides on your device and in your personal Google Drive account, you retain total control over retention:</p>
+    <ul>
+      <li>You can delete any policy, customer, or vehicle record instantly inside the app.</li>
+      <li>You can disconnect Google Drive at any time from Settings.</li>
+      <li>Uninstalling the app immediately wipes all local data from your device storage.</li>
+    </ul>
+
+    <h2>6. Contact</h2>
+    <p>Questions or feedback regarding this Privacy Policy:</p>
+    <p><a href="mailto:creativity.satyamjain@gmail.com">creativity.satyamjain@gmail.com</a></p>
+  </main>
+
+  <footer>
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+      <span>&copy; 2026 POLICYDESK &mdash; LOCAL-FIRST, ZERO TRACKING</span>
+      <div style="display: flex; gap: 16px; font-size: 11px;">
+        <a href="index.html">Home</a>
+        <a href="terms.html">Terms</a>
+        <a href="https://github.com/thesatyamjain/PolicyDesk" target="_blank" rel="noopener">GitHub</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>
