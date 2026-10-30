@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Matrix
 import android.graphics.pdf.PdfRenderer
 import android.net.Uri
 import android.util.Base64
@@ -370,19 +371,53 @@ CONTENT AWARENESS RULES & ABBREVIATIONS FOR ALL FIELDS:
         return try {
             context.contentResolver.openFileDescriptor(uri, "r")?.use { pfd ->
                 val renderer = PdfRenderer(pfd)
-                if (renderer.pageCount == 0) return null
-                val page = renderer.openPage(0)
-                // Render at 2x density for crisp OCR text recognition
-                val scale = 2
-                val bitmap = Bitmap.createBitmap(page.width * scale, page.height * scale, Bitmap.Config.ARGB_8888)
+                if (renderer.pageCount == 0) {
+                    renderer.close()
+                    return null
+                }
+
+                val pagesToRender = minOf(renderer.pageCount, 2)
+                val scale = if (pagesToRender > 1) 1.8f else 2.2f
+
+                val firstPage = renderer.openPage(0)
+                val pageWidth = firstPage.width
+                val pageHeight = firstPage.height
+
+                val totalHeight = if (pagesToRender > 1) {
+                    val secondPage = renderer.openPage(1)
+                    val h = pageHeight + secondPage.height
+                    secondPage.close()
+                    h
+                } else {
+                    pageHeight
+                }
+
+                val bitmapWidth = (pageWidth * scale).toInt()
+                val bitmapHeight = (totalHeight * scale).toInt()
+                val bitmap = Bitmap.createBitmap(bitmapWidth, bitmapHeight, Bitmap.Config.ARGB_8888)
                 val canvas = Canvas(bitmap)
                 canvas.drawColor(Color.WHITE)
-                page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
-                page.close()
+
+                val matrix0 = Matrix().apply {
+                    setScale(scale, scale)
+                }
+                firstPage.render(bitmap, null, matrix0, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+                firstPage.close()
+
+                if (pagesToRender > 1) {
+                    val secondPage = renderer.openPage(1)
+                    val matrix1 = Matrix().apply {
+                        setScale(scale, scale)
+                        postTranslate(0f, pageHeight * scale)
+                    }
+                    secondPage.render(bitmap, null, matrix1, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+                    secondPage.close()
+                }
+
                 renderer.close()
 
                 val outputStream = ByteArrayOutputStream()
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 85, outputStream)
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 92, outputStream)
                 bitmap.recycle()
                 Base64.encodeToString(outputStream.toByteArray(), Base64.NO_WRAP)
             }
