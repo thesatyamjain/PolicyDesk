@@ -1,6 +1,7 @@
 package com.policydesk.app.ui.settings
 
 import android.content.Context
+import android.widget.Toast
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.policydesk.app.data.ai.AiExtractionClient
@@ -22,6 +23,10 @@ import javax.inject.Inject
 
 import com.policydesk.app.data.profile.AdvisorProfile
 import com.policydesk.app.data.profile.AdvisorProfileManager
+import com.policydesk.app.data.ota.OtaManager
+import com.policydesk.app.data.ota.OtaReleaseInfo
+import com.policydesk.app.data.ota.OtaState
+import java.io.File
 import com.policydesk.app.notification.NotificationHelper
 import com.policydesk.app.notification.NotificationPreferenceManager
 import androidx.core.app.NotificationManagerCompat
@@ -45,13 +50,16 @@ data class SettingsUiState(
     val areNotificationsEnabled: Boolean = true,
     val hasNotificationPermission: Boolean = true,
     val appVersionName: String = "1.0.0",
-    val appVersionCode: Long = 1L
+    val appVersionCode: Long = 1L,
+    val otaState: OtaState = OtaState.Idle,
+    val showOtaDialog: Boolean = false
 )
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val repository: VehicleRepository
+    private val repository: VehicleRepository,
+    private val otaManager: OtaManager
 ) : ViewModel() {
 
     private val secureStorage = SecureKeyStorage(context)
@@ -109,6 +117,7 @@ class SettingsViewModel @Inject constructor(
                     appVersionCode = vCode
                 )
             }
+            checkForUpdates(manual = false)
         }
     }
 
@@ -504,5 +513,107 @@ class SettingsViewModel @Inject constructor(
             _uiState.update { it.copy(totalRecords = all.size) }
             count
         }
+    }
+
+    fun checkForUpdates(manual: Boolean = true) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(otaState = OtaState.Checking) }
+            val currentVersion = uiState.value.appVersionName
+            val result = otaManager.checkForUpdates(currentVersion)
+
+            result.fold(
+                onSuccess = { release ->
+                    if (release != null) {
+                        _uiState.update {
+                            it.copy(
+                                otaState = OtaState.UpdateAvailable(release),
+                                showOtaDialog = true
+                            )
+                        }
+                    } else {
+                        _uiState.update {
+                            it.copy(
+                                otaState = OtaState.UpToDate,
+                                showOtaDialog = false
+                            )
+                        }
+                        if (manual) {
+                            Toast.makeText(context, "PolicyDesk is up to date (v$currentVersion)", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                },
+                onFailure = { error ->
+                    _uiState.update {
+                        it.copy(otaState = OtaState.Error(error.message ?: "Failed to check updates"))
+                    }
+                    if (manual) {
+                        Toast.makeText(context, error.message ?: "Could not check updates", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            )
+        }
+    }
+
+    fun startOtaDownload() {
+        val currentOta = uiState.value.otaState
+        val release = when (currentOta) {
+            is OtaState.UpdateAvailable -> currentOta.release
+            is OtaState.Downloading -> currentOta.release
+            is OtaState.ReadyToInstall -> currentOta.release
+            else -> return
+        }
+
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    otaState = OtaState.Downloading(
+                        progressPercent = 0,
+                        downloadedBytes = 0,
+                        totalBytes = release.apkSizeBytes,
+                        release = release
+                    )
+                )
+            }
+
+            val downloadResult = otaManager.downloadUpdate(release) { percent, downloaded, total ->
+                _uiState.update {
+                    it.copy(
+                        otaState = OtaState.Downloading(
+                            progressPercent = percent,
+                            downloadedBytes = downloaded,
+                            totalBytes = total,
+                            release = release
+                        )
+                    )
+                }
+            }
+
+            downloadResult.fold(
+                onSuccess = { apkFile ->
+                    _uiState.update {
+                        it.copy(otaState = OtaState.ReadyToInstall(apkFile, release))
+                    }
+                    installOtaUpdate(apkFile)
+                },
+                onFailure = { error ->
+                    _uiState.update {
+                        it.copy(otaState = OtaState.Error(error.message ?: "Download failed"))
+                    }
+                    Toast.makeText(context, error.message ?: "Download failed", Toast.LENGTH_LONG).show()
+                }
+            )
+        }
+    }
+
+    fun installOtaUpdate(file: File? = null) {
+        val apkFile = file ?: (uiState.value.otaState as? OtaState.ReadyToInstall)?.apkFile ?: return
+        val installResult = otaManager.installUpdate(apkFile)
+        installResult.onFailure { error ->
+            Toast.makeText(context, error.message ?: "Could not open installer", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    fun dismissOtaDialog() {
+        _uiState.update { it.copy(showOtaDialog = false) }
     }
 }

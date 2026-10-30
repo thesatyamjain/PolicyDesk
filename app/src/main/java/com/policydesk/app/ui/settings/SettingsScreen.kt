@@ -9,7 +9,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import com.policydesk.app.data.profile.AdvisorProfile
 import com.policydesk.app.data.profile.AdvisorProfileManager
+import com.policydesk.app.data.ota.OtaState
 import com.policydesk.app.ui.components.AppleAlertDialog
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -188,6 +190,89 @@ fun SettingsScreen(
             dismissText = "Cancel",
             onDismiss = { showResetConfirmDialog = false }
         )
+    }
+
+    if (state.showOtaDialog) {
+        val otaState = state.otaState
+        val release = when (otaState) {
+            is OtaState.UpdateAvailable -> otaState.release
+            is OtaState.Downloading -> otaState.release
+            is OtaState.ReadyToInstall -> otaState.release
+            else -> null
+        }
+
+        if (release != null) {
+            val isDark = androidx.compose.foundation.isSystemInDarkTheme()
+            val isDownloading = otaState is OtaState.Downloading
+            val isReady = otaState is OtaState.ReadyToInstall
+
+            AppleAlertDialog(
+                onDismissRequest = {
+                    if (!isDownloading) viewModel.dismissOtaDialog()
+                },
+                title = "PolicyDesk ${release.tagName}",
+                message = "A new software release is available for installation (${release.displaySizeMb}).",
+                confirmText = when {
+                    isReady -> "Install Now"
+                    isDownloading -> "Downloading (${(otaState as OtaState.Downloading).progressPercent}%)"
+                    else -> "Download & Install"
+                },
+                onConfirm = {
+                    when {
+                        isReady -> viewModel.installOtaUpdate()
+                        isDownloading -> { /* in progress */ }
+                        else -> viewModel.startOtaDownload()
+                    }
+                },
+                dismissText = if (isDownloading) null else "Later",
+                onDismiss = { viewModel.dismissOtaDialog() },
+                content = {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp)
+                    ) {
+                        if (isDownloading) {
+                            val dl = otaState as OtaState.Downloading
+                            Spacer(modifier = Modifier.height(6.dp))
+                            androidx.compose.material3.LinearProgressIndicator(
+                                progress = { dl.progressPercent / 100f },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(6.dp)
+                                    .clip(RoundedCornerShape(3.dp)),
+                                color = if (isDark) AppleDarkSystemBlue else AppleSystemBlue,
+                                trackColor = if (isDark) Color(0x33FFFFFF) else Color(0x1F000000)
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "${dl.progressPercent}% (${String.format("%.1f", dl.downloadedBytes / (1024.0 * 1024.0))} MB / ${release.displaySizeMb})",
+                                fontSize = 11.sp,
+                                color = if (isDark) IosDarkLabelSecondary else IosLabelSecondary,
+                                modifier = Modifier.align(Alignment.CenterHorizontally)
+                            )
+                        } else if (release.releaseNotes.isNotBlank()) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(max = 140.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(if (isDark) Color(0x22FFFFFF) else Color(0x0A000000))
+                                    .padding(8.dp)
+                                    .verticalScroll(rememberScrollState())
+                            ) {
+                                Text(
+                                    text = release.releaseNotes,
+                                    fontSize = 12.sp,
+                                    color = if (isDark) IosDarkLabelSecondary else IosLabelSecondary,
+                                    lineHeight = 16.sp
+                                )
+                            }
+                        }
+                    }
+                }
+            )
+        }
     }
 
     Scaffold(
@@ -909,6 +994,35 @@ fun SettingsScreen(
             LiquidGlassGroupedSection(title = "About & Compliance") {
                 DetailRow(label = "Application", value = "PolicyDesk Advisor")
                 DetailRow(label = "Version", value = "v${state.appVersionName} (Build ${state.appVersionCode})")
+
+                val otaState = state.otaState
+                val otaSubtitle = when (otaState) {
+                    is OtaState.Checking -> "Checking for updates..."
+                    is OtaState.UpdateAvailable -> "Version ${otaState.release.tagName} available (${otaState.release.displaySizeMb})"
+                    is OtaState.Downloading -> "Downloading update: ${otaState.progressPercent}%"
+                    is OtaState.ReadyToInstall -> "Download complete • Tap to install ${otaState.release.tagName}"
+                    is OtaState.UpToDate -> "You are on the latest version"
+                    is OtaState.Error -> "Check failed: ${otaState.message}"
+                    OtaState.Idle -> "Check GitHub for new releases"
+                }
+                val hasUpdate = otaState is OtaState.UpdateAvailable || otaState is OtaState.ReadyToInstall
+
+                Spacer(modifier = Modifier.height(4.dp))
+                LiquidGlassListRow(
+                    title = if (hasUpdate) "Update Available" else "Software Updates",
+                    subtitle = otaSubtitle,
+                    icon = AppleIcons.Download,
+                    iconBgColor = if (hasUpdate) com.policydesk.app.ui.theme.AppleDarkSystemGreen else (if (isDark) AppleDarkSystemBlue else AppleSystemBlue),
+                    onClick = {
+                        when (otaState) {
+                            is OtaState.ReadyToInstall -> viewModel.installOtaUpdate()
+                            is OtaState.UpdateAvailable -> viewModel.startOtaDownload()
+                            is OtaState.Downloading -> { /* already downloading */ }
+                            else -> viewModel.checkForUpdates(manual = true)
+                        }
+                    }
+                )
+
                 DetailRow(label = "Built By", value = "The Software Labs & Satyam Jain")
                 DetailRow(label = "Architecture", value = "100% Local-First & Encrypted")
                 DetailRow(label = "Compliance", value = "Digital Personal Data Protection Act (DPDP)")
