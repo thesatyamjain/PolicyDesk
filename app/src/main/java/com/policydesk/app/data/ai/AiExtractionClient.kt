@@ -411,7 +411,7 @@ CONTENT AWARENESS RULES & ABBREVIATIONS FOR ALL FIELDS:
                 }
 
                 val pagesToRender = minOf(renderer.pageCount, maxPages)
-                val baseScale = if (pagesToRender > 1) 1.6f else scale
+                val actualScale = if (pagesToRender > 1) 1.8f else scale
 
                 val firstPage = renderer.openPage(0)
                 val pageWidth = firstPage.width
@@ -425,10 +425,6 @@ CONTENT AWARENESS RULES & ABBREVIATIONS FOR ALL FIELDS:
                 } else {
                     pageHeight
                 }
-
-                // Constrain max dimension to 1600px to avoid Cloudflare V8 memory limits and ensure sharp OCR
-                val maxDim = maxOf(pageWidth, totalHeight)
-                val actualScale = if (maxDim > 0) minOf(baseScale, 1600f / maxDim).coerceAtLeast(1.2f) else baseScale
 
                 val bitmapWidth = (pageWidth * actualScale).toInt()
                 val bitmapHeight = (totalHeight * actualScale).toInt()
@@ -455,7 +451,7 @@ CONTENT AWARENESS RULES & ABBREVIATIONS FOR ALL FIELDS:
                 renderer.close()
 
                 val outputStream = ByteArrayOutputStream()
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 85, outputStream)
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 92, outputStream)
                 bitmap.recycle()
                 Base64.encodeToString(outputStream.toByteArray(), Base64.NO_WRAP)
             }
@@ -525,14 +521,10 @@ CONTENT AWARENESS RULES & ABBREVIATIONS FOR ALL FIELDS:
                 val hasAnyExtractedField = (json.optString("regNo").isNotBlank() ||
                         json.optString("policyNumber").isNotBlank() ||
                         json.optString("customerName").isNotBlank() ||
-                        json.optString("insurer").isNotBlank() ||
-                        json.optString("makeModel").isNotBlank() ||
-                        json.optString("vin").isNotBlank() ||
-                        json.optString("engineNo").isNotBlank() ||
-                        json.optString("expiryDate").isNotBlank())
+                        json.optString("insurer").isNotBlank())
 
                 if (isExplicitlyNotPolicy && !hasAnyExtractedField) {
-                    return ExtractionResult.Error("The uploaded file does not appear to be an insurance policy document. If this is a valid policy, please check the document clarity or switch to Google Gemini in Settings > AI.")
+                    return ExtractionResult.Error("The uploaded file does not appear to be an insurance policy document.")
                 }
                 parseExtractionJson(json, responseText)
             } else {
