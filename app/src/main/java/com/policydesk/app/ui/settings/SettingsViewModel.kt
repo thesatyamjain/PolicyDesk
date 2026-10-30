@@ -527,7 +527,7 @@ class SettingsViewModel @Inject constructor(
                         _uiState.update {
                             it.copy(
                                 otaState = OtaState.UpdateAvailable(release),
-                                showOtaDialog = true
+                                showOtaDialog = manual
                             )
                         }
                     } else {
@@ -611,6 +611,10 @@ class SettingsViewModel @Inject constructor(
         installResult.onFailure { error ->
             Toast.makeText(context, error.message ?: "Could not open installer", Toast.LENGTH_LONG).show()
         }
+    }
+
+    fun openOtaDialog() {
+        _uiState.update { it.copy(showOtaDialog = true) }
     }
 
     fun dismissOtaDialog() {

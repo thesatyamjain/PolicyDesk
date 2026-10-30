@@ -158,7 +158,10 @@ jobs:
           fi
 
       - name: Build Release APK
-        run: ./gradlew assembleRelease --no-daemon
+        run: |
+          TAG="${{ needs.init.outputs.tag }}"
+          CLEAN_TAG="${TAG#v}"
+          ./gradlew assembleRelease -PversionName="$CLEAN_TAG" --no-daemon
 
       - name: Stage APK Artifact
         run: |
@@ -212,7 +215,10 @@ jobs:
           fi
 
       - name: Build Release Bundle
-        run: ./gradlew bundleRelease --no-daemon
+        run: |
+          TAG="${{ needs.init.outputs.tag }}"
+          CLEAN_TAG="${TAG#v}"
+          ./gradlew bundleRelease -PversionName="$CLEAN_TAG" --no-daemon
 
       - name: Stage Bundle Artifact
         run: |

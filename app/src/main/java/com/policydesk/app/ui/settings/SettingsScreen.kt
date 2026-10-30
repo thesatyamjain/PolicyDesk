@@ -1016,8 +1016,8 @@ fun SettingsScreen(
                     onClick = {
                         when (otaState) {
                             is OtaState.ReadyToInstall -> viewModel.installOtaUpdate()
-                            is OtaState.UpdateAvailable -> viewModel.startOtaDownload()
-                            is OtaState.Downloading -> { /* already downloading */ }
+                            is OtaState.UpdateAvailable -> viewModel.openOtaDialog()
+                            is OtaState.Downloading -> viewModel.openOtaDialog()
                             else -> viewModel.checkForUpdates(manual = true)
                         }
                     }
