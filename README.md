@@ -1,25 +1,120 @@
 # PolicyDesk
 
-[![Android](https://img.shields.io/badge/Platform-Android%208.0%2B%20(API%2026%2B)-green.svg)](https://android.com)
-[![Kotlin](https://img.shields.io/badge/Kotlin-2.0.21-purple.svg)](https://kotlinlang.org)
-[![Compose](https://img.shields.io/badge/Jetpack%20Compose-BOM%202024.11.00-blue.svg)](https://developer.android.com/jetpack/compose)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Android CI](https://github.com/thesatyamjain/PolicyDesk/actions/workflows/android-ci.yml/badge.svg)](https://github.com/thesatyamjain/PolicyDesk/actions/workflows/android-ci.yml)
+[![Publish GitHub Release](https://github.com/thesatyamjain/PolicyDesk/actions/workflows/release.yml/badge.svg)](https://github.com/thesatyamjain/PolicyDesk/actions/workflows/release.yml)
+[![Platform](https://img.shields.io/badge/Platform-Android%208.0%2B%20(API%2026%2B)-34D399.svg?logo=android&logoColor=white)](https://android.com)
+[![Kotlin](https://img.shields.io/badge/Kotlin-2.0.21-7F52FF.svg?logo=kotlin&logoColor=white)](https://kotlinlang.org)
+[![Compose](https://img.shields.io/badge/Jetpack%20Compose-BOM%202024.11.00-4285F4.svg?logo=jetpackcompose&logoColor=white)](https://developer.android.com/jetpack/compose)
+[![Release](https://img.shields.io/github/v/release/thesatyamjain/PolicyDesk?color=0A84FF&logo=github)](https://github.com/thesatyamjain/PolicyDesk/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-F59E0B.svg)](LICENSE)
 
-**PolicyDesk** is an offline-first, privacy-focused vehicle insurance policy manager and CRM built for Android. Designed specifically for Indian insurance advisors and fleet managers, it simplifies tracking motor insurance policies, managing renewals, automating customer communications, and parsing policy PDFs using Google Gemini AI.
+**PolicyDesk** is an enterprise-grade, offline-first motor insurance policy management CRM engineered natively for Android using Jetpack Compose and Apple Liquid Glass aesthetics. Built specifically for Indian insurance advisors, agencies, and fleet managers, it simplifies tracking renewal pipelines, normalizing Indian RTO registrations, dispatching personalized WhatsApp reminders, and parsing policy PDFs using Cloudflare Workers AI and Google Gemini.
+
+---
+
+## Architecture Overview
+
+```mermaid
+flowchart TD
+    subgraph UI ["Presentation Layer (Jetpack Compose)"]
+        Dashboard["Dashboard Screen\n(Expiry Pipelines & Metrics)"]
+        Customers["Customers & Households\n(Multi-Vehicle Grouping)"]
+        Timeline["Month Timeline View\n(Interactive Calendar & Grid)"]
+        Reports["Reports & Analytics\n(Sales & Missed Renewals)"]
+        Detail["Vehicle Detail & Policy History\n(Archive & Delete Controls)"]
+    end
+
+    subgraph State ["State Management (Unidirectional Data Flow)"]
+        VM["Hilt ViewModels\n(StateFlow & SharedFlow)"]
+    end
+
+    subgraph Domain ["Domain Layer"]
+        Normalizer["RTO Normalizer\n(Standard & Bharat Series)"]
+        Catalog["Insurer Catalog\n(PSU vs Private Sectors)"]
+        RepoInterface["VehicleRepository Contract"]
+    end
+
+    subgraph Data ["Data & Storage Layer"]
+        RepoImpl["VehicleRepositoryImpl"]
+        Room["Room Database\n(SQLite with WAL Mode)"]
+        Datastore["DataStore Preferences\n(EncryptedSharedPreferences)"]
+        DriveEngine["Google Drive AppData Sync\n(PolicyDesk Vault)"]
+        AIEngine["AI Intake Client\n(Cloudflare Workers AI + Gemini)"]
+    end
+
+    Dashboard --> VM
+    Customers --> VM
+    Timeline --> VM
+    Reports --> VM
+    Detail --> VM
+
+    VM --> RepoInterface
+    RepoInterface --> RepoImpl
+    RepoImpl --> Normalizer
+    RepoImpl --> Catalog
+    RepoImpl --> Room
+    RepoImpl --> Datastore
+    RepoImpl --> DriveEngine
+    RepoImpl --> AIEngine
+```
 
 ---
 
 ## Key Features
 
-- **Local-First Architecture:** Complete offline functionality powered by Room database with zero forced cloud accounts or telemetry.
-- **RTO Registration Normalizer:** Automatically strips spaces/hyphens and standardizes registrations (`MH12AB1234`, `DL1A1234`, `22BH1234AA`).
-- **PSU vs. Private Insurer Categorization:** Pre-configured catalog for Indian insurance companies with custom insurer addition.
-- **Multi-Vehicle Customer View:** Automatically groups vehicles and policies owned by the same customer linked by mobile number.
-- **Bulk Spreadsheet Import:** Import `.csv` and `.xlsx` files with column auto-mapping, data validation, and duplicate conflict resolution.
-- **AI PDF Policy Intake:** Share an insurance policy document directly from WhatsApp or a file manager into PolicyDesk. Powered by Google Gemini for accurate field extraction.
-- **Automated Expiry Reminders:** Configurable background notifications via WorkManager (30-day, 15-day, 7-day, 1-day, and same-day alerts) with 1-tap WhatsApp reminder messages and phone dialer shortcuts.
-- **Biometric App Lock:** Safeguards client records using device fingerprint, face unlock, or device PIN (`BiometricPrompt`).
-- **Encrypted Cloud Backup:** Optional Google Drive AppData folder backup snapshot export and restore.
+### 1. Apple Liquid Glass UI & 60-120 FPS Motion
+- **Native GPU Surface Rendering:** True dual-incident specular borders (`1.1dp` highlight), 4-stop diagonal meniscus refraction gradients, and surface luminance hierarchy.
+- **Draw-Phase Transformations:** Tap feedback and scale springs execute directly in Compose's hardware draw phase (`Modifier.graphicsLayer`) to eliminate layout remeasure passes and prevent dropped frames.
+- **Virtualized Node Recycling:** Explicit `contentType` tagging across all `LazyColumn` lists for instantaneous scrolling through 1,000+ active records.
+- **Full Edge-to-Edge Navigation:** Translucent frosted navigation bar and floating Liquid Glass Dock suspended over content with system gesture bar padding.
+
+### 2. Indian RTO Registration Engine
+- **Intelligent Normalizer:** Standardizes any registration format into canonical alphanumeric strings (`DL 01 AB 1234`, `mh-12-cd-5678`, `22bh1234aa`).
+- **Authentic HSRP Number Plate Display:** Renders high-security registration plates with the international blue `IND` stripe, chromium hologram symbol, and distinct commercial (yellow) versus private (white) color schemes.
+- **State & District Code Validation:** Comprehensive lookup across all 36 Indian states and union territories.
+
+### 3. PSU vs. Private Insurer Intelligence
+- Pre-loaded catalog containing Indian motor insurers (United India, National Insurance, New India Assurance, Oriental, ICICI Lombard, HDFC ERGO, Bajaj Allianz, Tata AIG, etc.).
+- Automated classification into **PSU** and **Private** company sectors with tailored analytics.
+
+### 4. Automated Communications & Advisor Branding
+- **Custom Advisor Profile:** Configurable agent name, agency designation, phone number, and custom message templates saved in secure preferences.
+- **Dynamic Renewal Placeholders:** One-tap direct WhatsApp links and SMS messages automatically interpolated with `{customer}`, `{vehicle}`, `{insurer}`, `{expiry}`, and `{signature}`.
+- **Daily Digest & Expiry Alerts:** WorkManager background reminders scheduled at 30-day, 15-day, 7-day, 1-day, and same-day intervals.
+
+### 5. Multi-Vehicle Household Grouping
+- Automatically identifies multi-vehicle fleets belonging to the same family or business by indexing customer mobile numbers without requiring manual account linking.
+
+### 6. AI PDF Policy Intake & Bulk Spreadsheet Import
+- **Multimodal AI Extraction:** Primary extraction powered by Cloudflare Workers AI (`Llama 3.2 Vision`) with automatic fallback to Google Gemini 1.5 Flash.
+- **Excel & CSV Importer:** Native Apache POI-free memory-efficient spreadsheet parser supporting column auto-mapping and duplicate conflict resolution.
+
+### 7. Data Privacy & Cloud Backup
+- **Offline-First:** All client and policy records reside locally on the device in encrypted SQLite storage.
+- **Google Drive Vault Sync:** One-tap silent backup and restore directly to the user's hidden Google Drive `AppData` sandbox.
+- **Biometric Security:** Hardware-backed `BiometricPrompt` supporting fingerprint, face unlock, and device PIN credentials.
+
+---
+
+## Parallel CI/CD Release Pipeline
+
+PolicyDesk uses a multi-job asynchronous DAG in GitHub Actions to build, verify, and publish releases concurrently:
+
+```mermaid
+flowchart LR
+    A["Initialize Release Tag\n(v0.1.0 Baseline)"] --> B["Run Unit Tests\n(Gradle testDebugUnitTest)"]
+    A --> C["Build Release APK\n(assembleRelease)"]
+    A --> D["Build App Bundle\n(bundleRelease)"]
+
+    B --> E["Publish GitHub Release\n(Attach APK & AAB + Changelog)"]
+    C --> E
+    D --> E
+```
+
+### Pipeline Performance Advantages:
+- **Concurrent Execution:** Unit testing, APK compilation, and `.aab` bundle generation run in parallel across independent Ubuntu runners.
+- **Self-Healing Signing:** Automatically generates a secure CI release keystore on the fly if custom repository secrets are not configured, guaranteeing that release artifacts are always properly signed.
+- **Automated Version Bumping:** Supports `patch` (e.g. `v0.1.0` &rarr; `v0.1.1`), `minor` (`v0.2.0`), or `major` (`v1.0.0`) semantic version increments on demand.
 
 ---
 
@@ -27,130 +122,68 @@
 
 | Layer | Technologies |
 |---|---|
-| **UI** | Jetpack Compose, Material 3, Compose Navigation |
-| **Architecture** | MVVM, Clean Architecture, Unidirectional Data Flow (UDF) |
-| **Dependency Injection** | Dagger Hilt |
-| **Local Storage** | Room Database (SQLite), DataStore Preferences |
-| **Background Work** | WorkManager |
-| **Security** | AndroidX Security Crypto (`EncryptedSharedPreferences`), AndroidX Biometric |
-| **AI Extraction** | Google Gemini API (Multimodal PDF extraction) |
-| **Cloud Sync** | Google Play Services Auth, Google Drive REST API (AppData scope) |
+| **Language & Tooling** | Kotlin 2.0.21, Kotlin Symbol Processing (KSP), Gradle 8.14 |
+| **UI Framework** | Jetpack Compose, Material 3, Compose Navigation, Haze Blur |
+| **Architecture** | Clean Architecture, MVVM, Unidirectional Data Flow (UDF) |
+| **Dependency Injection** | Dagger Hilt 2.51.1 |
+| **Local Persistence** | AndroidX Room 2.6.1 (SQLite WAL), DataStore Preferences |
+| **Background Processing**| AndroidX WorkManager 2.10.0 |
+| **Security & Cryptography**| AndroidX Security Crypto (`EncryptedSharedPreferences`), AndroidX Biometric |
+| **AI Document Intake** | Cloudflare Workers AI (`Llama 3.2 Vision`), Google Gemini REST API |
+| **Cloud Synchronization**| Google Sign-In SDK, Google Drive REST API (Hidden AppData Scope) |
 
 ---
 
 ## Getting Started
 
 ### Prerequisites
+- **Android Studio:** Ladybug (2024.2) or newer
+- **JDK:** Version 17 (e.g., Eclipse Temurin 17)
+- **Android SDK:** Compile SDK 35, Min SDK 26 (Android 8.0 Oreo)
 
-- **Android Studio:** Ladybug (2024.2) or later recommended
-- **JDK:** Version 17
-- **Android SDK:** Compile SDK 35, Min SDK 26
-
-### Cloning & Building
+### Local Build Commands
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/policydesk.git
-cd policydesk
+git clone https://github.com/thesatyamjain/PolicyDesk.git
+cd PolicyDesk
 
-# Build debug APK
+# Run all unit tests
+./gradlew testDebugUnitTest
+
+# Compile debug APK
 ./gradlew assembleDebug
 
-# Run unit tests
-./gradlew testDebugUnitTest
-```
-
----
-
-## Configuration
-
-### 1. Google Gemini AI API Key (Optional)
-To use automated PDF policy document intake:
-1. Obtain an API key from [Google AI Studio](https://aistudio.google.com/).
-2. In the app, navigate to **Settings > AI Settings** and enter your API key. Keys are securely stored in hardware-backed `EncryptedSharedPreferences`.
-
-### 2. Google Drive Backup (Optional)
-To enable silent backups to Google Drive AppData folder:
-1. Create an OAuth 2.0 Client ID in the [Google Cloud Console](https://console.cloud.google.com/).
-2. Register your package name (`com.policydesk.app`) and SHA-1 signing fingerprint.
-3. Enable the Google Drive API for your project.
-
-### 3. Release Signing
-For production release builds, configure the following environment variables or properties in `~/.gradle/gradle.properties`:
-```properties
-KEYSTORE_FILE=/path/to/keystore.jks
-KEYSTORE_PASSWORD=your_keystore_password
-KEY_ALIAS=your_key_alias
-KEY_PASSWORD=your_key_password
-```
-Then run:
-```bash
+# Compile production-optimized release APK (R8 Minified)
 ./gradlew assembleRelease
+
+# Compile Google Play Store App Bundle (.aab)
+./gradlew bundleRelease
 ```
 
 ---
 
-## GitHub Releases
+## Production Distribution Artifacts
 
-Automated releases are published via GitHub Actions whenever a semantic version tag (e.g. `v1.0.0`) is pushed:
+| Distribution Target | Format | Output Location |
+|---|---|---|
+| **Sideload / Direct Install** | `.apk` | `app/build/outputs/apk/release/app-release.apk` |
+| **Google Play Console** | `.aab` | `app/build/outputs/bundle/release/app-release.aab` |
 
+---
+
+## Publishing a Release
+
+### Via GitHub Actions (Recommended)
+1. Go to the **Actions** tab in your repository.
+2. Select **Publish GitHub Release** from the left workflow list.
+3. Click **Run workflow**, choose your version bump type (`patch`, `minor`, `major`), and run.
+4. The parallel runner matrix will execute tests and builds simultaneously, then attach `PolicyDesk-v*.apk` and `PolicyDesk-v*.aab` directly to the newly created GitHub Release.
+
+### Via Git CLI
 ```bash
-git tag v1.0.0
-git push origin v1.0.0
-```
-
-The workflow:
-1. Executes the unit test suite (`testDebugUnitTest`).
-2. Builds and signs the release APK (`PolicyDesk-v1.0.0.apk`) and Android App Bundle (`PolicyDesk-v1.0.0.aab`).
-3. Automatically creates a tagged GitHub Release with auto-generated release notes and attached distribution assets.
-
-You can also trigger releases directly from GitHub:
-1. Navigate to **Actions > Publish GitHub Release**.
-2. Click **Run workflow**.
-3. Select your desired **Version bump type**:
-   - `patch` (default): increments patch version from `v0.1.0` (`v0.1.1`, `v0.1.2`, etc.).
-   - `minor`: increments minor version (`v0.2.0`, `v0.3.0`, etc.).
-   - `major`: increments major version (`v1.0.0`, `v2.0.0`, etc.).
-   - Or optionally enter a custom tag in **Custom tag override**.
-4. Click the green **Run workflow** button. The workflow automatically tags the commit, pushes the tag, builds the signed APK and AAB, and publishes the GitHub Release.
-
----
-
-## Project Structure
-
-```
-app/src/main/
-├── AndroidManifest.xml
-├── java/com/policydesk/app/
-│   ├── PolicyDeskApp.kt               # Application entry point
-│   ├── MainActivity.kt                # Single activity host
-│   ├── data/
-│   │   ├── ai/                        # Gemini AI PDF extraction client
-│   │   ├── drive/                     # Google Drive AppData sync
-│   │   ├── importer/                  # CSV/XLSX spreadsheet parser
-│   │   ├── local/                     # Room DB, DAOs, entities
-│   │   ├── repository/                # Repository implementation
-│   │   └── security/                  # AppLock and EncryptedSharedPreferences
-│   ├── di/                            # Dagger Hilt dependency injection
-│   ├── domain/
-│   │   ├── model/                     # Business entities & normalizers
-│   │   └── repository/                # Repository interface
-│   ├── notification/                  # Policy expiry alerts & WorkManager
-│   └── ui/
-│       ├── addpolicy/                 # Manual policy creation screen
-│       ├── components/                # Shared glassmorphic UI components
-│       ├── customers/                 # Customer directory & vehicle groupings
-│       ├── dashboard/                 # Expiry countdown & metrics dashboard
-│       ├── detail/                    # Vehicle policy history & details
-│       ├── importer/                  # Bulk spreadsheet import workflow
-│       ├── monthview/                 # Monthly renewal calendar
-│       ├── navigation/                # Compose NavHost routing
-│       ├── pdfreview/                 # AI intake review & confirmation
-│       ├── renew/                     # Policy renewal screen
-│       ├── reports/                   # Performance & sales reporting
-│       ├── settings/                  # Backup, AI, & security preferences
-│       └── theme/                     # Typography, colors, and Theme
-└── res/                               # App icons, vectors, and themes
+git tag -a v0.1.0 -m "Release v0.1.0"
+git push origin v0.1.0
 ```
 
 ---
