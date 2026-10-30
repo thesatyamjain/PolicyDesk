@@ -92,6 +92,7 @@ import com.policydesk.app.ui.theme.IosTertiaryGrouped
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.collectAsState
+import com.policydesk.app.data.theme.AppDesignStyle
 import com.policydesk.app.data.theme.AppTheme
 import com.policydesk.app.data.theme.ThemeManager
 import kotlinx.coroutines.launch
@@ -298,11 +299,12 @@ fun SettingsScreen(
                 .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 120.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // SECTION 0: APPEARANCE (TRUE DARK THEME)
+            // SECTION 0: APPEARANCE (TRUE DARK THEME & DESIGN LANGUAGE)
             val currentThemeMode by ThemeManager.currentTheme.collectAsState()
+            val currentDesignStyle by ThemeManager.currentDesignStyle.collectAsState()
             val haptic = LocalHapticFeedback.current
 
-            LiquidGlassGroupedSection(title = "Appearance") {
+            LiquidGlassGroupedSection(title = "Appearance & Design Language") {
                 Text(
                     text = "Select your preferred visual style. True Dark uses pure OLED black for maximum contrast and battery conservation.",
                     fontSize = 13.sp,
@@ -348,6 +350,60 @@ fun SettingsScreen(
                                 fontSize = 12.sp,
                                 fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
                                 color = if (isSelected) Color.White else labelPrimary
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Design Material",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = labelPrimary
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Choose between Google Sea Glass (weathered beach-tumbled glass with ocean pastels & pebble contours) and Apple Liquid Glass (Cupertino frosted translucency).",
+                    fontSize = 12.sp,
+                    lineHeight = 16.sp,
+                    color = labelSecondary
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    AppDesignStyle.entries.forEach { styleOption ->
+                        val isSelected = currentDesignStyle == styleOption
+                        val pillShape = RoundedCornerShape(12.dp)
+                        val activeColor = if (styleOption == AppDesignStyle.SEA_GLASS) Color(0xFF2EC4B6) else (if (isDark) AppleDarkSystemBlue else AppleSystemBlue)
+
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(pillShape)
+                                .background(
+                                    if (isSelected) activeColor.copy(alpha = 0.18f) else (if (isDark) Color(0x24545458) else Color(0x0F767680)),
+                                    pillShape
+                                )
+                                .border(
+                                    width = if (isSelected) 1.5.dp else 1.dp,
+                                    color = if (isSelected) activeColor else (if (isDark) Color(0x24FFFFFF) else Color(0x1F000000)),
+                                    shape = pillShape
+                                )
+                                .clickable {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    ThemeManager.setDesignStyle(context, styleOption)
+                                }
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = styleOption.displayName,
+                                fontSize = 12.sp,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                color = if (isSelected) activeColor else labelPrimary
                             )
                         }
                     }

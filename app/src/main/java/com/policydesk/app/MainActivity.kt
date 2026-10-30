@@ -33,9 +33,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.fragment.app.FragmentActivity
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.CompositionLocalProvider
 import com.policydesk.app.data.security.AppLockManager
+import com.policydesk.app.data.theme.AppDesignStyle
 import com.policydesk.app.data.theme.AppTheme
+import com.policydesk.app.data.theme.LocalAppDesignStyle
 import com.policydesk.app.data.theme.ThemeManager
+import com.policydesk.app.ui.components.SeaGlassCanvas
 import com.policydesk.app.ui.navigation.PolicyDeskNavHost
 import com.policydesk.app.ui.theme.Navy900
 import com.policydesk.app.ui.theme.PolicyDeskTheme
@@ -68,6 +72,7 @@ class MainActivity : FragmentActivity() {
 
         setContent {
             val themeState by ThemeManager.currentTheme.collectAsState()
+            val designStyle by ThemeManager.currentDesignStyle.collectAsState()
             val isSystemDark = androidx.compose.foundation.isSystemInDarkTheme()
             val isDark = when (themeState) {
                 AppTheme.DARK -> true
@@ -76,32 +81,44 @@ class MainActivity : FragmentActivity() {
             }
 
             PolicyDeskTheme(darkTheme = isDark) {
-                LiquidGlassCanvas {
-                    var isUnlocked by remember { mutableStateOf(!lockEnabled) }
+                CompositionLocalProvider(LocalAppDesignStyle provides designStyle) {
+                    val rootContent = @Composable {
+                        var isUnlocked by remember { mutableStateOf(!lockEnabled) }
 
-                    if (isUnlocked) {
-                        PolicyDeskNavHost(
-                            initialPdfUri = sharedPdfUri,
-                            initialRegNo = openRegNo
-                        )
-                    } else {
-                        androidx.compose.runtime.LaunchedEffect(Unit) {
-                            AppLockManager.showLockPrompt(
-                                activity = this@MainActivity,
-                                onSuccess = { isUnlocked = true },
-                                onFailure = { /* stay locked */ }
+                        if (isUnlocked) {
+                            PolicyDeskNavHost(
+                                initialPdfUri = sharedPdfUri,
+                                initialRegNo = openRegNo
                             )
-                        }
-
-                        AppLockScreen(
-                            onUnlockClicked = {
+                        } else {
+                            androidx.compose.runtime.LaunchedEffect(Unit) {
                                 AppLockManager.showLockPrompt(
                                     activity = this@MainActivity,
                                     onSuccess = { isUnlocked = true },
                                     onFailure = { /* stay locked */ }
                                 )
                             }
-                        )
+
+                            AppLockScreen(
+                                onUnlockClicked = {
+                                    AppLockManager.showLockPrompt(
+                                        activity = this@MainActivity,
+                                        onSuccess = { isUnlocked = true },
+                                        onFailure = { /* stay locked */ }
+                                    )
+                                }
+                            )
+                        }
+                    }
+
+                    if (designStyle == AppDesignStyle.SEA_GLASS) {
+                        SeaGlassCanvas {
+                            rootContent()
+                        }
+                    } else {
+                        LiquidGlassCanvas {
+                            rootContent()
+                        }
                     }
                 }
             }

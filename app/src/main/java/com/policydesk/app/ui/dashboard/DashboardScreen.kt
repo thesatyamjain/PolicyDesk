@@ -80,6 +80,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.policydesk.app.data.theme.AppDesignStyle
+import com.policydesk.app.data.theme.LocalAppDesignStyle
 import com.policydesk.app.domain.model.RegistrationNormalizer
 import com.policydesk.app.domain.model.Sector
 import com.policydesk.app.domain.model.VehicleWithPolicies
@@ -98,8 +100,16 @@ import com.policydesk.app.ui.components.LiquidGlassFloatingButton
 import com.policydesk.app.ui.components.LiquidGlassSearchBar
 import com.policydesk.app.ui.components.LiquidGlassSelectionBar
 import com.policydesk.app.ui.components.LiquidGlassTopBar
+import com.policydesk.app.ui.components.SeaGlassAsymmetricPebbleShape
+import com.policydesk.app.ui.components.SeaGlassCard
+import com.policydesk.app.ui.components.SeaGlassPebbleShape
 import com.policydesk.app.ui.components.UiFormatters
 import com.policydesk.app.ui.components.liquidGlass
+import com.policydesk.app.ui.components.seaGlass
+import com.policydesk.app.ui.theme.SeaGlassActiveGreen
+import com.policydesk.app.ui.theme.SeaGlassAquaPrimary
+import com.policydesk.app.ui.theme.SeaGlassExpiringAmber
+import com.policydesk.app.ui.theme.SeaGlassOverdueCoral
 import com.policydesk.app.ui.theme.AppleDarkSystemBlue
 import com.policydesk.app.ui.theme.AppleDarkSystemGreen
 import com.policydesk.app.ui.theme.AppleIcons
@@ -142,9 +152,12 @@ fun DashboardScreen(
     val haptic = LocalHapticFeedback.current
 
     val isDark = isSystemInDarkTheme()
+    val designStyle = LocalAppDesignStyle.current
+    val isSeaGlass = designStyle == AppDesignStyle.SEA_GLASS
     val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
     val labelSecondary = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
     val actionTint = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
+    val primaryBrandColor = if (isSeaGlass) SeaGlassAquaPrimary else actionTint
 
     val allSelected = uiState.filteredList.isNotEmpty() && uiState.selectedRegNos.size == uiState.filteredList.size
 
@@ -346,12 +359,12 @@ fun DashboardScreen(
                                 }
                             }
 
-                            // Prominent Apple Glass Add Button (Primary Action)
+                            // Prominent Add Button (Primary Action)
                             Box(
                                 modifier = Modifier
                                     .size(34.dp)
                                     .clip(CircleShape)
-                                    .background(if (isDark) AppleDarkSystemBlue else AppleSystemBlue, CircleShape)
+                                    .background(primaryBrandColor, CircleShape)
                                     .clickable {
                                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                         showAddChooserSheet = true
@@ -366,13 +379,13 @@ fun DashboardScreen(
                                 )
                             }
 
-                            // Apple Glass Settings Button (Consistent 34.dp circular housing matching Add Button)
+                            // Settings Button (Consistent 34.dp circular housing matching Add Button)
                             Box(
                                 modifier = Modifier
                                     .size(34.dp)
                                     .clip(CircleShape)
                                     .background(
-                                        if (isDark) AppleDarkSystemBlue else AppleSystemBlue,
+                                        primaryBrandColor,
                                         CircleShape
                                     )
                                     .clickable {
@@ -405,11 +418,16 @@ fun DashboardScreen(
         ) {
             // 1. Executive Bento Hero Pulse Card (Full-Width, Scrollable)
             item {
+                val heroShape = if (isSeaGlass) SeaGlassPebbleShape else RoundedCornerShape(20.dp)
+                val inForceColor = if (isSeaGlass) SeaGlassActiveGreen else (if (isDark) AppleDarkSystemGreen else AppleSystemGreen)
+                val timelineTint = if (isSeaGlass) SeaGlassAquaPrimary else (if (isDark) AppleDarkSystemBlue else AppleSystemBlue)
+                val timelineBg = if (isSeaGlass) SeaGlassAquaPrimary.copy(alpha = 0.16f) else (if (isDark) Color(0x330A84FF) else Color(0x1F007AFF))
+
                 LiquidGlassCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp),
-                    shape = RoundedCornerShape(20.dp),
+                    shape = heroShape,
                     elevation = 4.dp,
                     onClick = { viewModel.onFilterSelected(ExpiryFilter.ALL) }
                 ) {
@@ -423,14 +441,14 @@ fun DashboardScreen(
                                 Box(
                                     modifier = Modifier
                                         .size(8.dp)
-                                        .background(AppleSystemGreen, CircleShape)
+                                        .background(inForceColor, CircleShape)
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
                                     text = "PORTFOLIO IN FORCE",
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = if (isDark) AppleDarkSystemGreen else AppleSystemGreen,
+                                    color = inForceColor,
                                     letterSpacing = 0.8.sp
                                 )
                             }
@@ -440,7 +458,7 @@ fun DashboardScreen(
                                     text = "${uiState.summary.totalActiveCount}",
                                     fontSize = 32.sp,
                                     fontWeight = FontWeight.Black,
-                                    color = labelPrimary,
+                                    color = if (isSeaGlass) SeaGlassAquaPrimary else labelPrimary,
                                     letterSpacing = (-0.8).sp,
                                     lineHeight = 34.sp
                                 )
@@ -459,7 +477,7 @@ fun DashboardScreen(
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(if (isDark) Color(0x330A84FF) else Color(0x1F007AFF))
+                                .background(timelineBg)
                                 .clickable(onClick = onNavigateToMonthView)
                                 .padding(horizontal = 10.dp, vertical = 6.dp)
                         ) {
@@ -467,7 +485,7 @@ fun DashboardScreen(
                                 Icon(
                                     imageVector = AppleIcons.Calendar,
                                     contentDescription = null,
-                                    tint = if (isDark) AppleDarkSystemBlue else AppleSystemBlue,
+                                    tint = timelineTint,
                                     modifier = Modifier.size(14.dp)
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
@@ -475,7 +493,7 @@ fun DashboardScreen(
                                     text = "Timeline",
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.SemiBold,
-                                    color = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
+                                    color = timelineTint
                                 )
                             }
                         }
@@ -485,6 +503,10 @@ fun DashboardScreen(
 
             // 2. Urgent Action Triage Bento (2 Columns, Scrollable)
             item {
+                val triageShape = if (isSeaGlass) SeaGlassAsymmetricPebbleShape else RoundedCornerShape(18.dp)
+                val overdueColor = if (isSeaGlass) SeaGlassOverdueCoral else AppleSystemRed
+                val expiringColor = if (isSeaGlass) SeaGlassExpiringAmber else AppleSystemDeepOrange
+
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -494,7 +516,7 @@ fun DashboardScreen(
                     // Overdue Action Card
                     LiquidGlassCard(
                         modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(18.dp),
+                        shape = triageShape,
                         elevation = 3.dp,
                         onClick = { viewModel.onFilterSelected(ExpiryFilter.OVERDUE) }
                     ) {
@@ -507,13 +529,13 @@ fun DashboardScreen(
                                 text = "OVERDUE",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = AppleSystemRed,
+                                color = overdueColor,
                                 letterSpacing = 0.5.sp
                             )
                             Box(
                                 modifier = Modifier
                                     .size(6.dp)
-                                    .background(AppleSystemRed, CircleShape)
+                                    .background(overdueColor, CircleShape)
                             )
                         }
                         Spacer(modifier = Modifier.height(4.dp))
@@ -521,7 +543,7 @@ fun DashboardScreen(
                             text = "${uiState.summary.overdueCount}",
                             fontSize = 26.sp,
                             fontWeight = FontWeight.Black,
-                            color = AppleSystemRed,
+                            color = overdueColor,
                             letterSpacing = (-0.5).sp,
                             lineHeight = 28.sp
                         )
@@ -536,7 +558,7 @@ fun DashboardScreen(
                     // Next 7 Days Card
                     LiquidGlassCard(
                         modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(18.dp),
+                        shape = triageShape,
                         elevation = 3.dp,
                         onClick = { viewModel.onFilterSelected(ExpiryFilter.NEXT_7_DAYS) }
                     ) {
@@ -549,13 +571,13 @@ fun DashboardScreen(
                                 text = "THIS WEEK",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = AppleSystemDeepOrange,
+                                color = expiringColor,
                                 letterSpacing = 0.5.sp
                             )
                             Box(
                                 modifier = Modifier
                                     .size(6.dp)
-                                    .background(AppleSystemDeepOrange, CircleShape)
+                                    .background(expiringColor, CircleShape)
                             )
                         }
                         Spacer(modifier = Modifier.height(4.dp))
@@ -563,7 +585,7 @@ fun DashboardScreen(
                             text = "${uiState.summary.next7DaysCount}",
                             fontSize = 26.sp,
                             fontWeight = FontWeight.Black,
-                            color = AppleSystemDeepOrange,
+                            color = expiringColor,
                             letterSpacing = (-0.5).sp,
                             lineHeight = 28.sp
                         )
@@ -912,13 +934,17 @@ fun VehicleExpiryCard(
     val labelSecondary = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
+    val designStyle = LocalAppDesignStyle.current
+    val isSeaGlass = designStyle == AppDesignStyle.SEA_GLASS
+    val cardShape = if (isSeaGlass) RoundedCornerShape(22.dp) else RoundedCornerShape(18.dp)
+    val activeSelectionColor = if (isSeaGlass) SeaGlassAquaPrimary else (if (isDark) AppleDarkSystemBlue else AppleSystemBlue)
     val policy = item.currentPolicy
     val daysRemaining = policy?.computeDaysRemaining() ?: 0
     val status = policy?.computeCurrentStatus() ?: com.policydesk.app.domain.model.PolicyStatus.ACTIVE
     val mobile = item.vehicle.customer.mobile
 
     LiquidGlassCard(
-        shape = RoundedCornerShape(18.dp),
+        shape = cardShape,
         elevation = 3.dp,
         onClick = {
             if (isSelectionMode) onToggleSelect() else onClick()
@@ -946,7 +972,7 @@ fun VehicleExpiryCard(
                             .size(24.dp)
                             .clip(CircleShape)
                             .background(
-                                if (isSelected) (if (isDark) AppleDarkSystemBlue else AppleSystemBlue)
+                                if (isSelected) activeSelectionColor
                                 else Color.Transparent
                             )
                             .border(

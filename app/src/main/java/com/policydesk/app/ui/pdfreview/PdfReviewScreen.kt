@@ -22,12 +22,21 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import com.policydesk.app.data.theme.AppDesignStyle
+import com.policydesk.app.data.theme.LocalAppDesignStyle
 import com.policydesk.app.ui.components.AppleAlertDialog
 import com.policydesk.app.ui.components.AppleButton
 import com.policydesk.app.ui.components.AppleSecondaryButton
 import com.policydesk.app.ui.components.LiquidGlassCanvas
 import com.policydesk.app.ui.components.LiquidGlassCard
+import com.policydesk.app.ui.components.SeaGlassCard
+import com.policydesk.app.ui.components.SeaGlassPebbleShape
+import com.policydesk.app.ui.components.SeaGlassPillButton
+import com.policydesk.app.ui.components.SeaGlassSecondaryButton
 import com.policydesk.app.ui.theme.AppleIcons
+import com.policydesk.app.ui.theme.SeaGlassActiveGreen
+import com.policydesk.app.ui.theme.SeaGlassActiveGreenBg
+import com.policydesk.app.ui.theme.SeaGlassAquaPrimary
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -163,6 +172,9 @@ fun PdfReviewScreen(
         containerColor = Color.Transparent
     ) { paddingValues ->
         val isDark = isSystemInDarkTheme()
+        val designStyle = LocalAppDesignStyle.current
+        val isSeaGlass = designStyle == AppDesignStyle.SEA_GLASS
+        val cardShape = if (isSeaGlass) SeaGlassPebbleShape else RoundedCornerShape(22.dp)
         val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
         val labelSecondary = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
 
@@ -176,69 +188,137 @@ fun PdfReviewScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                LiquidGlassCard(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(22.dp)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                if (isSeaGlass) {
+                    SeaGlassCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = cardShape
                     ) {
-                        Box(
+                        Column(
                             modifier = Modifier
-                                .size(64.dp)
-                                .background(
-                                    if (isDark) Color(0xFF0A84FF).copy(alpha = 0.16f) else Color(0xFF007AFF).copy(alpha = 0.12f),
-                                    CircleShape
-                                ),
-                            contentAlignment = Alignment.Center
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Icon(
-                                imageVector = AppleIcons.DocText,
-                                contentDescription = null,
-                                tint = if (isDark) Color(0xFF0A84FF) else Color(0xFF007AFF),
-                                modifier = Modifier.size(32.dp)
+                            Box(
+                                modifier = Modifier
+                                    .size(64.dp)
+                                    .background(
+                                        if (isDark) Color(0x332EC4B6) else Color(0x1F2A9D8F),
+                                        CircleShape
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = AppleIcons.DocText,
+                                    contentDescription = null,
+                                    tint = if (isDark) Color(0xFF2EC4B6) else Color(0xFF2A9D8F),
+                                    modifier = Modifier.size(32.dp)
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            Text(
+                                text = "Import Policy Document",
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = labelPrimary
+                            )
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Text(
+                                text = "Select insurer PDF documents to automatically extract vehicle schedule, customer info, and policy dates.",
+                                fontSize = 13.sp,
+                                lineHeight = 18.sp,
+                                color = labelSecondary,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+
+                            Spacer(modifier = Modifier.height(24.dp))
+
+                            SeaGlassPillButton(
+                                text = "Select Policy PDF(s)",
+                                onClick = { pdfPickerLauncher.launch(arrayOf("application/pdf")) },
+                                icon = AppleIcons.Upload,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            SeaGlassSecondaryButton(
+                                text = "Fill Policy Manually",
+                                onClick = viewModel::switchToManualEntry,
+                                icon = AppleIcons.SquareAndPencil,
+                                modifier = Modifier.fillMaxWidth()
                             )
                         }
+                    }
+                } else {
+                    LiquidGlassCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = cardShape
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(64.dp)
+                                    .background(
+                                        if (isDark) Color(0xFF0A84FF).copy(alpha = 0.16f) else Color(0xFF007AFF).copy(alpha = 0.12f),
+                                        CircleShape
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = AppleIcons.DocText,
+                                    contentDescription = null,
+                                    tint = if (isDark) Color(0xFF0A84FF) else Color(0xFF007AFF),
+                                    modifier = Modifier.size(32.dp)
+                                )
+                            }
 
-                        Spacer(modifier = Modifier.height(16.dp))
+                            Spacer(modifier = Modifier.height(16.dp))
 
-                        Text(
-                            text = "Import Policy Document",
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = labelPrimary
-                        )
+                            Text(
+                                text = "Import Policy Document",
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = labelPrimary
+                            )
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(8.dp))
 
-                        Text(
-                            text = "Select insurer PDF documents to automatically extract vehicle schedule, customer info, and policy dates.",
-                            fontSize = 13.sp,
-                            lineHeight = 18.sp,
-                            color = labelSecondary,
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                        )
+                            Text(
+                                text = "Select insurer PDF documents to automatically extract vehicle schedule, customer info, and policy dates.",
+                                fontSize = 13.sp,
+                                lineHeight = 18.sp,
+                                color = labelSecondary,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
 
-                        Spacer(modifier = Modifier.height(24.dp))
+                            Spacer(modifier = Modifier.height(24.dp))
 
-                        AppleButton(
-                            text = "Select Policy PDF(s)",
-                            onClick = { pdfPickerLauncher.launch(arrayOf("application/pdf")) },
-                            icon = AppleIcons.Upload,
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                            AppleButton(
+                                text = "Select Policy PDF(s)",
+                                onClick = { pdfPickerLauncher.launch(arrayOf("application/pdf")) },
+                                icon = AppleIcons.Upload,
+                                modifier = Modifier.fillMaxWidth()
+                            )
 
-                        Spacer(modifier = Modifier.height(10.dp))
+                            Spacer(modifier = Modifier.height(10.dp))
 
-                        AppleSecondaryButton(
-                            text = "Fill Policy Manually",
-                            onClick = viewModel::switchToManualEntry,
-                            icon = AppleIcons.SquareAndPencil,
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                            AppleSecondaryButton(
+                                text = "Fill Policy Manually",
+                                onClick = viewModel::switchToManualEntry,
+                                icon = AppleIcons.SquareAndPencil,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
                     }
                 }
             }
@@ -252,10 +332,7 @@ fun PdfReviewScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                LiquidGlassCard(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(22.dp)
-                ) {
+                val extractingContent = @Composable {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -267,7 +344,7 @@ fun PdfReviewScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             CircularProgressIndicator(
-                                color = if (isDark) com.policydesk.app.ui.theme.AppleDarkSystemBlue else com.policydesk.app.ui.theme.AppleSystemBlue,
+                                color = if (isSeaGlass) Color(0xFF2EC4B6) else (if (isDark) com.policydesk.app.ui.theme.AppleDarkSystemBlue else com.policydesk.app.ui.theme.AppleSystemBlue),
                                 strokeWidth = 3.5.dp,
                                 modifier = Modifier.size(48.dp)
                             )
@@ -293,6 +370,22 @@ fun PdfReviewScreen(
                         )
                     }
                 }
+
+                if (isSeaGlass) {
+                    SeaGlassCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = cardShape
+                    ) {
+                        extractingContent()
+                    }
+                } else {
+                    LiquidGlassCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = cardShape
+                    ) {
+                        extractingContent()
+                    }
+                }
             }
         } else if (state.extractionError != null) {
             // Error Screen
@@ -304,10 +397,7 @@ fun PdfReviewScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                LiquidGlassCard(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(22.dp)
-                ) {
+                val errorContent = @Composable {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -369,39 +459,91 @@ fun PdfReviewScreen(
 
                         Spacer(modifier = Modifier.height(22.dp))
 
-                        AppleButton(
-                            text = "Retry Extraction",
-                            onClick = viewModel::retryCurrentPdf,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        AppleSecondaryButton(
-                            text = "Continue Manually",
-                            onClick = viewModel::switchToManualEntry,
-                            icon = AppleIcons.SquareAndPencil,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            AppleSecondaryButton(
-                                text = "Another PDF",
-                                onClick = { pdfPickerLauncher.launch(arrayOf("application/pdf")) },
-                                modifier = Modifier.weight(1f)
+                        if (isSeaGlass) {
+                            SeaGlassPillButton(
+                                text = "Retry Extraction",
+                                onClick = viewModel::retryCurrentPdf,
+                                modifier = Modifier.fillMaxWidth()
                             )
-                            AppleSecondaryButton(
-                                text = "AI Settings",
-                                onClick = onNavigateToSettings,
-                                icon = AppleIcons.GearShape,
-                                modifier = Modifier.weight(1f)
+
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            SeaGlassSecondaryButton(
+                                text = "Continue Manually",
+                                onClick = viewModel::switchToManualEntry,
+                                icon = AppleIcons.SquareAndPencil,
+                                modifier = Modifier.fillMaxWidth()
                             )
+
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                SeaGlassSecondaryButton(
+                                    text = "Another PDF",
+                                    onClick = { pdfPickerLauncher.launch(arrayOf("application/pdf")) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                                SeaGlassSecondaryButton(
+                                    text = "AI Settings",
+                                    onClick = onNavigateToSettings,
+                                    icon = AppleIcons.GearShape,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                        } else {
+                            AppleButton(
+                                text = "Retry Extraction",
+                                onClick = viewModel::retryCurrentPdf,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            AppleSecondaryButton(
+                                text = "Continue Manually",
+                                onClick = viewModel::switchToManualEntry,
+                                icon = AppleIcons.SquareAndPencil,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                AppleSecondaryButton(
+                                    text = "Another PDF",
+                                    onClick = { pdfPickerLauncher.launch(arrayOf("application/pdf")) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                                AppleSecondaryButton(
+                                    text = "AI Settings",
+                                    onClick = onNavigateToSettings,
+                                    icon = AppleIcons.GearShape,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
                         }
+                    }
+                }
+
+                if (isSeaGlass) {
+                    SeaGlassCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = cardShape
+                    ) {
+                        errorContent()
+                    }
+                } else {
+                    LiquidGlassCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = cardShape
+                    ) {
+                        errorContent()
                     }
                 }
             }
@@ -626,18 +768,33 @@ fun PdfReviewScreen(
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                AppleButton(
-                    text = when {
-                        state.isSaving -> "Saving..."
-                        state.queue.size > 1 && state.queueIndex + 1 < state.queue.size ->
-                            "Confirm & Next Document (${state.queueIndex + 1}/${state.queue.size})"
-                        else -> "Confirm & Save Policy"
-                    },
-                    onClick = viewModel::savePolicy,
-                    enabled = state.isValid && !state.isSaving,
-                    isLoading = state.isSaving,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                if (isSeaGlass) {
+                    SeaGlassPillButton(
+                        text = when {
+                            state.isSaving -> "Saving..."
+                            state.queue.size > 1 && state.queueIndex + 1 < state.queue.size ->
+                                "Confirm & Next Document (${state.queueIndex + 1}/${state.queue.size})"
+                            else -> "Confirm & Save Policy"
+                        },
+                        onClick = viewModel::savePolicy,
+                        enabled = state.isValid && !state.isSaving,
+                        isLoading = state.isSaving,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                } else {
+                    AppleButton(
+                        text = when {
+                            state.isSaving -> "Saving..."
+                            state.queue.size > 1 && state.queueIndex + 1 < state.queue.size ->
+                                "Confirm & Next Document (${state.queueIndex + 1}/${state.queue.size})"
+                            else -> "Confirm & Save Policy"
+                        },
+                        onClick = viewModel::savePolicy,
+                        enabled = state.isValid && !state.isSaving,
+                        isLoading = state.isSaving,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(24.dp))
             }
