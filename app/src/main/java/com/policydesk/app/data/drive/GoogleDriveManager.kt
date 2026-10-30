@@ -241,9 +241,29 @@ object GoogleDriveManager {
             val searchJson = JSONObject(searchResponse)
             val filesArray = searchJson.optJSONArray("files")
 
+            val newVehiclesCount = countVehiclesInSnapshot(snapshotJson)
             val fileId: String
             if (filesArray != null && filesArray.length() > 0) {
                 fileId = filesArray.getJSONObject(0).getString("id")
+
+                // DATA LOSS GUARD: If local database has 0 records (e.g. freshly installed app),
+                // do not overwrite an existing cloud vault backup that already holds policies!
+                if (newVehiclesCount == 0) {
+                    val checkUrl = URL("https://www.googleapis.com/drive/v3/files/$fileId?alt=media")
+                    val checkConn = (checkUrl.openConnection() as HttpURLConnection).apply {
+                        requestMethod = "GET"
+                        setRequestProperty("Authorization", "Bearer $token")
+                        connectTimeout = 10000
+                        readTimeout = 10000
+                    }
+                    if (checkConn.responseCode in 200..299) {
+                        val existingContent = checkConn.inputStream.bufferedReader().use { it.readText() }
+                        if (countVehiclesInSnapshot(existingContent) > 0) {
+                            // Preserve cloud records
+                            return@runCatching
+                        }
+                    }
+                }
             } else {
                 // Create file metadata in folder
                 val createUrl = URL("https://www.googleapis.com/drive/v3/files")
@@ -299,6 +319,7 @@ object GoogleDriveManager {
 
     /**
      * Downloads the policy backup from the "PolicyDesk Vault" folder on Google Drive.
+     * Features multi-tier search (vault folder -> global drive) and automatic Revision rescue.
      */
     suspend fun restoreFromDriveVault(context: Context): Result<String> = withContext(Dispatchers.IO) {
         runCatching {
@@ -306,7 +327,7 @@ object GoogleDriveManager {
                 ?: throw IllegalStateException("Google Drive is not linked. Please tap Sign In.")
             val folderId = getOrCreateVaultFolder(token).getOrThrow()
 
-            // Search for policydesk_backup.json in folder
+            // 1. Search in PolicyDesk Vault folder first
             val query = "name = '$SNAPSHOT_FILE_NAME' and '$folderId' in parents and trashed = false"
             val encodedQuery = URLEncoder.encode(query, "UTF-8")
             val searchUrl = URL("https://www.googleapis.com/drive/v3/files?q=$encodedQuery&spaces=drive&fields=files(id,name)")
@@ -327,66 +348,74 @@ object GoogleDriveManager {
 
             val searchJson = JSONObject(searchResponse)
             val filesArray = searchJson.optJSONArray("files")
-            if (filesArray == null || filesArray.length() == 0) {
-                throw IllegalStateException("No PolicyDesk backup file found in Google Drive Vault.")
-            }
+            var fileId: String? = null
 
-            val fileId = filesArray.getJSONObject(0).getString("id")
-
-            // Download media
-            val downloadUrl = URL("https://www.googleapis.com/drive/v3/files/$fileId?alt=media")
-            conn = (downloadUrl.openConnection() as HttpURLConnection).apply {
-                requestMethod = "GET"
-                setRequestProperty("Authorization", "Bearer $token")
-                connectTimeout = 20000
-                readTimeout = 20000
-            }
-
-            if (conn.responseCode !in 200..299) {
-                val err = conn.errorStream?.bufferedReader()?.use { it.readText() }
-                throw IllegalStateException("Failed to download backup: HTTP ${conn.responseCode} $err")
-            }
-
-            var content = conn.inputStream.bufferedReader().use { it.readText() }
-
-            val root = runCatching { JSONObject(content) }.getOrNull()
-            val vehiclesCount = root?.optJSONArray("vehicles")?.length() ?: 0
-
-            // If the latest file is empty, check Drive file revision history for the last populated backup
-            if (vehiclesCount == 0) {
-                try {
-                    val revUrl = URL("https://www.googleapis.com/drive/v3/files/$fileId/revisions?fields=revisions(id,modifiedTime)")
-                    val revConn = (revUrl.openConnection() as HttpURLConnection).apply {
-                        requestMethod = "GET"
-                        setRequestProperty("Authorization", "Bearer $token")
-                        connectTimeout = 15000
-                        readTimeout = 15000
+            if (filesArray != null && filesArray.length() > 0) {
+                fileId = filesArray.getJSONObject(0).getString("id")
+            } else {
+                // 2. Global fallback: search for policydesk_backup.json anywhere on user's Drive
+                val globalQuery = URLEncoder.encode("name = '$SNAPSHOT_FILE_NAME' and trashed = false", "UTF-8")
+                val globalUrl = URL("https://www.googleapis.com/drive/v3/files?q=$globalQuery&spaces=drive&fields=files(id,name,modifiedTime)&orderBy=modifiedTime desc")
+                val globalConn = (globalUrl.openConnection() as HttpURLConnection).apply {
+                    requestMethod = "GET"
+                    setRequestProperty("Authorization", "Bearer $token")
+                    connectTimeout = 15000
+                    readTimeout = 15000
+                }
+                if (globalConn.responseCode in 200..299) {
+                    val globalResp = globalConn.inputStream.bufferedReader().use { it.readText() }
+                    val globalFiles = JSONObject(globalResp).optJSONArray("files")
+                    if (globalFiles != null && globalFiles.length() > 0) {
+                        fileId = globalFiles.getJSONObject(0).getString("id")
                     }
-                    if (revConn.responseCode in 200..299) {
-                        val revResp = revConn.inputStream.bufferedReader().use { it.readText() }
-                        val revArray = JSONObject(revResp).optJSONArray("revisions")
-                        if (revArray != null && revArray.length() > 0) {
-                            for (r in (revArray.length() - 1) downTo 0) {
-                                val revId = revArray.getJSONObject(r).getString("id")
-                                val revDownloadUrl = URL("https://www.googleapis.com/drive/v3/files/$fileId/revisions/$revId?alt=media")
-                                val rConn = (revDownloadUrl.openConnection() as HttpURLConnection).apply {
+                }
+            }
+
+            if (fileId == null) {
+                throw IllegalStateException("No PolicyDesk backup file found in Google Drive Vault or root storage.")
+            }
+
+            // 3. Download the current file content
+            var content = downloadDriveFile(token, fileId)
+            var vehicleCount = countVehiclesInSnapshot(content)
+
+            // 4. REVISION RESCUE: If the latest file is empty (e.g. wiped by an unpopulated sync),
+            // automatically check past revisions on Google Drive to restore historical records!
+            if (vehicleCount == 0) {
+                val revUrl = URL("https://www.googleapis.com/drive/v3/files/$fileId/revisions?fields=revisions(id,modifiedTime)")
+                val revConn = (revUrl.openConnection() as HttpURLConnection).apply {
+                    requestMethod = "GET"
+                    setRequestProperty("Authorization", "Bearer $token")
+                    connectTimeout = 15000
+                    readTimeout = 15000
+                }
+                if (revConn.responseCode in 200..299) {
+                    val revResp = revConn.inputStream.bufferedReader().use { it.readText() }
+                    val revList = JSONObject(revResp).optJSONArray("revisions")
+                    if (revList != null && revList.length() > 1) {
+                        for (r in (revList.length() - 1) downTo 0) {
+                            val revId = revList.getJSONObject(r).getString("id")
+                            val revContent = try {
+                                val dlRevUrl = URL("https://www.googleapis.com/drive/v3/files/$fileId/revisions/$revId?alt=media")
+                                val dlConn = (dlRevUrl.openConnection() as HttpURLConnection).apply {
                                     requestMethod = "GET"
                                     setRequestProperty("Authorization", "Bearer $token")
                                     connectTimeout = 15000
                                     readTimeout = 15000
                                 }
-                                if (rConn.responseCode in 200..299) {
-                                    val revContent = rConn.inputStream.bufferedReader().use { it.readText() }
-                                    val revVehicles = runCatching { JSONObject(revContent).optJSONArray("vehicles")?.length() ?: 0 }.getOrDefault(0)
-                                    if (revVehicles > 0) {
-                                        content = revContent
-                                        break
-                                    }
-                                }
+                                if (dlConn.responseCode in 200..299) {
+                                    dlConn.inputStream.bufferedReader().use { it.readText() }
+                                } else null
+                            } catch (_: Exception) { null }
+
+                            if (revContent != null && countVehiclesInSnapshot(revContent) > 0) {
+                                content = revContent
+                                vehicleCount = countVehiclesInSnapshot(revContent)
+                                break
                             }
                         }
                     }
-                } catch (_: Exception) {}
+                }
             }
 
             // Cache downloaded backup locally
@@ -398,18 +427,32 @@ object GoogleDriveManager {
         }
     }
 
+    private fun countVehiclesInSnapshot(jsonStr: String): Int {
+        return try {
+            JSONObject(jsonStr).optJSONArray("vehicles")?.length() ?: 0
+        } catch (_: Exception) { 0 }
+    }
+
+    private fun downloadDriveFile(token: String, fileId: String): String {
+        val downloadUrl = URL("https://www.googleapis.com/drive/v3/files/$fileId?alt=media")
+        val conn = (downloadUrl.openConnection() as HttpURLConnection).apply {
+            requestMethod = "GET"
+            setRequestProperty("Authorization", "Bearer $token")
+            connectTimeout = 20000
+            readTimeout = 20000
+        }
+        if (conn.responseCode !in 200..299) {
+            val err = conn.errorStream?.bufferedReader()?.use { it.readText() }
+            throw IllegalStateException("Failed to download backup: HTTP ${conn.responseCode} $err")
+        }
+        return conn.inputStream.bufferedReader().use { it.readText() }
+    }
+
     /**
      * Seamless auto-sync invoked on policy mutations and background workers.
      */
     suspend fun performAutoSync(context: Context, snapshotJson: String): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
-            // Safety guard: Never auto-sync empty records over an existing populated backup
-            val root = runCatching { JSONObject(snapshotJson) }.getOrNull()
-            val count = root?.optJSONArray("vehicles")?.length() ?: 0
-            if (count == 0) {
-                return@runCatching
-            }
-
             // Internal app drive backup cache for instant offline restore / sync
             val cacheFile = java.io.File(context.filesDir, "google_drive_sync_backup.json")
             cacheFile.writeText(snapshotJson, Charsets.UTF_8)
