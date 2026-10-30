@@ -233,6 +233,11 @@ jobs:
     needs: [init, test, build-apk, build-bundle]
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Download all release artifacts
         uses: actions/download-artifact@v4
         with:
@@ -243,14 +248,60 @@ jobs:
       - name: Display Staged Artifacts
         run: ls -la release-dist
 
+      - name: Generate Industry-Standard Release Notes
+        run: |
+          TAG="${{ needs.init.outputs.tag }}"
+          VERSION_CLEAN="${TAG#v}"
+
+          echo "## 🚀 PolicyDesk $TAG" > release_notes.md
+          echo "" >> release_notes.md
+
+          # 1. Extract curated section from CHANGELOG.md if present
+          if grep -q "## \[$VERSION_CLEAN\]" CHANGELOG.md; then
+            echo "Extracting release notes from CHANGELOG.md for $VERSION_CLEAN..."
+            awk "/## \[$VERSION_CLEAN\]/{flag=1;next}/## \[/{flag=0}flag" CHANGELOG.md >> release_notes.md
+          else
+            echo "### What's Changed" >> release_notes.md
+            PREV_TAG=$(git describe --tags --abbrev=0 "${TAG}^" 2>/dev/null || echo "")
+            if [ -n "$PREV_TAG" ]; then
+              git log "$PREV_TAG..$TAG" --pretty=format:"* %s (%h)" >> release_notes.md
+            else
+              git log -n 15 --pretty=format:"* %s (%h)" >> release_notes.md
+            fi
+            echo "" >> release_notes.md
+          fi
+
+          # 2. Binary Integrity & SHA-256 Checksums
+          echo "" >> release_notes.md
+          echo "---" >> release_notes.md
+          echo "### 🔒 Binary Integrity & Checksums" >> release_notes.md
+          echo "| File | Size | SHA-256 Checksum |" >> release_notes.md
+          echo "|:---|:---|:---|" >> release_notes.md
+          for file in release-dist/*; do
+            if [ -f "$file" ]; then
+              fname=$(basename "$file")
+              fsize=$(ls -lh "$file" | awk '{print $5}')
+              fhash=$(sha256sum "$file" | awk '{print $1}')
+              echo "| \`$fname\` | $fsize | \`$fhash\` |" >> release_notes.md
+            fi
+          done
+
+          # 3. Direct Installation Instructions
+          echo "" >> release_notes.md
+          echo "---" >> release_notes.md
+          echo "### 📲 Installation Instructions" >> release_notes.md
+          echo "1. Download \`PolicyDesk-$TAG.apk\` directly to your Android device." >> release_notes.md
+          echo "2. Open the APK file to install. If prompted by Android, grant **\"Install unknown apps\"** permission for your browser or file manager." >> release_notes.md
+          echo "3. Existing installations will automatically detect and install future updates in-app via **Settings > Software Updates**." >> release_notes.md
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.init.outputs.tag }}
           name: "PolicyDesk ${{ needs.init.outputs.tag }}"
+          body_path: release_notes.md
           files: release-dist/*
           draft: false
           prerelease: false
-          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
