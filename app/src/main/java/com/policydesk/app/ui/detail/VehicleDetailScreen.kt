@@ -1,11 +1,18 @@
 package com.policydesk.app.ui.detail
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -324,139 +331,141 @@ fun VehicleDetailScreen(
             val scrollState = rememberScrollState()
             BindBackToTop(scrollState)
 
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .verticalScroll(scrollState)
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // VEHICLE NUMBER PLATE HEADER & COUNTDOWN (LIQUID GLASS)
-                LiquidGlassCard(
-                    shape = RoundedCornerShape(20.dp),
-                    elevation = 3.dp
+            SelectionContainer {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
+                        .verticalScroll(scrollState)
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                    // VEHICLE NUMBER PLATE HEADER & COUNTDOWN (LIQUID GLASS)
+                    LiquidGlassCard(
+                        shape = RoundedCornerShape(20.dp),
+                        elevation = 3.dp
                     ) {
-                        // Authentic Indian HSRP Number Plate
-                        HsrpNumberPlate(
-                            regNo = vehicle.regNo
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Authentic Indian HSRP Number Plate
+                            HsrpNumberPlate(
+                                regNo = vehicle.regNo
+                            )
 
-                        DaysRemainingBadge(
-                            daysRemaining = daysRemaining,
-                            status = status
-                        )
-                    }
-
-                    vehicle.makeModel?.let { make ->
-                        if (make.isNotBlank()) {
-                            Spacer(modifier = Modifier.height(10.dp))
-                            Text(
-                                text = make,
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = labelSecondary
+                            DaysRemainingBadge(
+                                daysRemaining = daysRemaining,
+                                status = status
                             )
                         }
-                    }
 
-                    // Live Countdown Banner
-                    Spacer(modifier = Modifier.height(12.dp))
-                    CountdownLiveBanner(
-                        daysRemaining = daysRemaining,
-                        status = status,
-                        expiryDate = policy?.expiryDate
-                    )
-                }
-
-                // QUICK CONTACT ACTIONS
-                val curPolicy = vehicleWithPolicies?.currentPolicy
-                CustomerContactBar(
-                    customerName = vehicle.customer.name,
-                    mobile = vehicle.customer.mobile,
-                    regNo = vehicle.regNo,
-                    insurer = curPolicy?.insurer ?: "",
-                    expiryDate = curPolicy?.expiryDate?.let { UiFormatters.formatDate(it) } ?: "",
-                    premium = curPolicy?.totalPremium?.let { UiFormatters.formatCurrency(it) } ?: "",
-                    context = context
-                )
-
-                // CUSTOMER INFORMATION GROUP
-                LiquidGlassGroupedSection(title = "Customer Details") {
-                    val fullTitleName = listOfNotNull(vehicle.customer.title, vehicle.customer.name).joinToString(" ")
-                    DetailRow(label = "Customer Name", value = fullTitleName)
-                    DetailRow(label = "Mobile Number", value = vehicle.customer.mobile)
-                    vehicle.customer.email?.let { email ->
-                        if (email.isNotBlank()) {
-                            DetailRow(label = "Email Address", value = email)
-                        }
-                    }
-                    DetailRow(label = "Residential Address", value = vehicle.customer.address)
-                }
-
-                // CURRENT POLICY DETAILS GROUP
-                if (policy != null) {
-                    LiquidGlassGroupedSection(title = "Current Policy Details") {
-                        DetailRow(label = "Insurer Company", value = policy.insurer)
-                        DetailRow(label = "Company Sector", value = policy.companySector.displayName)
-                        DetailRow(label = "Policy Number", value = policy.policyNumber)
-                        DetailRow(label = "Expiry Date", value = UiFormatters.formatDate(policy.expiryDate))
-                        DetailRow(
-                            label = "Total Premium Cost",
-                            value = UiFormatters.formatCurrency(policy.totalPremium),
-                            onClick = {
-                                val currentPrem = policy.totalPremium
-                                editPremiumValue = if (currentPrem % 1.0 == 0.0) currentPrem.toLong().toString() else currentPrem.toString()
-                                showEditPremiumDialog = true
+                        vehicle.makeModel?.let { make ->
+                            if (make.isNotBlank()) {
+                                Spacer(modifier = Modifier.height(10.dp))
+                                Text(
+                                    text = make,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = labelSecondary
+                                )
                             }
+                        }
+
+                        // Live Countdown Banner
+                        Spacer(modifier = Modifier.height(12.dp))
+                        CountdownLiveBanner(
+                            daysRemaining = daysRemaining,
+                            status = status,
+                            expiryDate = policy?.expiryDate
                         )
-                        val statusText = when {
-                            status == PolicyStatus.CLOSED -> "Closed"
-                            status == PolicyStatus.RENEWED -> "Renewed"
-                            daysRemaining < 0 -> "Overdue (${-daysRemaining}d)"
-                            daysRemaining == 0L -> "Expires Today"
-                            daysRemaining <= 7 -> "Expiring Soon (${daysRemaining}d left)"
-                            daysRemaining <= 30 -> "Expiring Soon (${daysRemaining}d left)"
-                            else -> status.displayName
-                        }
-                        DetailRow(label = "Policy Status", value = statusText)
                     }
-                }
 
-                // VEHICLE SPECIFICATIONS & NOTES
-                LiquidGlassGroupedSection(title = "Specifications & Notes") {
-                    vehicle.vin?.let { vin ->
-                        if (vin.isNotBlank()) {
-                            DetailRow(label = "Chassis Number (VIN)", value = vin)
-                        }
-                    }
-                    vehicle.engineNo?.let { engine ->
-                        if (engine.isNotBlank()) {
-                            DetailRow(label = "Engine Number", value = engine)
-                        }
-                    }
-                    vehicle.notes?.let { notes ->
-                        if (notes.isNotBlank()) {
-                            DetailRow(label = "Client Preferences & Notes", value = notes)
-                        }
-                    }
-                }
+                    // QUICK CONTACT ACTIONS
+                    val curPolicy = vehicleWithPolicies?.currentPolicy
+                    CustomerContactBar(
+                        customerName = vehicle.customer.name,
+                        mobile = vehicle.customer.mobile,
+                        regNo = vehicle.regNo,
+                        insurer = curPolicy?.insurer ?: "",
+                        expiryDate = curPolicy?.expiryDate?.let { UiFormatters.formatDate(it) } ?: "",
+                        premium = curPolicy?.totalPremium?.let { UiFormatters.formatCurrency(it) } ?: "",
+                        context = context
+                    )
 
-                // POLICY HISTORY TIMELINE
-                if (data.policyHistory.isNotEmpty()) {
-                    LiquidGlassGroupedSection(title = "Policy History Timeline") {
-                        data.policyHistory.forEach { historyPolicy ->
-                            PolicyHistoryItem(policy = historyPolicy)
+                    // CUSTOMER INFORMATION GROUP
+                    LiquidGlassGroupedSection(title = "Customer Details") {
+                        val fullTitleName = listOfNotNull(vehicle.customer.title, vehicle.customer.name).joinToString(" ")
+                        DetailRow(label = "Customer Name", value = fullTitleName)
+                        DetailRow(label = "Mobile Number", value = vehicle.customer.mobile)
+                        vehicle.customer.email?.let { email ->
+                            if (email.isNotBlank()) {
+                                DetailRow(label = "Email Address", value = email)
+                            }
+                        }
+                        DetailRow(label = "Residential Address", value = vehicle.customer.address)
+                    }
+
+                    // CURRENT POLICY DETAILS GROUP
+                    if (policy != null) {
+                        LiquidGlassGroupedSection(title = "Current Policy Details") {
+                            DetailRow(label = "Insurer Company", value = policy.insurer)
+                            DetailRow(label = "Company Sector", value = policy.companySector.displayName)
+                            DetailRow(label = "Policy Number", value = policy.policyNumber)
+                            DetailRow(label = "Expiry Date", value = UiFormatters.formatDate(policy.expiryDate))
+                            DetailRow(
+                                label = "Total Premium Cost",
+                                value = UiFormatters.formatCurrency(policy.totalPremium),
+                                onClick = {
+                                    val currentPrem = policy.totalPremium
+                                    editPremiumValue = if (currentPrem % 1.0 == 0.0) currentPrem.toLong().toString() else currentPrem.toString()
+                                    showEditPremiumDialog = true
+                                }
+                            )
+                            val statusText = when {
+                                status == PolicyStatus.CLOSED -> "Closed"
+                                status == PolicyStatus.RENEWED -> "Renewed"
+                                daysRemaining < 0 -> "Overdue (${-daysRemaining}d)"
+                                daysRemaining == 0L -> "Expires Today"
+                                daysRemaining <= 7 -> "Expiring Soon (${daysRemaining}d left)"
+                                daysRemaining <= 30 -> "Expiring Soon (${daysRemaining}d left)"
+                                else -> status.displayName
+                            }
+                            DetailRow(label = "Policy Status", value = statusText)
                         }
                     }
-                }
 
-                Spacer(modifier = Modifier.height(120.dp))
+                    // VEHICLE SPECIFICATIONS & NOTES
+                    LiquidGlassGroupedSection(title = "Specifications & Notes") {
+                        vehicle.vin?.let { vin ->
+                            if (vin.isNotBlank()) {
+                                DetailRow(label = "Chassis Number (VIN)", value = vin)
+                            }
+                        }
+                        vehicle.engineNo?.let { engine ->
+                            if (engine.isNotBlank()) {
+                                DetailRow(label = "Engine Number", value = engine)
+                            }
+                        }
+                        vehicle.notes?.let { notes ->
+                            if (notes.isNotBlank()) {
+                                DetailRow(label = "Client Preferences & Notes", value = notes)
+                            }
+                        }
+                    }
+
+                    // POLICY HISTORY TIMELINE
+                    if (data.policyHistory.isNotEmpty()) {
+                        LiquidGlassGroupedSection(title = "Policy History Timeline") {
+                            data.policyHistory.forEach { historyPolicy ->
+                                PolicyHistoryItem(policy = historyPolicy)
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(120.dp))
+                }
             }
         }
     }
@@ -596,10 +605,14 @@ fun ContactActionButton(
     onClick: () -> Unit
 ) {
     val isDark = isSystemInDarkTheme()
+    val haptic = LocalHapticFeedback.current
     Column(
         modifier = Modifier
             .clip(RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick)
+            .clickable {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onClick()
+            }
             .padding(horizontal = 14.dp, vertical = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -632,15 +645,34 @@ fun DetailRow(
     label: String,
     value: String,
     modifier: Modifier = Modifier,
+    canCopy: Boolean = true,
     onClick: (() -> Unit)? = null
 ) {
+    val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
     val isDark = isSystemInDarkTheme()
-    val baseModifier = if (onClick != null) {
-        modifier
-            .clip(RoundedCornerShape(8.dp))
-            .clickable(onClick = onClick)
-    } else {
-        modifier
+    val canCopyValue = canCopy && onClick == null && value.isNotBlank() && value != "N/A" && value != "None"
+
+    val baseModifier = when {
+        onClick != null -> {
+            modifier
+                .clip(RoundedCornerShape(8.dp))
+                .clickable {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onClick()
+                }
+        }
+        canCopyValue -> {
+            modifier
+                .clip(RoundedCornerShape(8.dp))
+                .clickable {
+                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    clipboard.setPrimaryClip(ClipData.newPlainText(label, value))
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    Toast.makeText(context, "$label copied", Toast.LENGTH_SHORT).show()
+                }
+        }
+        else -> modifier
     }
     Row(
         modifier = baseModifier
@@ -661,7 +693,8 @@ fun DetailRow(
             fontWeight = FontWeight.SemiBold,
             color = if (isDark) IosDarkLabelPrimary else IosLabelPrimary,
             modifier = Modifier.weight(1.3f),
-            textAlign = androidx.compose.ui.text.style.TextAlign.End
+            textAlign = androidx.compose.ui.text.style.TextAlign.End,
+            style = TextStyle(fontFeatureSettings = "tnum")
         )
     }
 }

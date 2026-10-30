@@ -96,3 +96,11 @@ val Typography = Typography(
         letterSpacing = 0.sp
     )
 )
+
+// Tabular numeral typography (OpenType 'tnum') for financial figures, dates, counts, and countdowns (Fidelity Law 4)
+val TabularNums = TextStyle(
+    fontFamily = FontFamily.SansSerif,
+    fontFeatureSettings = "tnum"
+)
+
+fun TextStyle.withTabularNums(): TextStyle = this.copy(fontFeatureSettings = "tnum")

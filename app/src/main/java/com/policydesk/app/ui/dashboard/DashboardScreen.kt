@@ -15,6 +15,7 @@ import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -83,6 +84,8 @@ import com.policydesk.app.domain.model.RegistrationNormalizer
 import com.policydesk.app.domain.model.Sector
 import com.policydesk.app.domain.model.VehicleWithPolicies
 import com.policydesk.app.ui.components.AppleAlertDialog
+import com.policydesk.app.ui.components.AppleButton
+import com.policydesk.app.ui.components.AppleSecondaryButton
 import com.policydesk.app.ui.components.DaysRemainingBadge
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -881,7 +884,8 @@ fun LiquidGlassMetricCard(
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
             color = accentColor,
-            letterSpacing = (-0.5).sp
+            letterSpacing = (-0.5).sp,
+            style = TextStyle(fontFeatureSettings = "tnum")
         )
         Spacer(modifier = Modifier.height(3.dp))
         Text(
@@ -1008,7 +1012,8 @@ fun VehicleExpiryCard(
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     color = if (isDark) AppleDarkSystemBlue else AppleSystemBlue,
-                    letterSpacing = (-0.3).sp
+                    letterSpacing = (-0.3).sp,
+                    style = TextStyle(fontFeatureSettings = "tnum")
                 )
             }
         }
@@ -1035,7 +1040,8 @@ fun VehicleExpiryCard(
                         text = "• Exp: ${UiFormatters.formatDate(policy.expiryDate)}",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
-                        color = if (daysRemaining <= 7) AppleSystemRed else labelSecondary
+                        color = if (daysRemaining <= 7) AppleSystemRed else labelSecondary,
+                        style = TextStyle(fontFeatureSettings = "tnum")
                     )
                 }
             }
@@ -1152,26 +1158,22 @@ fun EmptyStateView(
             )
 
             if (!hasQuery) {
-                Spacer(modifier = Modifier.height(16.dp))
-                Button(
+                Spacer(modifier = Modifier.height(20.dp))
+                AppleButton(
+                    text = "Add Customer Policy",
                     onClick = onAddCustomerClicked,
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = if (isDark) AppleDarkSystemBlue else AppleSystemBlue)
-                ) {
-                    Icon(imageVector = AppleIcons.Plus, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Add Customer Policy", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedButton(
+                    icon = AppleIcons.Plus,
+                    height = 46.dp,
+                    shape = RoundedCornerShape(14.dp)
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                AppleSecondaryButton(
+                    text = "Restore from Google Drive",
                     onClick = onNavigateToSettings,
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = if (isDark) AppleDarkSystemBlue else AppleSystemBlue)
-                ) {
-                    Icon(imageVector = Icons.Default.CloudDone, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Restore from Google Drive", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                }
+                    icon = Icons.Default.CloudDone,
+                    height = 42.dp,
+                    shape = RoundedCornerShape(14.dp)
+                )
             }
         }
     }

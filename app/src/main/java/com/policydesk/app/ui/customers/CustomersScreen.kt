@@ -34,6 +34,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -302,7 +303,8 @@ fun CustomerCard(
                     Text(
                         text = customer.mobile,
                         fontSize = 12.sp,
-                        color = labelSecondary
+                        color = labelSecondary,
+                        style = TextStyle(fontFeatureSettings = "tnum")
                     )
                 }
             }
@@ -328,7 +330,8 @@ fun CustomerCard(
                         if (isDark) AppleDarkSystemBlue else AppleSystemBlue
                     } else {
                         labelSecondary
-                    }
+                    },
+                    style = TextStyle(fontFeatureSettings = "tnum")
                 )
             }
         }
