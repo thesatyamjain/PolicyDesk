@@ -6,7 +6,7 @@ import androidx.security.crypto.MasterKey
 
 enum class AiProvider(val displayName: String, val defaultModel: String) {
     CLOUDFLARE_AI("Cloudflare Workers AI", "@cf/meta/llama-3.2-11b-vision-instruct"),
-    GEMINI("Google Gemini", "gemini-2.5-flash"),
+    GEMINI("Google Gemini", "gemini-3.5-flash-lite"),
     OPENAI("OpenAI", "gpt-4o-mini"),
     CLAUDE("Anthropic Claude", "claude-3-5-haiku-20241022")
 }
@@ -54,9 +54,9 @@ class SecureKeyStorage(context: Context) {
         val apiKey = prefs.getString("ai_api_key", "") ?: ""
         var model = prefs.getString("ai_model", provider.defaultModel) ?: provider.defaultModel
         val customEndpoint = prefs.getString("ai_custom_endpoint", "") ?: ""
-        // Auto-migrate retired Gemini 1.5 models to stable gemini-2.5-flash
-        if (provider == AiProvider.GEMINI && (model.isBlank() || model == "gemini-1.5-flash" || model == "models/gemini-1.5-flash")) {
-            model = "gemini-2.5-flash"
+        // Auto-migrate retired Gemini models to current gemini-3.5-flash-lite
+        if (provider == AiProvider.GEMINI && (model.isBlank() || model.startsWith("gemini-1.") || model.startsWith("gemini-2."))) {
+            model = "gemini-3.5-flash-lite"
         }
         return AiConfig(provider, apiKey, model, customEndpoint)
     }

@@ -140,8 +140,9 @@ CONTENT AWARENESS RULES & ABBREVIATIONS FOR ALL FIELDS:
                     }
                 }
                 AiProvider.GEMINI -> {
-                    val cleanModel = config.model.trim().removePrefix("models/").ifBlank { "gemini-2.5-flash" }
-                    val url = URL("https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${cleanKey}")
+                    val cleanModel = config.model.trim().removePrefix("models/").ifBlank { "gemini-3.5-flash-lite" }
+                    val activeModel = fetchAvailableGeminiModel(cleanKey) ?: cleanModel
+                    val url = URL("https://generativelanguage.googleapis.com/v1beta/models/${activeModel}:generateContent?key=${cleanKey}")
                     val conn = url.openConnection() as HttpURLConnection
                     conn.requestMethod = "POST"
                     conn.setRequestProperty("Content-Type", "application/json")
@@ -161,24 +162,14 @@ CONTENT AWARENESS RULES & ABBREVIATIONS FOR ALL FIELDS:
 
                     val code = conn.responseCode
                     if (code == 200) {
-                        Result.success("Connection successful! Provider: Google Gemini ($cleanModel)")
+                        Result.success("Connection successful! Provider: Google Gemini ($activeModel)")
                     } else if (code == 404) {
-                        // Model not found or deprecated (e.g. gemini-1.5-flash) - verify key with models.list
-                        val listUrl = URL("https://generativelanguage.googleapis.com/v1beta/models?key=${cleanKey}")
-                        val listConn = listUrl.openConnection() as HttpURLConnection
-                        listConn.requestMethod = "GET"
-                        listConn.connectTimeout = 10000
-                        listConn.readTimeout = 10000
-                        val listCode = listConn.responseCode
-                        if (listCode == 200) {
-                            Result.success("Connection successful! Key is active. Model '$cleanModel' is retired; please use 'gemini-2.5-flash'.")
+                        // Model not found or deprecated - verify key with models.list
+                        val discovered = fetchAvailableGeminiModel(cleanKey)
+                        if (discovered != null) {
+                            Result.success("Connection successful! Active model found: '$discovered'.")
                         } else {
-                            val err = try {
-                                val stream = listConn.errorStream ?: listConn.inputStream
-                                val raw = BufferedReader(InputStreamReader(stream)).readText()
-                                JSONObject(raw).optJSONObject("error")?.optString("message") ?: raw
-                            } catch (_: Exception) { conn.responseMessage }
-                            Result.failure(Exception("HTTP $code: Model '$cleanModel' not found. ($err)"))
+                            Result.failure(Exception("HTTP $code: Model '$cleanModel' is retired. Please update to 'gemini-3.5-flash-lite'."))
                         }
                     } else {
                         val errorText = try {
@@ -272,14 +263,57 @@ CONTENT AWARENESS RULES & ABBREVIATIONS FOR ALL FIELDS:
         return false
     }
 
+    private fun fetchAvailableGeminiModel(cleanKey: String): String? {
+        return try {
+            val listUrl = URL("https://generativelanguage.googleapis.com/v1beta/models?key=${cleanKey}")
+            val listConn = listUrl.openConnection() as HttpURLConnection
+            listConn.requestMethod = "GET"
+            listConn.connectTimeout = 8000
+            listConn.readTimeout = 8000
+            if (listConn.responseCode == 200) {
+                val raw = BufferedReader(InputStreamReader(listConn.inputStream)).readText()
+                val modelsArray = JSONObject(raw).optJSONArray("models") ?: return null
+                val supported = mutableListOf<String>()
+                for (i in 0 until modelsArray.length()) {
+                    val m = modelsArray.optJSONObject(i) ?: continue
+                    val name = m.optString("name", "").removePrefix("models/")
+                    val methods = m.optJSONArray("supportedGenerationMethods")
+                    var canGenerate = false
+                    if (methods != null) {
+                        for (j in 0 until methods.length()) {
+                            if (methods.optString(j) == "generateContent") {
+                                canGenerate = true
+                                break
+                            }
+                        }
+                    }
+                    if (canGenerate) supported.add(name)
+                }
+                // Priority: 3.5-flash-lite > 3.8-flash > 2.5-flash > first flash model > first supported model
+                supported.firstOrNull { it.contains("3.5-flash-lite") }
+                    ?: supported.firstOrNull { it.contains("3.8-flash") }
+                    ?: supported.firstOrNull { it.contains("2.5-flash") }
+                    ?: supported.firstOrNull { it.contains("flash") }
+                    ?: supported.firstOrNull()
+            } else {
+                null
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     private fun extractWithGemini(base64Pdf: String, config: AiConfig, password: String? = null): ExtractionResult {
         val cleanKey = config.apiKey.trim()
-        val configuredModel = config.model.trim().removePrefix("models/").ifBlank { "gemini-2.5-flash" }
-        val candidateModels = listOf(
-            configuredModel,
+        val configuredModel = config.model.trim().removePrefix("models/").ifBlank { "gemini-3.5-flash-lite" }
+        val dynamicallyDiscovered = fetchAvailableGeminiModel(cleanKey)
+        val candidateModels = listOfNotNull(
+            dynamicallyDiscovered,
+            configuredModel.takeIf { it != "gemini-2.5-flash-lite" },
+            "gemini-3.5-flash-lite",
+            "gemini-3.8-flash",
             "gemini-2.5-flash",
-            "gemini-2.0-flash",
-            "gemini-2.5-flash-lite"
+            "gemini-2.0-flash"
         ).distinct()
 
         val promptText = if (password.isNullOrBlank()) {
@@ -359,7 +393,7 @@ CONTENT AWARENESS RULES & ABBREVIATIONS FOR ALL FIELDS:
         return ExtractionResult.Error(lastError)
     }
 
-    private fun renderPdfOrImageToBase64(context: Context, uri: Uri): String? {
+    private fun renderPdfOrImageToBase64(context: Context, uri: Uri, maxPages: Int = 1, scale: Float = 2.4f): String? {
         val mimeType = context.contentResolver.getType(uri) ?: ""
         if (mimeType.startsWith("image/")) {
             return try {
@@ -376,8 +410,8 @@ CONTENT AWARENESS RULES & ABBREVIATIONS FOR ALL FIELDS:
                     return null
                 }
 
-                val pagesToRender = minOf(renderer.pageCount, 2)
-                val scale = if (pagesToRender > 1) 1.8f else 2.2f
+                val pagesToRender = minOf(renderer.pageCount, maxPages)
+                val actualScale = if (pagesToRender > 1) 1.8f else scale
 
                 val firstPage = renderer.openPage(0)
                 val pageWidth = firstPage.width
@@ -392,14 +426,14 @@ CONTENT AWARENESS RULES & ABBREVIATIONS FOR ALL FIELDS:
                     pageHeight
                 }
 
-                val bitmapWidth = (pageWidth * scale).toInt()
-                val bitmapHeight = (totalHeight * scale).toInt()
+                val bitmapWidth = (pageWidth * actualScale).toInt()
+                val bitmapHeight = (totalHeight * actualScale).toInt()
                 val bitmap = Bitmap.createBitmap(bitmapWidth, bitmapHeight, Bitmap.Config.ARGB_8888)
                 val canvas = Canvas(bitmap)
                 canvas.drawColor(Color.WHITE)
 
                 val matrix0 = Matrix().apply {
-                    setScale(scale, scale)
+                    setScale(actualScale, actualScale)
                 }
                 firstPage.render(bitmap, null, matrix0, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
                 firstPage.close()
@@ -407,8 +441,8 @@ CONTENT AWARENESS RULES & ABBREVIATIONS FOR ALL FIELDS:
                 if (pagesToRender > 1) {
                     val secondPage = renderer.openPage(1)
                     val matrix1 = Matrix().apply {
-                        setScale(scale, scale)
-                        postTranslate(0f, pageHeight * scale)
+                        setScale(actualScale, actualScale)
+                        postTranslate(0f, pageHeight * actualScale)
                     }
                     secondPage.render(bitmap, null, matrix1, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
                     secondPage.close()
@@ -428,10 +462,38 @@ CONTENT AWARENESS RULES & ABBREVIATIONS FOR ALL FIELDS:
 
     private fun extractWithCloudflare(context: Context, pdfUri: Uri, config: AiConfig): ExtractionResult {
         val endpoint = config.customEndpoint.ifBlank { DEFAULT_CLOUDFLARE_AI_ENDPOINT }.trimEnd('/')
-        val base64Image = renderPdfOrImageToBase64(context, pdfUri)
-            ?: return ExtractionResult.Error("Could not render document for Cloudflare AI scanning.")
 
-        return executeCloudflareExtraction(endpoint, base64Image, isRetry = false)
+        // Pass 1: Crisp single-page schedule scan (Page 0 at 2.4x scale)
+        // 99% of Indian vehicle policies have all schedule information on Page 1. High DPI prevents OCR blur.
+        val singlePageImage = renderPdfOrImageToBase64(context, pdfUri, maxPages = 1, scale = 2.4f)
+        if (singlePageImage != null) {
+            val pass1 = executeCloudflareExtraction(endpoint, singlePageImage, isRetry = false)
+            if (pass1 is ExtractionResult.Success) {
+                if (pass1.data.regNo.isNotBlank() || pass1.data.policyNumber.isNotBlank() || pass1.data.customerName.isNotBlank()) {
+                    return pass1
+                }
+            }
+        }
+
+        // Pass 2: Multi-page composite scan (Pages 0 & 1 combined at 1.8x scale)
+        val multiPageImage = renderPdfOrImageToBase64(context, pdfUri, maxPages = 2, scale = 1.8f)
+        if (multiPageImage != null) {
+            val pass2 = executeCloudflareExtraction(endpoint, multiPageImage, isRetry = true)
+            if (pass2 is ExtractionResult.Success) {
+                return pass2
+            }
+        }
+
+        // Pass 3: Silent retry on single-page to catch transient vision glitches
+        if (singlePageImage != null) {
+            val pass3 = executeCloudflareExtraction(endpoint, singlePageImage, isRetry = true)
+            if (pass3 is ExtractionResult.Success) {
+                return pass3
+            }
+            return pass3
+        }
+
+        return ExtractionResult.Error("Could not render document for Cloudflare AI scanning.")
     }
 
     private fun executeCloudflareExtraction(endpoint: String, base64Image: String, isRetry: Boolean): ExtractionResult {
@@ -455,7 +517,13 @@ CONTENT AWARENESS RULES & ABBREVIATIONS FOR ALL FIELDS:
             if (code == 200) {
                 val responseText = BufferedReader(InputStreamReader(conn.inputStream)).readText()
                 val json = JSONObject(responseText)
-                if (json.has("is_policy") && !json.optBoolean("is_policy", true)) {
+                val isExplicitlyNotPolicy = json.has("is_policy") && !json.optBoolean("is_policy", true)
+                val hasAnyExtractedField = (json.optString("regNo").isNotBlank() ||
+                        json.optString("policyNumber").isNotBlank() ||
+                        json.optString("customerName").isNotBlank() ||
+                        json.optString("insurer").isNotBlank())
+
+                if (isExplicitlyNotPolicy && !hasAnyExtractedField) {
                     return ExtractionResult.Error("The uploaded file does not appear to be an insurance policy document.")
                 }
                 parseExtractionJson(json, responseText)

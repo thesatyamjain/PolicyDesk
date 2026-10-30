@@ -34,10 +34,13 @@ android {
             } else {
                 // Development fallback: signs release apk with debug keystore for local testing/verification
                 val debugKeystore = signingConfigs.getByName("debug")
-                storeFile = debugKeystore.storeFile
+                val debugFile = debugKeystore.storeFile
+                if (debugFile != null && debugFile.exists()) {
+                    storeFile = debugFile
                 storePassword = debugKeystore.storePassword
                 keyAlias = debugKeystore.keyAlias
                 keyPassword = debugKeystore.keyPassword
+                }
             }
         }
     }
@@ -46,7 +49,10 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            signingConfig = signingConfigs.getByName("release")
+            val releaseSigning = signingConfigs.getByName("release")
+            if (releaseSigning.storeFile != null && releaseSigning.storeFile?.exists() == true) {
+                signingConfig = releaseSigning
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
