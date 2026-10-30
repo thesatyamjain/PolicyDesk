@@ -898,6 +898,16 @@ fun SettingsScreen(
                     tintColor = AppleSystemBlue,
                     modifier = Modifier.fillMaxWidth()
                 )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                AppleSecondaryButton(
+                    text = "Recover Deleted Records",
+                    onClick = viewModel::recoverLocalDeletedData,
+                    icon = AppleIcons.History,
+                    enabled = !state.isSyncing,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
 
             // SECTION 5: REMINDERS & RENEWAL ALERTS

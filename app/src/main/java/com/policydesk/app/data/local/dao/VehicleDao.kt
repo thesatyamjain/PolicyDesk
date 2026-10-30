@@ -86,4 +86,13 @@ interface VehicleDao {
 
     @Query("UPDATE vehicles SET isClosed = 1, closeReason = :reason, updatedAt = :timestamp WHERE regNo = :regNo")
     suspend fun closeVehicle(regNo: String, reason: String, timestamp: Long = System.currentTimeMillis())
+
+    @Query("SELECT COUNT(*) FROM vehicles WHERE deletedAt IS NOT NULL")
+    suspend fun getSoftDeletedCount(): Int
+
+    @Query("UPDATE vehicles SET deletedAt = NULL")
+    suspend fun restoreAllSoftDeletedVehicles(): Int
+
+    @Query("UPDATE policies SET deletedAt = NULL")
+    suspend fun restoreAllSoftDeletedPolicies(): Int
 }

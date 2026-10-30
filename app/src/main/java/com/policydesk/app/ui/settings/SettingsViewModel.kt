@@ -436,29 +436,103 @@ class SettingsViewModel @Inject constructor(
             result.onSuccess { jsonStr ->
                 val restoreResult = restoreSnapshotJson(jsonStr)
                 restoreResult.onSuccess { count ->
-                    val nowFormatted = java.time.LocalDateTime.now()
-                        .format(java.time.format.DateTimeFormatter.ofPattern("dd MMM, hh:mm a"))
-                    _uiState.update {
-                        it.copy(
-                            isSyncing = false,
-                            lastSyncTime = nowFormatted,
-                            syncStatusText = "Restored from Drive",
-                            syncMessage = "Successfully restored $count vehicle records from Google Drive Vault!"
-                        )
+                    if (count > 0) {
+                        loadSettings()
+                        val nowFormatted = java.time.LocalDateTime.now()
+                            .format(java.time.format.DateTimeFormatter.ofPattern("dd MMM, hh:mm a"))
+                        _uiState.update {
+                            it.copy(
+                                isSyncing = false,
+                                lastSyncTime = nowFormatted,
+                                syncStatusText = "Restored from Drive",
+                                syncMessage = "Successfully restored $count vehicle records from Google Drive Vault!"
+                            )
+                        }
+                    } else {
+                        // Current Drive snapshot was empty; try local soft-deleted recovery
+                        val localRecovered = repository.restoreSoftDeletedRecords()
+                        loadSettings()
+                        if (localRecovered > 0) {
+                            _uiState.update {
+                                it.copy(
+                                    isSyncing = false,
+                                    syncStatusText = "Restored from Device",
+                                    syncMessage = "Drive file was empty. Recovered $localRecovered vehicle records from local storage!"
+                                )
+                            }
+                        } else {
+                            _uiState.update {
+                                it.copy(
+                                    isSyncing = false,
+                                    syncStatusText = "No records found",
+                                    syncMessage = "Backup on Google Drive contains 0 vehicle records."
+                                )
+                            }
+                        }
                     }
                 }.onFailure { err ->
-                    _uiState.update {
-                        it.copy(
-                            isSyncing = false,
-                            syncMessage = "Corrupted backup: ${err.message}"
-                        )
+                    val localRecovered = repository.restoreSoftDeletedRecords()
+                    loadSettings()
+                    if (localRecovered > 0) {
+                        _uiState.update {
+                            it.copy(
+                                isSyncing = false,
+                                syncStatusText = "Restored from Device",
+                                syncMessage = "Recovered $localRecovered vehicle records from local storage!"
+                            )
+                        }
+                    } else {
+                        _uiState.update {
+                            it.copy(
+                                isSyncing = false,
+                                syncMessage = "Corrupted backup: ${err.message}"
+                            )
+                        }
                     }
                 }
             }.onFailure { err ->
+                // Drive network/auth failed; check local soft-deleted records as immediate fallback
+                val localRecovered = repository.restoreSoftDeletedRecords()
+                loadSettings()
+                if (localRecovered > 0) {
+                    _uiState.update {
+                        it.copy(
+                            isSyncing = false,
+                            syncStatusText = "Restored from Device",
+                            syncMessage = "Drive unreachable. Recovered $localRecovered vehicle records from local storage!"
+                        )
+                    }
+                } else {
+                    _uiState.update {
+                        it.copy(
+                            isSyncing = false,
+                            syncMessage = err.message ?: "Failed to read backup from Google Drive Vault"
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    fun recoverLocalDeletedData() {
+        _uiState.update { it.copy(isSyncing = true, syncMessage = null) }
+        viewModelScope.launch {
+            val count = repository.restoreSoftDeletedRecords()
+            loadSettings()
+            if (count > 0) {
                 _uiState.update {
                     it.copy(
                         isSyncing = false,
-                        syncMessage = err.message ?: "Failed to read backup from Google Drive Vault"
+                        syncStatusText = "Restored",
+                        syncMessage = "Successfully recovered $count deleted records from local storage!"
+                    )
+                }
+            } else {
+                _uiState.update {
+                    it.copy(
+                        isSyncing = false,
+                        syncStatusText = "No deleted records",
+                        syncMessage = "No soft-deleted records found to recover."
                     )
                 }
             }

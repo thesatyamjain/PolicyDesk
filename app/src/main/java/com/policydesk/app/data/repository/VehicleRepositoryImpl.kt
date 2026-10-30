@@ -37,6 +37,10 @@ class VehicleRepositoryImpl @Inject constructor(
             CoroutineScope(Dispatchers.IO).launch {
                 try {
                     val all = vehicleDao.getAllVehicles().first().map { it.toDomain() }
+                    // Safety check: Never silently overwrite an existing backup on Drive with 0 records
+                    if (all.isEmpty()) {
+                        return@launch
+                    }
                     val json = GoogleDriveManager.createSnapshotJson(all)
                     GoogleDriveManager.performAutoSync(context, json)
                 } catch (_: Exception) {}
@@ -462,6 +466,16 @@ class VehicleRepositoryImpl @Inject constructor(
             count++
         }
         triggerSilentDriveSync()
+        return count
+    }
+
+    override suspend fun restoreSoftDeletedRecords(): Int {
+        val count = vehicleDao.getSoftDeletedCount()
+        if (count > 0) {
+            vehicleDao.restoreAllSoftDeletedVehicles()
+            vehicleDao.restoreAllSoftDeletedPolicies()
+            triggerSilentDriveSync()
+        }
         return count
     }
 }

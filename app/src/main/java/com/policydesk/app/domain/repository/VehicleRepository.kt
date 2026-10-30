@@ -27,4 +27,5 @@ interface VehicleRepository {
     fun getCustomerGroups(): Flow<List<com.policydesk.app.domain.model.CustomerGroup>>
     fun getCustomInsurers(sector: com.policydesk.app.domain.model.Sector): Flow<List<String>>
     suspend fun restoreVehiclesAndPolicies(vehiclesWithPolicies: List<VehicleWithPolicies>): Int
+    suspend fun restoreSoftDeletedRecords(): Int
 }

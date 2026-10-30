@@ -347,7 +347,47 @@ object GoogleDriveManager {
                 throw IllegalStateException("Failed to download backup: HTTP ${conn.responseCode} $err")
             }
 
-            val content = conn.inputStream.bufferedReader().use { it.readText() }
+            var content = conn.inputStream.bufferedReader().use { it.readText() }
+
+            val root = runCatching { JSONObject(content) }.getOrNull()
+            val vehiclesCount = root?.optJSONArray("vehicles")?.length() ?: 0
+
+            // If the latest file is empty, check Drive file revision history for the last populated backup
+            if (vehiclesCount == 0) {
+                try {
+                    val revUrl = URL("https://www.googleapis.com/drive/v3/files/$fileId/revisions?fields=revisions(id,modifiedTime)")
+                    val revConn = (revUrl.openConnection() as HttpURLConnection).apply {
+                        requestMethod = "GET"
+                        setRequestProperty("Authorization", "Bearer $token")
+                        connectTimeout = 15000
+                        readTimeout = 15000
+                    }
+                    if (revConn.responseCode in 200..299) {
+                        val revResp = revConn.inputStream.bufferedReader().use { it.readText() }
+                        val revArray = JSONObject(revResp).optJSONArray("revisions")
+                        if (revArray != null && revArray.length() > 0) {
+                            for (r in (revArray.length() - 1) downTo 0) {
+                                val revId = revArray.getJSONObject(r).getString("id")
+                                val revDownloadUrl = URL("https://www.googleapis.com/drive/v3/files/$fileId/revisions/$revId?alt=media")
+                                val rConn = (revDownloadUrl.openConnection() as HttpURLConnection).apply {
+                                    requestMethod = "GET"
+                                    setRequestProperty("Authorization", "Bearer $token")
+                                    connectTimeout = 15000
+                                    readTimeout = 15000
+                                }
+                                if (rConn.responseCode in 200..299) {
+                                    val revContent = rConn.inputStream.bufferedReader().use { it.readText() }
+                                    val revVehicles = runCatching { JSONObject(revContent).optJSONArray("vehicles")?.length() ?: 0 }.getOrDefault(0)
+                                    if (revVehicles > 0) {
+                                        content = revContent
+                                        break
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } catch (_: Exception) {}
+            }
 
             // Cache downloaded backup locally
             val cacheFile = java.io.File(context.filesDir, "google_drive_sync_backup.json")
@@ -363,6 +403,13 @@ object GoogleDriveManager {
      */
     suspend fun performAutoSync(context: Context, snapshotJson: String): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
+            // Safety guard: Never auto-sync empty records over an existing populated backup
+            val root = runCatching { JSONObject(snapshotJson) }.getOrNull()
+            val count = root?.optJSONArray("vehicles")?.length() ?: 0
+            if (count == 0) {
+                return@runCatching
+            }
+
             // Internal app drive backup cache for instant offline restore / sync
             val cacheFile = java.io.File(context.filesDir, "google_drive_sync_backup.json")
             cacheFile.writeText(snapshotJson, Charsets.UTF_8)
