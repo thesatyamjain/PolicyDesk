@@ -134,7 +134,8 @@ class ImportViewModel @Inject constructor(
         val keyTokens = listOf(
             "reg", "veh", "vahan", "policy", "pol", "insured", "name", "customer",
             "chassis", "vin", "engine", "mobile", "phone", "contact", "expiry", "exp",
-            "due", "valid", "premium", "prem", "tp", "od", "make", "model", "insurer", "company"
+            "due", "valid", "premium", "prem", "tp", "od", "make", "model", "insurer", "company",
+            "पंजी", "बीमित", "ग्राहक", "चेसिस", "इंजन", "मोबाइल", "फोन", "पॉलिसी", "समाप्ति", "प्रीमियम"
         )
 
         for (i in 0 until maxScan) {
@@ -177,58 +178,79 @@ class ImportViewModel @Inject constructor(
 
             val target = when {
                 h.contains("reg") || h.contains("vehicleno") || h.contains("vehiclenumber") ||
-                        h.contains("vehical") || h.contains("vahan") || h.contains("vahanno") ||
+                        h.contains("vehical") || h.contains("vahanno") || h.contains("vahannum") ||
+                        h.contains("vahanreg") || h == "vahan" ||
                         h.contains("vehno") || h.contains("vehnum") || h.contains("rcno") ||
                         h.contains("rcnum") || h == "rc" || h == "veh" || h.contains("carno") ||
                         h.contains("bikeno") || h.contains("truckno") || h.contains("busno") ||
                         h.contains("rtono") || h.contains("registration") || h.contains("regmark") ||
-                        h.contains("registrationmark") || h.contains("gaddi") -> "regNo"
+                        h.contains("registrationmark") || h.contains("gaddi") || h.contains("gadi") ||
+                        h.contains("plateno") || h.contains("numberplate") || h.contains("vehreg") ||
+                        h.contains("पंजी") || h.contains("गाड़ी") || h.contains("गाडी") ||
+                        h.contains("रजिस्ट्रेशन") || h.contains("वाहनसं") || h.contains("वाहननं") ||
+                        h.contains("वाहनसंख्या") || h.contains("वाहनक्रमांक") || h == "वाहन" -> "regNo"
 
                 h.contains("customername") || h.contains("clientname") || h.contains("insuredname") ||
                         h.contains("proposername") || h.contains("partyname") || h.contains("ownername") ||
                         h.contains("custname") || h.contains("policyholder") ||
                         h == "name" || h.contains("customer") || h.contains("client") ||
                         h.contains("insured") || h.contains("proposer") || h.contains("party") ||
-                        h.contains("owner") || h.contains("holder") -> "name"
+                        h.contains("owner") || h.contains("holder") ||
+                        h.contains("बीमित") || h.contains("बीमाधारक") || h.contains("ग्राहक") ||
+                        h.contains("प्रस्तावक") || h.contains("मालिक") -> "name"
 
                 h.contains("title") || h.contains("salutation") || h.contains("prefix") ||
-                        h.contains("mrms") -> "title"
+                        h.contains("mrms") || h.contains("shri") || h.contains("smt") ||
+                        h.contains("श्री") || h.contains("श्रीमती") || h.contains("सुश्री") -> "title"
 
                 h.contains("mobile") || h.contains("phone") || h.contains("contact") ||
                         h.contains("cell") || h.contains("whatsapp") || h.contains("tel") ||
                         h == "mob" || h.contains("contactno") || h.contains("phoneno") ||
                         h.contains("custmobile") || h.contains("mobilenumber") ||
-                        h.contains("contactnumber") -> "mobile"
+                        h.contains("contactnumber") || h.contains("cellno") || h.contains("phno") ||
+                        h.contains("मोबाइल") || h.contains("दूरभाष") || h.contains("संपर्क") ||
+                        h.contains("फोन") -> "mobile"
 
-                h.contains("email") || h.contains("mail") || h.contains("emailid") -> "email"
+                h.contains("email") || h.contains("mail") || h.contains("emailid") ||
+                        h.contains("ईमेल") || h.contains("ई-मेल") -> "email"
 
                 h.contains("address") || h.contains("residence") || h.contains("location") ||
-                        h.contains("city") || h.contains("addr") || h.contains("state") -> "address"
+                        h.contains("city") || h.contains("addr") || h.contains("state") ||
+                        h.contains("pincode") || h.contains("commaddress") || h.contains("permaddress") ||
+                        h.contains("postal") || h.contains("पता") || h.contains("पत्राचार") ||
+                        h.contains("निवास") -> "address"
 
-                h.contains("sector") || h.contains("companytype") || h.contains("category") -> "sector"
+                h.contains("sector") || h.contains("companytype") || h.contains("category") ||
+                        h == "psu" || h == "pvt" || h.contains("क्षेत्र") || h.contains("सरकारी") -> "sector"
 
                 h.contains("insurer") || h.contains("insurancecompany") || h.contains("underwriter") ||
                         h.contains("carrier") || h.contains("company") || h.contains("companyname") ||
-                        h.contains("insuranceco") || h.contains("insurance") -> "insurer"
+                        h.contains("insuranceco") || h.contains("insurance") || h.contains("inscompany") ||
+                        h.contains("बीमाकंपनी") || h.contains("बीमाकर्ता") -> "insurer"
 
                 h.contains("policyno") || h.contains("policynumber") || h.contains("policy") ||
                         h.contains("polno") || h.contains("covernoteno") || h.contains("cnno") ||
                         h.contains("certificateno") || h.contains("covernote") || h.contains("certno") ||
-                        h.contains("polnum") -> "policyNumber"
+                        h.contains("polnum") || h.contains("scheduleno") || h.contains("docno") ||
+                        h.contains("पॉलिसी") || h.contains("बीमापत्र") || h.contains("कवरनोट") ||
+                        h.contains("अनुसूची") -> "policyNumber"
 
                 h.contains("expiry") || h.contains("expdate") || h.contains("validtill") ||
                         h.contains("validto") || h.contains("validupto") || h.contains("enddate") ||
                         h.contains("duedate") || h.contains("renewaldate") || h.contains("periodto") ||
-                        h.contains("riskexpiry") || h == "exp" -> "expiryDate"
+                        h.contains("riskexpiry") || h == "exp" || h.contains("expdt") ||
+                        h.contains("समाप्ति") || h.contains("वैधता") || h.contains("नवीनीकरण") -> "expiryDate"
 
                 !isExcludedFromPremium && (
                         h.contains("tppremium") || h.contains("thirdpartypremium") || h.contains("tpprem") ||
-                                h == "tp" || h == "thirdparty"
+                                h == "tp" || h == "thirdparty" || h.contains("basictp") ||
+                                h.contains("tpliability") || h.contains("टीपी") || h.contains("थर्डपार्टी")
                 ) -> "tpPremium"
 
                 !isExcludedFromPremium && (
                         h.contains("odpremium") || h.contains("owndamagepremium") || h.contains("odprem") ||
-                                h == "od" || h == "owndamage"
+                                h == "od" || h == "owndamage" || h.contains("basicod") ||
+                                h.contains("ओडी") || h.contains("ओनडैमेज")
                 ) -> "odPremium"
 
                 !isExcludedFromPremium && (
@@ -237,29 +259,37 @@ class ImportViewModel @Inject constructor(
                                 h.contains("grossprem") || h.contains("netprem") ||
                                 h.contains("totalamount") || h.contains("netamount") || h.contains("grossamount") ||
                                 h.contains("finalamount") || h.contains("premiumamount") ||
-                                h.contains("gwp") || h.contains("nwp") || h == "prem"
+                                h.contains("gwp") || h.contains("nwp") || h == "prem" ||
+                                h.contains("totprem") || h.contains("amtpayable") || h.contains("premiumpayable") ||
+                                h.contains("प्रीमियम") || h.contains("कुलप्रीमियम") || h.contains("सकलप्रीमियम")
                 ) -> "totalPremium"
 
                 h.contains("makemodel") || (h.contains("make") && h.contains("model")) ||
-                        h.contains("variant") || h.contains("description") -> "makeModel"
+                        h.contains("variant") || h.contains("description") || h.contains("desc") ||
+                        h.contains("vehdesc") || h.contains("मेकमॉडल") || h.contains("वाहनविवरण") -> "makeModel"
 
-                h.contains("make") || h.contains("mfg") || h.contains("manufacturer") || h.contains("oem") -> "make"
+                h.contains("make") || h.contains("mfg") || h.contains("manufacturer") || h.contains("oem") ||
+                        h.contains("मेक") || h.contains("निर्माता") -> "make"
 
-                h.contains("model") || h.contains("submodel") -> "model"
+                h.contains("model") || h.contains("submodel") || h.contains("मॉडल") -> "model"
 
                 h.contains("vin") || h.contains("chassis") || h.contains("chassisno") ||
                         h.contains("chassisnumber") || h.contains("frameno") || h.contains("framenumber") ||
-                        h.contains("vinnumber") || h.contains("chassisnum") -> "vin"
+                        h.contains("vinnumber") || h.contains("chassisnum") || h.contains("chasis") ||
+                        h.contains("chno") || h.contains("चेसिस") || h.contains("फ्रेम") -> "vin"
 
                 h.contains("engineno") || h.contains("enginenumber") || h.contains("engno") ||
-                        h.contains("enginenum") || h.contains("engine") || h.contains("motorno") -> "engineNo"
+                        h.contains("enginenum") || h.contains("engine") || h.contains("motorno") ||
+                        h.contains("motornumber") || h.contains("इंजन") || h.contains("मोटर") -> "engineNo"
 
                 h.contains("notes") || h.contains("note") || h.contains("remark") ||
-                        h.contains("remarks") || h.contains("comments") -> "notes"
+                        h.contains("remarks") || h.contains("comments") || h.contains("comment") ||
+                        h.contains("टिप्पणी") || h.contains("रिमार्क") -> "notes"
 
                 h.contains("saledate") || h.contains("startdate") || h.contains("issuedate") ||
                         h.contains("inception") || h.contains("bookingdate") || h.contains("periodfrom") ||
-                        h.contains("booked") -> "saleDate"
+                        h.contains("booked") || h.contains("policystart") || h.contains("effectivedate") ||
+                        h.contains("जारीतिथि") || h.contains("प्रारंभतिथि") || h.contains("बिक्रीतिथि") -> "saleDate"
 
                 else -> null
             }

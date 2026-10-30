@@ -34,6 +34,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import com.policydesk.app.ui.components.BindBackToTop
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -289,7 +291,9 @@ fun DashboardScreen(
                                 onClick = {
                                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                     viewModel.toggleSelectAll(uiState.filteredList.map { it.vehicle.regNo })
-                                }
+                                },
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                                modifier = Modifier.height(34.dp)
                             ) {
                                 Text(
                                     text = if (allSelected) "Deselect All" else "Select All",
@@ -303,7 +307,9 @@ fun DashboardScreen(
                                 onClick = {
                                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                     viewModel.exitSelectionMode()
-                                }
+                                },
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                                modifier = Modifier.height(34.dp)
                             ) {
                                 Text(
                                     text = "Done",
@@ -324,7 +330,9 @@ fun DashboardScreen(
                                     onClick = {
                                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                         viewModel.enterSelectionMode()
-                                    }
+                                    },
+                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                                    modifier = Modifier.height(34.dp)
                                 ) {
                                     Text(
                                         text = "Select",
@@ -335,7 +343,7 @@ fun DashboardScreen(
                                 }
                             }
 
-                            // Prominent Apple Glass Add Button (My Warranties style)
+                            // Prominent Apple Glass Add Button (Primary Action)
                             Box(
                                 modifier = Modifier
                                     .size(34.dp)
@@ -351,22 +359,30 @@ fun DashboardScreen(
                                     imageVector = AppleIcons.Plus,
                                     contentDescription = "Add Policy",
                                     tint = Color.White,
-                                    modifier = Modifier.size(20.dp)
+                                    modifier = Modifier.size(19.dp)
                                 )
                             }
 
-                            IconButton(
-                                onClick = {
-                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    onNavigateToSettings()
-                                },
-                                modifier = Modifier.size(36.dp)
+                            // Apple Glass Settings Button (Consistent 34.dp circular housing matching Add Button)
+                            Box(
+                                modifier = Modifier
+                                    .size(34.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        if (isDark) AppleDarkSystemBlue else AppleSystemBlue,
+                                        CircleShape
+                                    )
+                                    .clickable {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        onNavigateToSettings()
+                                    },
+                                contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     imageVector = AppleIcons.GearShape,
                                     contentDescription = "Settings",
-                                    tint = actionTint,
-                                    modifier = Modifier.size(20.dp)
+                                    tint = Color.White,
+                                    modifier = Modifier.size(19.dp)
                                 )
                             }
                         }
@@ -376,7 +392,10 @@ fun DashboardScreen(
             containerColor = Color.Transparent,
             contentWindowInsets = WindowInsets(0, 0, 0, 0)
         ) { paddingValues ->
+        val listState = rememberLazyListState()
+        BindBackToTop(listState)
         LazyColumn(
+            state = listState,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(top = paddingValues.calculateTopPadding() + 8.dp, bottom = 120.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -749,7 +768,8 @@ fun DashboardScreen(
             } else {
                 items(
                     items = uiState.filteredList,
-                    key = { it.vehicle.regNo }
+                    key = { it.vehicle.regNo },
+                    contentType = { "vehicle_card" }
                 ) { item ->
                     val isSelected = uiState.selectedRegNos.contains(item.vehicle.regNo)
                     Box(modifier = Modifier.padding(horizontal = 16.dp)) {
@@ -1035,8 +1055,16 @@ fun VehicleExpiryCard(
                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 val cleanMobile = mobile.filter { it.isDigit() }
                                 val phoneWithCountry = if (cleanMobile.length == 10) "91$cleanMobile" else cleanMobile
-                                val expText = policy?.expiryDate?.let { " expiring on ${UiFormatters.formatDate(it)}" } ?: ""
-                                val message = "Hello ${item.vehicle.customer.name}, regarding your vehicle ${item.vehicle.regNo} policy$expText. Kindly share details for renewal."
+                                val expText = policy?.expiryDate?.let { UiFormatters.formatDate(it) } ?: ""
+                                val premText = policy?.totalPremium?.let { UiFormatters.formatCurrency(it) } ?: ""
+                                val message = com.policydesk.app.data.profile.AdvisorProfileManager.formatRenewalMessage(
+                                    context = context,
+                                    customerName = item.vehicle.customer.name,
+                                    regNo = item.vehicle.regNo,
+                                    insurer = policy?.insurer ?: "",
+                                    expiryDate = expText,
+                                    premium = premText
+                                )
                                 val url = "https://api.whatsapp.com/send?phone=$phoneWithCountry&text=${Uri.encode(message)}"
                                 val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
                                 context.startActivity(intent)
@@ -1044,7 +1072,7 @@ fun VehicleExpiryCard(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = AppleIcons.Message,
+                            imageVector = AppleIcons.WhatsApp,
                             contentDescription = "WhatsApp reminder",
                             tint = if (isDark) AppleDarkSystemGreen else AppleSystemGreen,
                             modifier = Modifier.size(15.dp)

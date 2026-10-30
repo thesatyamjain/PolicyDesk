@@ -25,6 +25,22 @@ class RegistrationNormalizerTest {
     }
 
     @Test
+    fun extractRegistrationNumber_handles_all_abbreviations_and_psu_labels() {
+        assertEquals("RJ14AB1234", RegistrationNormalizer.extractRegistrationNumber("पंजी. संख्या / Regn. Number: RJ14AB1234"))
+        assertEquals("UP16CD5678", RegistrationNormalizer.extractRegistrationNumber("विवरण / Vehicle Details Regn No UP 16 CD 5678"))
+        assertEquals("22BH1234AA", RegistrationNormalizer.extractRegistrationNumber("पंजीकरण संख्या 22 BH 1234 AA"))
+        assertEquals("DL01A9999", RegistrationNormalizer.extractRegistrationNumber("Regn. Number DL-01-A-9999"))
+        assertEquals("MH12AB1234", RegistrationNormalizer.extractRegistrationNumber("MH12AB1234"))
+        assertEquals("MH12DE4321", RegistrationNormalizer.extractRegistrationNumber("वाहन पंजी सं: MH-12-DE-4321"))
+        assertEquals("DL04C1111", RegistrationNormalizer.extractRegistrationNumber("गाड़ी नं: DL 04 C 1111"))
+        assertEquals("HR26DK8888", RegistrationNormalizer.extractRegistrationNumber("गाड़ी नंबर - HR 26 DK 8888"))
+        assertEquals("KA01MJ9090", RegistrationNormalizer.extractRegistrationNumber("RC NO: KA 01 MJ 9090"))
+        assertEquals("GJ01AA1234", RegistrationNormalizer.extractRegistrationNumber("Plate No. GJ 01 AA 1234"))
+        assertEquals("TN09BB5555", RegistrationNormalizer.extractRegistrationNumber("Veh Regn No: TN 09 BB 5555"))
+        assertEquals("WB02AC7777", RegistrationNormalizer.extractRegistrationNumber("रजिस्ट्रेशन नं: WB 02 AC 7777"))
+    }
+
+    @Test
     fun standard_format_validation() {
         assertTrue(RegistrationNormalizer.isStandardFormat("MH12AB1234"))
         assertTrue(RegistrationNormalizer.isStandardFormat("DL1A1234"))
@@ -77,6 +93,99 @@ class RegistrationNormalizerTest {
 
         assertTrue(FieldValidators.isVinStandardLength("1HGCR2F83HA000000"))
         assertFalse(FieldValidators.isVinStandardLength("SHORTVIN123"))
+    }
+
+    @Test
+    fun content_awareness_field_sanitizers_for_all_fields() {
+        // Customer Name & Title with Hindi and English honorifics & abbreviations
+        val (name1, title1) = FieldValidators.extractCustomerNameAndTitle("Shri Rajesh Kumar")
+        assertEquals("Rajesh Kumar", name1)
+        assertEquals("Shri", title1)
+
+        val (name2, title2) = FieldValidators.extractCustomerNameAndTitle("बीमित का नाम: Mr. Ramesh Patel")
+        assertEquals("Ramesh Patel", name2)
+        assertEquals("Mr", title2)
+
+        val (name3, title3) = FieldValidators.extractCustomerNameAndTitle("M/s Apex Logistics PVT LTD")
+        assertEquals("Apex Logistics PVT LTD", name3)
+        assertEquals("M/s", title3)
+
+        val (name4, title4) = FieldValidators.extractCustomerNameAndTitle("श्री सुरेश कुमार शर्मा")
+        assertEquals("सुरेश कुमार शर्मा", name4)
+        assertEquals("Shri", title4)
+
+        val (name5, title5) = FieldValidators.extractCustomerNameAndTitle("बीमाधारक का नाम: श्रीमती अनीता देवी")
+        assertEquals("अनीता देवी", name5)
+        assertEquals("Smt.", title5)
+
+        val (name6, title6) = FieldValidators.extractCustomerNameAndTitle("Cust Name: Dr. Vikram Sarabhai")
+        assertEquals("Vikram Sarabhai", name6)
+        assertEquals("Dr", title6)
+
+        val (name7, title7) = FieldValidators.extractCustomerNameAndTitle("वाहन स्वामी: Adv. Ashok Singhal")
+        assertEquals("Ashok Singhal", name7)
+        assertEquals("Adv", title7)
+
+        val (name8, title8) = FieldValidators.extractCustomerNameAndTitle("Proposer Name: Capt. Amarjeet Singh")
+        assertEquals("Amarjeet Singh", name8)
+        assertEquals("Capt", title8)
+
+        // Email
+        assertEquals("rajesh@gmail.com", FieldValidators.extractCleanEmail("Email ID: rajesh@gmail.com;"))
+        assertEquals("contact@company.co.in", FieldValidators.extractCleanEmail("ई-मेल: contact@company.co.in"))
+
+        // Policy Number
+        assertEquals("POL/2026/001-A", FieldValidators.extractCleanPolicyNumber("Policy No: POL/2026/001-A."))
+        assertEquals("1001.2024.1", FieldValidators.extractCleanPolicyNumber("पॉलिसी संख्या: 1001.2024.1>>"))
+        assertEquals("CN-998877", FieldValidators.extractCleanPolicyNumber("कवर नोट सं: CN-998877"))
+        assertEquals("SCH/4567/89", FieldValidators.extractCleanPolicyNumber("अनुसूची सं: SCH/4567/89"))
+
+        // Address
+        assertEquals("Flat 402, Shanti Nagar, Pune 411001", FieldValidators.extractCleanAddress("Address: Flat 402,\nShanti Nagar,\tPune 411001"))
+        assertEquals("ग्राम व पोस्ट रामपुर, जिला मेरठ 250001", FieldValidators.extractCleanAddress("पत्राचार का पता: ग्राम व पोस्ट रामपुर, जिला मेरठ 250001"))
+
+        // VIN & Engine
+        assertEquals("MA3EJA62S00123456", FieldValidators.extractCleanVin("Chassis No: MA3EJA62S00123456"))
+        assertEquals("ME4JC3833E8012345", FieldValidators.extractCleanVin("चेसिस सं: ME4JC3833E8012345"))
+        assertEquals("FR778899", FieldValidators.extractCleanVin("फ्रेम सं: FR-778899"))
+        assertEquals("K12M1234567", FieldValidators.extractCleanEngineNo("इंजन संख्या: K12M-1234567"))
+        assertEquals("ENG9988776", FieldValidators.extractCleanEngineNo("मोटर सं: ENG9988776"))
+
+        // Make Model
+        assertEquals("Maruti Suzuki Swift Dzire VXI", FieldValidators.extractCleanMakeModel("Make / Model: Maruti Suzuki Swift Dzire VXI"))
+        assertEquals("Hyundai Creta SX Petrol", FieldValidators.extractCleanMakeModel("वाहन विवरण: Hyundai Creta SX Petrol"))
+    }
+
+    @Test
+    fun insurer_catalog_matches_all_irdai_acronyms_and_sectors() {
+        val testCases = mapOf(
+            "nic" to Pair(Sector.PSU, "National Insurance"),
+            "nicl" to Pair(Sector.PSU, "National Insurance"),
+            "nia" to Pair(Sector.PSU, "New India Assurance"),
+            "niacl" to Pair(Sector.PSU, "New India Assurance"),
+            "oic" to Pair(Sector.PSU, "Oriental Insurance"),
+            "oicl" to Pair(Sector.PSU, "Oriental Insurance"),
+            "uiic" to Pair(Sector.PSU, "United India Insurance"),
+            "uiicl" to Pair(Sector.PSU, "United India Insurance"),
+            "bagic" to Pair(Sector.PRIVATE, "Bajaj Allianz General Insurance"),
+            "ilgic" to Pair(Sector.PRIVATE, "ICICI Lombard General Insurance"),
+            "bhartiaxa" to Pair(Sector.PRIVATE, "ICICI Lombard General Insurance"),
+            "itgi" to Pair(Sector.PRIVATE, "IFFCO Tokio General Insurance"),
+            "tagic" to Pair(Sector.PRIVATE, "Tata AIG General Insurance"),
+            "godigit" to Pair(Sector.PRIVATE, "Go Digit General Insurance"),
+            "rgicl" to Pair(Sector.PRIVATE, "Reliance General Insurance"),
+            "rsgi" to Pair(Sector.PRIVATE, "Royal Sundaram General Insurance"),
+            "sbig" to Pair(Sector.PRIVATE, "SBI General Insurance"),
+            "sgic" to Pair(Sector.PRIVATE, "Shriram General Insurance"),
+            "usgic" to Pair(Sector.PRIVATE, "Universal Sompo General Insurance"),
+            "fgii" to Pair(Sector.PRIVATE, "Future Generali India Insurance"),
+            "cholams" to Pair(Sector.PRIVATE, "Cholamandalam MS General Insurance")
+        )
+
+        for ((acronym, expected) in testCases) {
+            val matched = com.policydesk.app.domain.model.InsurerCatalog.matchInsurer(acronym)
+            assertEquals("Failed matching $acronym", expected, matched)
+        }
     }
 
     @Test

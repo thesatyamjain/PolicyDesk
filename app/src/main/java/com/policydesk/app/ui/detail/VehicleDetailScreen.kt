@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -31,6 +32,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Shield
 import com.policydesk.app.ui.components.AppleAlertDialog
 import com.policydesk.app.ui.components.AppleButton
+import com.policydesk.app.ui.components.BindBackToTop
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.ui.text.input.KeyboardType
@@ -88,6 +90,7 @@ import com.policydesk.app.ui.theme.IosSystemBackground
 fun VehicleDetailScreen(
     onNavigateBack: () -> Unit,
     onNavigateToRenew: (String) -> Unit,
+    onNavigateToEdit: (String) -> Unit = {},
     viewModel: VehicleDetailViewModel = hiltViewModel()
 ) {
     val vehicleWithPolicies by viewModel.vehicleData.collectAsStateWithLifecycle()
@@ -95,6 +98,7 @@ fun VehicleDetailScreen(
 
     var showMenu by remember { mutableStateOf(false) }
     var showCloseDialog by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
     var showEditPremiumDialog by remember { mutableStateOf(false) }
     var editPremiumValue by remember { mutableStateOf("") }
 
@@ -103,6 +107,10 @@ fun VehicleDetailScreen(
             when (event) {
                 is DetailUiEvent.VehicleClosed -> {
                     Toast.makeText(context, "Vehicle closed", Toast.LENGTH_SHORT).show()
+                    onNavigateBack()
+                }
+                is DetailUiEvent.VehicleDeleted -> {
+                    Toast.makeText(context, "Vehicle record deleted", Toast.LENGTH_SHORT).show()
                     onNavigateBack()
                 }
                 is DetailUiEvent.ShowToast -> {
@@ -205,6 +213,22 @@ fun VehicleDetailScreen(
         )
     }
 
+    if (showDeleteDialog) {
+        AppleAlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = "Delete Vehicle Record?",
+            message = "Are you sure you want to delete ${vehicleWithPolicies?.vehicle?.regNo ?: "this vehicle"} and its policies? This record will be archived.",
+            confirmText = "Delete",
+            dismissText = "Cancel",
+            isDestructive = true,
+            onConfirm = {
+                showDeleteDialog = false
+                viewModel.deleteVehicle()
+            },
+            onDismiss = { showDeleteDialog = false }
+        )
+    }
+
     val isDark = isSystemInDarkTheme()
     val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
     val labelSecondary = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
@@ -215,6 +239,18 @@ fun VehicleDetailScreen(
                 title = "Vehicle Details",
                 onNavigateBack = onNavigateBack,
                 actions = {
+                    IconButton(
+                        onClick = {
+                            vehicleWithPolicies?.vehicle?.regNo?.let(onNavigateToEdit)
+                        }
+                    ) {
+                        Icon(
+                            imageVector = AppleIcons.SquareAndPencil,
+                            contentDescription = "Edit All Details",
+                            tint = if (isDark) AppleDarkSystemBlue else AppleSystemBlue,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                     IconButton(onClick = { showMenu = true }) {
                         Icon(
                             imageVector = Icons.Default.MoreVert,
@@ -227,19 +263,33 @@ fun VehicleDetailScreen(
                         onDismissRequest = { showMenu = false }
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Edit Policy Premium", color = if (isDark) AppleDarkSystemBlue else AppleSystemBlue) },
-                            onClick = {
-                                showMenu = false
-                                val currentPrem = vehicleWithPolicies?.currentPolicy?.totalPremium ?: 0.0
-                                editPremiumValue = if (currentPrem % 1.0 == 0.0) currentPrem.toLong().toString() else currentPrem.toString()
-                                showEditPremiumDialog = true
-                            }
-                        )
-                        DropdownMenuItem(
                             text = { Text("Close without renewal", color = AppleSystemRed) },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = AppleIcons.Clear,
+                                    contentDescription = null,
+                                    tint = AppleSystemRed,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            },
                             onClick = {
                                 showMenu = false
                                 showCloseDialog = true
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Delete Vehicle", color = AppleSystemRed) },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = AppleIcons.Trash,
+                                    contentDescription = null,
+                                    tint = AppleSystemRed,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            },
+                            onClick = {
+                                showMenu = false
+                                showDeleteDialog = true
                             }
                         )
                     }
@@ -271,11 +321,14 @@ fun VehicleDetailScreen(
             val daysRemaining = policy?.computeDaysRemaining() ?: 0
             val status = policy?.computeCurrentStatus() ?: PolicyStatus.ACTIVE
 
+            val scrollState = rememberScrollState()
+            BindBackToTop(scrollState)
+
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(scrollState)
                     .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
@@ -322,10 +375,14 @@ fun VehicleDetailScreen(
                 }
 
                 // QUICK CONTACT ACTIONS
+                val curPolicy = vehicleWithPolicies?.currentPolicy
                 CustomerContactBar(
                     customerName = vehicle.customer.name,
                     mobile = vehicle.customer.mobile,
                     regNo = vehicle.regNo,
+                    insurer = curPolicy?.insurer ?: "",
+                    expiryDate = curPolicy?.expiryDate?.let { UiFormatters.formatDate(it) } ?: "",
+                    premium = curPolicy?.totalPremium?.let { UiFormatters.formatCurrency(it) } ?: "",
                     context = context
                 )
 
@@ -351,14 +408,23 @@ fun VehicleDetailScreen(
                         DetailRow(label = "Expiry Date", value = UiFormatters.formatDate(policy.expiryDate))
                         DetailRow(
                             label = "Total Premium Cost",
-                            value = "${UiFormatters.formatCurrency(policy.totalPremium)}  ✎",
+                            value = UiFormatters.formatCurrency(policy.totalPremium),
                             onClick = {
                                 val currentPrem = policy.totalPremium
                                 editPremiumValue = if (currentPrem % 1.0 == 0.0) currentPrem.toLong().toString() else currentPrem.toString()
                                 showEditPremiumDialog = true
                             }
                         )
-                        DetailRow(label = "Policy Status", value = status.displayName)
+                        val statusText = when {
+                            status == PolicyStatus.CLOSED -> "Closed"
+                            status == PolicyStatus.RENEWED -> "Renewed"
+                            daysRemaining < 0 -> "Overdue (${-daysRemaining}d)"
+                            daysRemaining == 0L -> "Expires Today"
+                            daysRemaining <= 7 -> "Expiring Soon (${daysRemaining}d left)"
+                            daysRemaining <= 30 -> "Expiring Soon (${daysRemaining}d left)"
+                            else -> status.displayName
+                        }
+                        DetailRow(label = "Policy Status", value = statusText)
                     }
                 }
 
@@ -390,7 +456,7 @@ fun VehicleDetailScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(40.dp))
+                Spacer(modifier = Modifier.height(120.dp))
             }
         }
     }
@@ -468,6 +534,9 @@ fun CustomerContactBar(
     customerName: String,
     mobile: String,
     regNo: String,
+    insurer: String = "",
+    expiryDate: String = "",
+    premium: String = "",
     context: android.content.Context
 ) {
     LiquidGlassCard(
@@ -481,18 +550,27 @@ fun CustomerContactBar(
             ContactActionButton(
                 icon = AppleIcons.Phone,
                 label = "Call",
+                tintColor = AppleSystemBlue,
                 onClick = {
                     val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$mobile"))
                     context.startActivity(intent)
                 }
             )
             ContactActionButton(
-                icon = AppleIcons.Message,
+                icon = AppleIcons.WhatsApp,
                 label = "WhatsApp",
+                tintColor = Color(0xFF25D366),
                 onClick = {
                     val formattedMobile = if (mobile.startsWith("91")) mobile else "91$mobile"
-                    val msg = Uri.encode("Hello $customerName, regarding your vehicle policy for ${RegistrationNormalizer.formatForDisplay(regNo)}:")
-                    val url = "https://wa.me/$formattedMobile?text=$msg"
+                    val msg = com.policydesk.app.data.profile.AdvisorProfileManager.formatRenewalMessage(
+                        context = context,
+                        customerName = customerName,
+                        regNo = regNo,
+                        insurer = insurer,
+                        expiryDate = expiryDate,
+                        premium = premium
+                    )
+                    val url = "https://wa.me/$formattedMobile?text=${Uri.encode(msg)}"
                     val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
                     context.startActivity(intent)
                 }
@@ -500,6 +578,7 @@ fun CustomerContactBar(
             ContactActionButton(
                 icon = AppleIcons.Message,
                 label = "SMS",
+                tintColor = AppleSystemBlue,
                 onClick = {
                     val intent = Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:$mobile"))
                     context.startActivity(intent)
@@ -513,8 +592,10 @@ fun CustomerContactBar(
 fun ContactActionButton(
     icon: ImageVector,
     label: String,
+    tintColor: Color = AppleSystemBlue,
     onClick: () -> Unit
 ) {
+    val isDark = isSystemInDarkTheme()
     Column(
         modifier = Modifier
             .clip(RoundedCornerShape(12.dp))
@@ -525,19 +606,18 @@ fun ContactActionButton(
         Box(
             modifier = Modifier
                 .size(42.dp)
-                .background(AppleSystemBlue.copy(alpha = 0.12f), CircleShape)
-                .border(0.5.dp, AppleSystemBlue.copy(alpha = 0.25f), CircleShape),
+                .background(tintColor.copy(alpha = 0.16f), CircleShape)
+                .border(0.5.dp, tintColor.copy(alpha = 0.35f), CircleShape),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = label,
-                tint = AppleSystemBlue,
+                tint = tintColor,
                 modifier = Modifier.size(20.dp)
             )
         }
         Spacer(modifier = Modifier.height(4.dp))
-        val isDark = isSystemInDarkTheme()
         Text(
             text = label,
             fontSize = 12.sp,
@@ -622,16 +702,25 @@ fun PolicyHistoryItem(policy: Policy) {
 fun SurfaceActionBar(
     onRenew: () -> Unit
 ) {
+    val isDark = isSystemInDarkTheme()
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .liquidGlass(
-                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-                elevation = 8.dp,
-                fillAlphaTop = 0.95f,
-                fillAlphaBottom = 0.88f
+            .background(
+                androidx.compose.ui.graphics.Brush.verticalGradient(
+                    colors = if (isDark) listOf(
+                        Color.Transparent,
+                        Color(0xCC000000),
+                        Color(0xF0000000)
+                    ) else listOf(
+                        Color.Transparent,
+                        Color(0xCCFFFFFF),
+                        Color(0xF0FFFFFF)
+                    )
+                )
             )
-            .padding(16.dp)
+            .navigationBarsPadding()
+            .padding(horizontal = 16.dp, vertical = 10.dp)
     ) {
         AppleButton(
             text = "Renew Policy",

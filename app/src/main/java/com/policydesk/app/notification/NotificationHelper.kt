@@ -84,8 +84,14 @@ object NotificationHelper {
 
         // Action 2: WhatsApp
         val formattedMobile = if (mobile.startsWith("91")) mobile else "91$mobile"
-        val msg = Uri.encode("Hello $customerName, your vehicle policy for ${RegistrationNormalizer.formatForDisplay(regNo)} is due for renewal.")
-        val waIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/$formattedMobile?text=$msg"))
+        val renewalText = com.policydesk.app.data.profile.AdvisorProfileManager.formatRenewalMessage(
+            context = context,
+            customerName = customerName,
+            regNo = regNo,
+            insurer = insurer,
+            expiryDate = if (daysRemaining <= 0) "Today" else "$daysRemaining days"
+        )
+        val waIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/$formattedMobile?text=${Uri.encode(renewalText)}"))
         val waPendingIntent = PendingIntent.getActivity(
             context,
             notificationId + 2000,
@@ -100,8 +106,8 @@ object NotificationHelper {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setContentIntent(openPendingIntent)
             .setAutoCancel(true)
-            .addAction(android.R.drawable.stat_sys_phone_call, "Call", callPendingIntent)
-            .addAction(android.R.drawable.ic_menu_send, "WhatsApp", waPendingIntent)
+            .addAction(0, "Call", callPendingIntent)
+            .addAction(0, "WhatsApp", waPendingIntent)
 
         val manager = NotificationManagerCompat.from(context)
         try {
@@ -141,6 +147,33 @@ object NotificationHelper {
         val manager = NotificationManagerCompat.from(context)
         try {
             manager.notify(9999, builder.build())
+        } catch (_: SecurityException) {
+            // Permission not granted
+        }
+    }
+
+    fun showTestNotification(context: Context) {
+        createNotificationChannels(context)
+        val openIntent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val openPendingIntent = PendingIntent.getActivity(
+            context,
+            12345,
+            openIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val builder = NotificationCompat.Builder(context, CHANNEL_EXPIRY)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle("PolicyDesk: Test Notification")
+            .setContentText("Policy expiry alerts and WorkManager reminders are active.")
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setContentIntent(openPendingIntent)
+            .setAutoCancel(true)
+
+        val manager = NotificationManagerCompat.from(context)
+        try {
+            manager.notify(8888, builder.build())
         } catch (_: SecurityException) {
             // Permission not granted
         }

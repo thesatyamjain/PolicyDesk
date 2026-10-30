@@ -155,6 +155,12 @@ app/src/main/
 
 ---
 
+## Credits & Author
+
+Built with precision by **The Software Labs** ([thesoftwarelabs.pages.dev](https://thesoftwarelabs.pages.dev)) and **Satyam Jain**.
+
+---
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

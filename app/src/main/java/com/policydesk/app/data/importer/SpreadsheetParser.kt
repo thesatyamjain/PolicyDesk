@@ -311,9 +311,6 @@ object SpreadsheetParser {
             return days * 86400000L
         }
 
-        // 2. Strip trailing time if present (e.g. "28/11/2026 23:59:59" or "2026-11-28T00:00:00")
-        val datePart = clean.split(Regex("[\\sT]"))[0].trim()
-
         val patterns = listOf(
             "dd/MM/yyyy", "d/M/yyyy", "dd-MM-yyyy", "d-M-yyyy",
             "yyyy-MM-dd", "dd.MM.yyyy", "yyyy/MM/dd",
@@ -323,21 +320,37 @@ object SpreadsheetParser {
             "MM/dd/yyyy", "M/d/yyyy"
         )
 
-        for (pattern in patterns) {
-            try {
-                val formatter = DateTimeFormatter.ofPattern(pattern, java.util.Locale.ENGLISH)
-                val date = LocalDate.parse(datePart, formatter)
-                return date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
-            } catch (_: Exception) {}
+        fun tryParseDateString(str: String): Long? {
+            val trimmed = str.trim()
+            for (pattern in patterns) {
+                try {
+                    val formatter = DateTimeFormatter.ofPattern(pattern, java.util.Locale.ENGLISH)
+                    val date = LocalDate.parse(trimmed, formatter)
+                    return date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+                } catch (_: Exception) {}
+            }
+            return null
         }
 
-        for (pattern in patterns) {
-            try {
-                val formatter = DateTimeFormatter.ofPattern(pattern, java.util.Locale.ENGLISH)
-                val date = LocalDate.parse(clean, formatter)
-                return date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
-            } catch (_: Exception) {}
+        // 2. Direct match of clean string
+        tryParseDateString(clean)?.let { return it }
+
+        // 3. Regex search for embedded dates (e.g. "to midnight of 16/10/2027>>", "17/10/2026 to 16/10/2027")
+        val sanitized = clean.replace(Regex("""[><()\"'\[\]]"""), " ")
+        val dateRegex = Regex("""\b(\d{1,2}[-/. ](?:\d{1,2}|[A-Za-z]{3,9})[-/. ]\d{2,4})\b|\b(\d{4}[-/. ]\d{1,2}[-/. ]\d{1,2})\b""")
+        val matches = dateRegex.findAll(sanitized).map { it.value.trim() }.toList()
+
+        if (matches.isNotEmpty()) {
+            val validEpochs = matches.mapNotNull { tryParseDateString(it) }
+            if (validEpochs.isNotEmpty()) {
+                // In insurance, if start & expiry dates are both present in period string, expiry is the later date!
+                return validEpochs.maxOrNull()
+            }
         }
+
+        // 4. Fallback: split on whitespace/T (e.g. "28/11/2026 23:59:59")
+        val firstToken = clean.split(Regex("[\\sT]"))[0].trim().trimEnd('>', '<', '.', ',', ')')
+        tryParseDateString(firstToken)?.let { return it }
 
         return null
     }

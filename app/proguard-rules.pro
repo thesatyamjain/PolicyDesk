@@ -36,6 +36,8 @@
 -keep class com.policydesk.app.data.ai.ExtractedPolicyData { *; }
 -keep class com.policydesk.app.data.security.** { *; }
 -keep class com.policydesk.app.data.drive.** { *; }
+-keep class com.policydesk.app.data.profile.** { *; }
+-keep class com.policydesk.app.notification.** { *; }
 
 # Google Play Services Auth & Drive API
 -keep class com.google.android.gms.auth.** { *; }

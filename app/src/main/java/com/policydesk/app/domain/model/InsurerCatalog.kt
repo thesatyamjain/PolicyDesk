@@ -74,27 +74,27 @@ object InsurerCatalog {
                 return Pair(Sector.PSU, "United India Insurance")
         }
 
-        // 2. Direct Private matches and common brand handles
+        // 2. Direct Private matches and common brand handles / IRDAI acronyms
         when {
             clean.contains("acko") ->
                 return Pair(Sector.PRIVATE, "Acko General Insurance")
-            clean.contains("bajaj") || clean.contains("allianz") ->
+            clean.contains("bajaj") || clean.contains("allianz") || clean == "bagic" ->
                 return Pair(Sector.PRIVATE, "Bajaj Allianz General Insurance")
-            clean.contains("chola") || clean.contains("cholamandalam") ->
+            clean.contains("chola") || clean.contains("cholamandalam") || clean == "cholams" ->
                 return Pair(Sector.PRIVATE, "Cholamandalam MS General Insurance")
-            clean.contains("future") || clean.contains("generali") ->
+            clean.contains("future") || clean.contains("generali") || clean == "fgii" || clean == "fgic" ->
                 return Pair(Sector.PRIVATE, "Future Generali India Insurance")
-            clean.contains("digit") ->
+            clean.contains("digit") || clean == "godigit" ->
                 return Pair(Sector.PRIVATE, "Go Digit General Insurance")
             clean.contains("hdfc") || clean.contains("ergo") ->
                 return Pair(Sector.PRIVATE, "HDFC ERGO General Insurance")
-            clean.contains("icici") || clean.contains("lombard") || clean.contains("bharti axa") ->
+            clean.contains("icici") || clean.contains("lombard") || clean == "ilgic" || clean.contains("bharti axa") || clean.contains("bhartiaxa") ->
                 return Pair(Sector.PRIVATE, "ICICI Lombard General Insurance")
-            clean.contains("iffco") || clean.contains("tokio") ->
+            clean.contains("iffco") || clean.contains("tokio") || clean == "itgi" ->
                 return Pair(Sector.PRIVATE, "IFFCO Tokio General Insurance")
             clean.contains("indusind") ->
                 return Pair(Sector.PRIVATE, "IndusInd General Insurance")
-            clean.contains("zurich") ->
+            clean.contains("zurich") || clean.contains("zurich kotak") || clean.contains("zurichkotak") ->
                 return Pair(Sector.PRIVATE, "Zurich Kotak General Insurance")
             clean.contains("kotak") ->
                 return Pair(Sector.PRIVATE, "Kotak Mahindra General Insurance")
@@ -108,17 +108,17 @@ object InsurerCatalog {
                 return Pair(Sector.PRIVATE, "Navi General Insurance")
             clean.contains("raheja") || clean.contains("qbe") ->
                 return Pair(Sector.PRIVATE, "Raheja QBE General Insurance")
-            clean.contains("reliance") ->
+            clean.contains("reliance") || clean == "rgic" || clean == "rgicl" ->
                 return Pair(Sector.PRIVATE, "Reliance General Insurance")
-            clean.contains("sundaram") || clean.contains("royal") ->
+            clean.contains("sundaram") || clean.contains("royal") || clean == "rsgi" ->
                 return Pair(Sector.PRIVATE, "Royal Sundaram General Insurance")
-            clean.contains("sbi") ->
+            clean.contains("sbi") || clean == "sbig" || clean == "sbigic" ->
                 return Pair(Sector.PRIVATE, "SBI General Insurance")
-            clean.contains("shriram") ->
+            clean.contains("shriram") || clean == "sgic" || clean == "sgicl" ->
                 return Pair(Sector.PRIVATE, "Shriram General Insurance")
-            clean.contains("tata") || clean.contains("aig") ->
+            clean.contains("tata") || clean.contains("aig") || clean == "tagic" ->
                 return Pair(Sector.PRIVATE, "Tata AIG General Insurance")
-            clean.contains("sompo") || clean.contains("universal") ->
+            clean.contains("sompo") || clean.contains("universal") || clean == "usgic" || clean == "usgicl" ->
                 return Pair(Sector.PRIVATE, "Universal Sompo General Insurance")
             clean.contains("zuno") || clean.contains("edelweiss") ->
                 return Pair(Sector.PRIVATE, "Zuno General Insurance")

@@ -18,6 +18,7 @@ data class YearMonthSelection(
     val month: Int = LocalDate.now().monthValue
 )
 
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class MonthViewModel @Inject constructor(
     private val repository: VehicleRepository

@@ -32,6 +32,8 @@ import com.policydesk.app.ui.addpolicy.AddPolicyScreen
 import com.policydesk.app.ui.components.DockTab
 import com.policydesk.app.ui.components.LiquidGlassDock
 import com.policydesk.app.ui.components.LocalHazeState
+import com.policydesk.app.ui.components.LocalScrollToTopDispatcher
+import com.policydesk.app.ui.components.LocalScrollToTopTrigger
 import com.policydesk.app.ui.customers.CustomersScreen
 import com.policydesk.app.ui.dashboard.DashboardScreen
 import com.policydesk.app.ui.detail.VehicleDetailScreen
@@ -48,7 +50,9 @@ sealed class Screen(val route: String) {
     object Dashboard : Screen("dashboard")
     object MonthView : Screen("month_view")
     object Reports : Screen("reports")
-    object AddPolicy : Screen("add_policy")
+    object AddPolicy : Screen("add_policy?editRegNo={editRegNo}") {
+        fun createRoute(editRegNo: String? = null) = if (editRegNo != null) "add_policy?editRegNo=$editRegNo" else "add_policy"
+    }
     object ImportSpreadsheet : Screen("import_spreadsheet")
     object PdfReview : Screen("pdf_review")
     object Settings : Screen("settings")
@@ -87,8 +91,14 @@ fun PolicyDeskNavHost(
     val isTopLevelTab = currentTab != null
     val hazeState = remember { HazeState() }
     var isSelectionActive by remember { mutableStateOf(false) }
+    var scrollToTopTrigger by remember { mutableStateOf(0L) }
+    val onScrollToTop = remember { { scrollToTopTrigger = System.currentTimeMillis() } }
 
-    CompositionLocalProvider(LocalHazeState provides hazeState) {
+    CompositionLocalProvider(
+        LocalHazeState provides hazeState,
+        LocalScrollToTopTrigger provides scrollToTopTrigger,
+        LocalScrollToTopDispatcher provides onScrollToTop
+    ) {
         Box(modifier = Modifier.fillMaxSize()) {
             NavHost(
                 navController = navController,
@@ -175,7 +185,7 @@ fun PolicyDeskNavHost(
 
             composable(Screen.Customers.route) {
                 CustomersScreen(
-                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateBack = null,
                     onNavigateToVehicleDetail = { regNo ->
                         navController.navigate(Screen.VehicleDetail.createRoute(regNo))
                     }
@@ -184,7 +194,7 @@ fun PolicyDeskNavHost(
 
             composable(Screen.MonthView.route) {
                 MonthViewScreen(
-                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateBack = null,
                     onNavigateToVehicleDetail = { regNo ->
                         navController.navigate(Screen.VehicleDetail.createRoute(regNo))
                     }
@@ -193,7 +203,7 @@ fun PolicyDeskNavHost(
 
             composable(Screen.Reports.route) {
                 ReportsScreen(
-                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateBack = null,
                     onNavigateToVehicleDetail = { regNo ->
                         navController.navigate(Screen.VehicleDetail.createRoute(regNo))
                     },
@@ -203,8 +213,19 @@ fun PolicyDeskNavHost(
                 )
             }
 
-            composable(Screen.AddPolicy.route) {
+            composable(
+                route = Screen.AddPolicy.route,
+                arguments = listOf(
+                    navArgument("editRegNo") {
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    }
+                )
+            ) { backStackEntry ->
+                val editRegNo = backStackEntry.arguments?.getString("editRegNo")
                 AddPolicyScreen(
+                    editRegNo = editRegNo,
                     onNavigateBack = { navController.popBackStack() },
                     onNavigateToVehicleDetail = { regNo ->
                         navController.navigate(Screen.VehicleDetail.createRoute(regNo)) {
@@ -252,6 +273,9 @@ fun PolicyDeskNavHost(
                     onNavigateBack = { navController.popBackStack() },
                     onNavigateToRenew = { regNo ->
                         navController.navigate(Screen.RenewPolicy.createRoute(regNo))
+                    },
+                    onNavigateToEdit = { regNo ->
+                        navController.navigate(Screen.AddPolicy.createRoute(regNo))
                     }
                 )
             }
@@ -271,7 +295,7 @@ fun PolicyDeskNavHost(
 
         // True Persistent Floating Liquid Glass Dock (Suspended over content, active across all primary tabs)
         AnimatedVisibility(
-            visible = isTopLevelTab && currentTab != null && !isSelectionActive,
+            visible = isTopLevelTab && !isSelectionActive,
             enter = slideInVertically(
                 initialOffsetY = { it },
                 animationSpec = spring(dampingRatio = 0.82f, stiffness = 400f)
@@ -303,6 +327,7 @@ fun PolicyDeskNavHost(
                             }
                         }
                     },
+                    onScrollToTop = onScrollToTop,
                     hazeState = hazeState
                 )
             }

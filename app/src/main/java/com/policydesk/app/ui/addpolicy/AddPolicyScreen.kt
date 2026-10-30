@@ -98,6 +98,7 @@ import com.policydesk.app.ui.theme.StatusOverdueRedBg
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddPolicyScreen(
+    editRegNo: String? = null,
     onNavigateBack: () -> Unit,
     onNavigateToVehicleDetail: (String) -> Unit,
     viewModel: AddPolicyViewModel = hiltViewModel()
@@ -109,11 +110,18 @@ fun AddPolicyScreen(
 
     var showDatePicker by remember { mutableStateOf(false) }
 
+    LaunchedEffect(editRegNo) {
+        if (!editRegNo.isNullOrBlank()) {
+            viewModel.loadForEditing(editRegNo)
+        }
+    }
+
     LaunchedEffect(Unit) {
         viewModel.uiEvent.collect { event ->
             when (event) {
                 is AddPolicyUiEvent.SaveSuccess -> {
-                    Toast.makeText(context, "Policy saved successfully", Toast.LENGTH_SHORT).show()
+                    val msg = if (state.isEditMode) "Record updated successfully" else "Policy saved successfully"
+                    Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
                     if (!event.addAnother) {
                         onNavigateToVehicleDetail(event.regNo)
                     }
@@ -185,7 +193,8 @@ fun AddPolicyScreen(
     Scaffold(
         topBar = {
             com.policydesk.app.ui.components.LiquidGlassTopBar(
-                title = "Add New Policy",
+                title = if (state.isEditMode) "Edit Record" else "Add New Policy",
+                subtitle = if (state.isEditMode) "Modify Vehicle, Policy & Customer Details" else "Manual Entry or Scan",
                 onNavigateBack = onNavigateBack
             )
         },
@@ -525,21 +534,23 @@ fun AddPolicyScreen(
 
             // Action Buttons
             AppleButton(
-                text = if (state.isSaving) "Saving..." else "Save Policy",
+                text = if (state.isSaving) "Saving..." else if (state.isEditMode) "Save Changes" else "Save Policy",
                 onClick = { viewModel.savePolicy(addAnother = false) },
                 enabled = !state.isSaving,
                 isLoading = state.isSaving,
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(10.dp))
+            if (!state.isEditMode) {
+                Spacer(modifier = Modifier.height(10.dp))
 
-            AppleSecondaryButton(
-                text = "Save and Add Another",
-                onClick = { viewModel.savePolicy(addAnother = true) },
-                enabled = !state.isSaving,
-                modifier = Modifier.fillMaxWidth()
-            )
+                AppleSecondaryButton(
+                    text = "Save and Add Another",
+                    onClick = { viewModel.savePolicy(addAnother = true) },
+                    enabled = !state.isSaving,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
 
             Spacer(modifier = Modifier.height(24.dp))
         }

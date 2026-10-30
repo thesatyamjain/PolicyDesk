@@ -67,7 +67,17 @@ data class AddPolicyFormState(
     val pendingSectorChange: Sector? = null,
     val hasAttemptedSave: Boolean = false,
 
-    val isSaving: Boolean = false
+    val isSaving: Boolean = false,
+
+    // Edit Mode State
+    val isEditMode: Boolean = false,
+    val originalRegNo: String? = null,
+    val existingPolicyId: String? = null,
+    val existingCreatedAt: Long? = null,
+    val existingIsClosed: Boolean = false,
+    val existingCloseReason: String? = null,
+    val existingStartDate: Long? = null,
+    val existingAttachmentId: String? = null
 ) {
     val isFormValid: Boolean
         get() {
@@ -249,10 +259,61 @@ class AddPolicyViewModel @Inject constructor(
         }
     }
 
+    fun loadForEditing(regNo: String) {
+        val normalized = RegistrationNormalizer.normalize(regNo)
+        viewModelScope.launch {
+            val vwp = repository.getVehicleWithPoliciesDirect(normalized) ?: return@launch
+            val v = vwp.vehicle
+            val p = vwp.currentPolicy
+            val c = v.customer
+
+            val matched = p?.insurer?.let { InsurerCatalog.matchInsurer(it) }
+            val sector = p?.companySector ?: matched?.first
+            val canonicalInsurer = matched?.second ?: p?.insurer ?: ""
+            val isKnownInsurer = sector != null && (canonicalInsurer in InsurerCatalog.getInsurersForSector(sector))
+
+            _formState.update {
+                it.copy(
+                    isEditMode = true,
+                    originalRegNo = normalized,
+                    existingPolicyId = p?.id,
+                    existingCreatedAt = v.createdAt,
+                    existingIsClosed = v.isClosed,
+                    existingCloseReason = v.closeReason,
+                    existingStartDate = p?.startDate,
+                    existingAttachmentId = p?.attachmentId,
+                    regNo = RegistrationNormalizer.formatForDisplay(v.regNo),
+                    makeModel = v.makeModel ?: "",
+                    vin = v.vin ?: "",
+                    engineNo = v.engineNo ?: "",
+                    notes = v.notes ?: "",
+                    title = c.title ?: "",
+                    name = c.name,
+                    mobile = c.mobile,
+                    email = c.email ?: "",
+                    address = c.address,
+                    sector = sector,
+                    insurer = if (isKnownInsurer) canonicalInsurer else if (canonicalInsurer.isNotBlank()) "Other" else "",
+                    otherInsurerName = if (!isKnownInsurer && canonicalInsurer.isNotBlank()) canonicalInsurer else "",
+                    policyNumber = p?.policyNumber ?: "",
+                    expiryDateEpochMs = p?.expiryDate,
+                    totalPremium = p?.totalPremium?.let { prem ->
+                        if (prem % 1.0 == 0.0) prem.toLong().toString() else prem.toString()
+                    } ?: ""
+                )
+            }
+        }
+    }
+
     fun onRegNoBlur() {
         val normalized = RegistrationNormalizer.normalize(_formState.value.regNo)
         _formState.update { it.copy(regNo = normalized) }
         if (normalized.isEmpty()) return
+
+        // If in edit mode and the registration has not changed from original, don't show duplicate dialog
+        if (_formState.value.isEditMode && normalized.equals(_formState.value.originalRegNo, ignoreCase = true)) {
+            return
+        }
 
         viewModelScope.launch {
             val exists = repository.exists(normalized)
@@ -344,26 +405,37 @@ class AddPolicyViewModel @Inject constructor(
                 makeModel = state.makeModel.trim().ifBlank { null },
                 vin = state.vin.trim().ifBlank { null },
                 engineNo = state.engineNo.trim().ifBlank { null },
-                notes = state.notes.trim().ifBlank { null }
+                notes = state.notes.trim().ifBlank { null },
+                createdAt = state.existingCreatedAt ?: System.currentTimeMillis(),
+                isClosed = state.existingIsClosed,
+                closeReason = state.existingCloseReason
             )
 
             val policy = Policy(
+                id = state.existingPolicyId ?: java.util.UUID.randomUUID().toString(),
                 vehicleRegNo = normalizedReg,
                 companySector = state.sector!!,
                 insurer = finalInsurer,
                 policyNumber = state.policyNumber.trim(),
                 expiryDate = state.expiryDateEpochMs!!,
+                startDate = state.existingStartDate,
                 totalPremium = state.totalPremium.toDoubleOrNull() ?: 0.0,
                 source = PolicySource.FORM,
+                attachmentId = state.existingAttachmentId,
                 saleType = SaleType.NEW_BUSINESS,
                 countsAsSale = true
             )
+
+            // If in edit mode and the registration changed, remove the old record
+            if (state.isEditMode && state.originalRegNo != null && state.originalRegNo != normalizedReg) {
+                repository.softDeleteVehicle(state.originalRegNo)
+            }
 
             repository.saveVehicleAndPolicy(vehicle, policy)
 
             _formState.update { it.copy(isSaving = false) }
 
-            if (addAnother) {
+            if (addAnother && !state.isEditMode) {
                 // Reset form for next entry
                 _formState.value = AddPolicyFormState()
                 _uiEvent.emit(AddPolicyUiEvent.SaveSuccess(normalizedReg, addAnother = true))

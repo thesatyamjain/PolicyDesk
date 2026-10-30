@@ -22,6 +22,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import com.policydesk.app.ui.components.BindBackToTop
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -73,7 +75,7 @@ import com.policydesk.app.ui.theme.IosLabelTertiary
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CustomersScreen(
-    onNavigateBack: () -> Unit,
+    onNavigateBack: (() -> Unit)? = null,
     onNavigateToVehicleDetail: (String) -> Unit,
     viewModel: CustomersViewModel = hiltViewModel()
 ) {
@@ -200,12 +202,19 @@ fun CustomersScreen(
                     }
                 }
             } else {
+                val listState = rememberLazyListState()
+                BindBackToTop(listState)
                 LazyColumn(
+                    state = listState,
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 120.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(uiState.customers, key = { it.mobile }) { customer ->
+                    items(
+                        items = uiState.customers,
+                        key = { it.mobile },
+                        contentType = { "customer_card" }
+                    ) { customer ->
                         CustomerCard(
                             customer = customer,
                             onNavigateToVehicle = onNavigateToVehicleDetail,
@@ -216,7 +225,16 @@ fun CustomersScreen(
                             onWhatsApp = {
                                 val clean = customer.mobile.filter { it.isDigit() }
                                 val formatted = if (clean.length == 10) "91$clean" else clean
-                                val url = "https://api.whatsapp.com/send?phone=$formatted&text=Hello%20${Uri.encode(customer.name)}"
+                                val firstVeh = customer.vehicles.firstOrNull()
+                                val firstPol = firstVeh?.currentPolicy
+                                val msg = com.policydesk.app.data.profile.AdvisorProfileManager.formatRenewalMessage(
+                                    context = context,
+                                    customerName = customer.name,
+                                    regNo = firstVeh?.vehicle?.regNo ?: "",
+                                    insurer = firstPol?.insurer ?: "",
+                                    expiryDate = firstPol?.expiryDate?.let { com.policydesk.app.ui.components.UiFormatters.formatDate(it) } ?: ""
+                                )
+                                val url = "https://api.whatsapp.com/send?phone=$formatted&text=${Uri.encode(msg)}"
                                 context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
                             }
                         )
@@ -379,7 +397,7 @@ fun CustomerCard(
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
-                            imageVector = AppleIcons.Message,
+                            imageVector = AppleIcons.WhatsApp,
                             contentDescription = null,
                             tint = if (isDark) AppleDarkSystemGreen else AppleSystemGreen,
                             modifier = Modifier.size(13.dp)

@@ -29,6 +29,7 @@ enum class OverdueFilter(val label: String) {
     OVER_90("> 90 Days")
 }
 
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class ReportsViewModel @Inject constructor(
     private val repository: VehicleRepository

@@ -65,13 +65,12 @@ data class PdfReviewUiState(
             val validReg = RegistrationNormalizer.normalize(regNo).isNotBlank()
             val validName = FieldValidators.isValidName(customerName)
             val validMobile = FieldValidators.isValidMobile(mobile)
-            val validAddress = address.isNotBlank()
             val validSector = sector != null
             val validInsurer = insurer.isNotBlank()
             val validPolicyNo = FieldValidators.isValidPolicyNumber(policyNumber)
             val validExpiry = SpreadsheetParser.parseDateToEpochMs(expiryDate) != null
             val validPremium = totalPremium.toDoubleOrNull()?.let { it > 0 } ?: false
-            return validReg && validName && validMobile && validAddress && validSector &&
+            return validReg && validName && validMobile && validSector &&
                     validInsurer && validPolicyNo && validExpiry && validPremium
         }
 }
@@ -211,6 +210,12 @@ class PdfReviewViewModel @Inject constructor(
 
     fun dismissPasswordDialog() {
         _uiState.update { it.copy(isPasswordProtected = false) }
+    }
+
+    fun retryCurrentPdf() {
+        val uri = _uiState.value.pdfUri ?: return
+        val password = _uiState.value.passwordInput.ifBlank { null }
+        loadPdf(uri, password)
     }
 
     fun onFieldChanged(fieldKey: String, value: String) {

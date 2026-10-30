@@ -271,6 +271,14 @@ fun PdfReviewScreen(
                 Spacer(modifier = Modifier.height(24.dp))
 
                 AppleButton(
+                    text = "Retry Extraction",
+                    onClick = viewModel::retryCurrentPdf,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                AppleSecondaryButton(
                     text = "Try Another PDF",
                     onClick = { pdfPickerLauncher.launch(arrayOf("application/pdf")) },
                     modifier = Modifier.fillMaxWidth()

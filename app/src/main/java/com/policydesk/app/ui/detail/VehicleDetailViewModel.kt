@@ -21,6 +21,7 @@ import javax.inject.Inject
 
 sealed interface DetailUiEvent {
     object VehicleClosed : DetailUiEvent
+    object VehicleDeleted : DetailUiEvent
     data class ShowToast(val message: String) : DetailUiEvent
 }
 
@@ -46,6 +47,13 @@ class VehicleDetailViewModel @Inject constructor(
         viewModelScope.launch {
             repository.closeVehicle(regNo, reason)
             _uiEvent.emit(DetailUiEvent.VehicleClosed)
+        }
+    }
+
+    fun deleteVehicle() {
+        viewModelScope.launch {
+            repository.softDeleteVehicle(regNo)
+            _uiEvent.emit(DetailUiEvent.VehicleDeleted)
         }
     }
 

@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import com.policydesk.app.ui.components.BindBackToTop
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -50,6 +52,7 @@ import com.policydesk.app.ui.components.LiquidGlassSegmentedControl
 import com.policydesk.app.ui.components.LiquidGlassTopBar
 import com.policydesk.app.ui.components.UiFormatters
 import com.policydesk.app.ui.dashboard.VehicleExpiryCard
+import com.policydesk.app.ui.theme.AppleDarkSystemBlue
 import com.policydesk.app.ui.theme.AppleSystemBlue
 import com.policydesk.app.ui.theme.AppleSystemGreen
 import com.policydesk.app.ui.theme.AppleSystemRed
@@ -73,7 +76,7 @@ enum class MonthDisplayMode(val label: String) {
 
 @Composable
 fun MonthViewScreen(
-    onNavigateBack: () -> Unit,
+    onNavigateBack: (() -> Unit)? = null,
     onNavigateToVehicleDetail: (String) -> Unit,
     viewModel: MonthViewModel = hiltViewModel()
 ) {
@@ -82,19 +85,26 @@ fun MonthViewScreen(
 
     var displayMode by remember { mutableStateOf(MonthDisplayMode.TIMELINE) }
     var selectedCalendarDay by remember { mutableStateOf<Int?>(null) }
+    val isDark = isSystemInDarkTheme()
+    val actionTint = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
 
     Scaffold(
         topBar = {
             LiquidGlassTopBar(
                 title = "Month Timeline",
+                subtitle = "Renewal & Expiry Schedule",
                 onNavigateBack = onNavigateBack,
                 actions = {
-                    TextButton(onClick = viewModel::onToday) {
+                    TextButton(
+                        onClick = viewModel::onToday,
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                        modifier = Modifier.height(34.dp)
+                    ) {
                         Text(
                             text = "Today",
-                            fontWeight = FontWeight.Bold,
-                            color = AppleSystemBlue,
-                            fontSize = 15.sp
+                            fontWeight = FontWeight.SemiBold,
+                            color = actionTint,
+                            fontSize = 14.sp
                         )
                     }
                 }
@@ -350,12 +360,19 @@ fun CalendarGridView(
             if (list.isEmpty()) {
                 Text("No policies expiring on this date.", fontSize = 13.sp, color = labelSecondary)
             } else {
+                val listState = rememberLazyListState()
+                BindBackToTop(listState)
                 LazyColumn(
+                    state = listState,
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     contentPadding = PaddingValues(bottom = 120.dp)
                 ) {
-                    items(list, key = { it.vehicle.regNo }) { vehicle ->
+                    items(
+                        items = list,
+                        key = { it.vehicle.regNo },
+                        contentType = { "month_vehicle_item" }
+                    ) { vehicle ->
                         VehicleExpiryCard(
                             item = vehicle,
                             onClick = { onNavigateToVehicleDetail(vehicle.vehicle.regNo) }
@@ -400,7 +417,10 @@ fun TimelineListView(
             }
         }
     } else {
+        val listState = rememberLazyListState()
+        BindBackToTop(listState)
         LazyColumn(
+            state = listState,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 120.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
@@ -419,7 +439,11 @@ fun TimelineListView(
                     }
                 }
 
-                items(vehicles, key = { it.vehicle.regNo }) { vehicle ->
+                items(
+                    items = vehicles,
+                    key = { it.vehicle.regNo },
+                    contentType = { "month_vehicle_item" }
+                ) { vehicle ->
                     VehicleExpiryCard(
                         item = vehicle,
                         onClick = { onNavigateToVehicleDetail(vehicle.vehicle.regNo) }

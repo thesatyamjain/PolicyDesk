@@ -1,6 +1,7 @@
 package com.policydesk.app.ui.theme
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.PathBuilder
@@ -13,7 +14,11 @@ import androidx.compose.ui.unit.dp
  */
 object AppleIcons {
 
-    private fun buildIcon(name: String, block: PathBuilder.() -> Unit): ImageVector {
+    private fun buildIcon(
+        name: String,
+        pathFillType: PathFillType = PathFillType.NonZero,
+        block: PathBuilder.() -> Unit
+    ): ImageVector {
         return ImageVector.Builder(
             name = name,
             defaultWidth = 24.dp,
@@ -22,6 +27,7 @@ object AppleIcons {
             viewportHeight = 24f
         ).path(
             fill = SolidColor(Color.White),
+            pathFillType = pathFillType,
             pathBuilder = block
         ).build()
     }
@@ -197,65 +203,57 @@ object AppleIcons {
         }
     }
 
-    /** SF Symbol: gearshape.fill (Apple smooth curved settings gear) */
+    /** SF Symbol: gearshape.fill / System settings gear with precision center hole */
     val GearShape: ImageVector by lazy {
-        buildIcon("AppleGearShape") {
+        buildIcon("AppleGearShape", pathFillType = PathFillType.EvenOdd) {
+            // Central hole cutout (center 12, 12, radius 3.5)
             moveTo(12f, 8.5f)
-            curveTo(10.1f, 8.5f, 8.5f, 10.1f, 8.5f, 12f)
-            curveTo(8.5f, 13.9f, 10.1f, 15.5f, 12f, 15.5f)
-            curveTo(13.9f, 15.5f, 15.5f, 13.9f, 15.5f, 12f)
-            curveTo(15.5f, 10.1f, 13.9f, 8.5f, 12f, 8.5f)
+            curveTo(13.93f, 8.5f, 15.5f, 10.07f, 15.5f, 12f)
+            curveTo(15.5f, 13.93f, 13.93f, 15.5f, 12f, 15.5f)
+            curveTo(10.07f, 15.5f, 8.5f, 13.93f, 8.5f, 12f)
+            curveTo(8.5f, 10.07f, 10.07f, 8.5f, 12f, 8.5f)
             close()
 
-            moveTo(19.8f, 10.7f)
-            lineTo(18.6f, 10.5f)
-            curveTo(18.4f, 9.8f, 18f, 9.2f, 17.6f, 8.6f)
-            lineTo(18.3f, 7.6f)
-            curveTo(18.6f, 7.2f, 18.5f, 6.6f, 18.1f, 6.3f)
-            lineTo(16.7f, 4.9f)
-            curveTo(16.3f, 4.5f, 15.8f, 4.5f, 15.4f, 4.8f)
-            lineTo(14.4f, 5.5f)
-            curveTo(13.8f, 5.1f, 13.2f, 4.8f, 12.5f, 4.6f)
-            lineTo(12.3f, 3.3f)
-            curveTo(12.2f, 2.8f, 11.7f, 2.4f, 11.2f, 2.4f)
-            lineTo(9.8f, 2.4f)
-            curveTo(9.3f, 2.4f, 8.8f, 2.8f, 8.7f, 3.3f)
-            lineTo(8.5f, 4.6f)
-            curveTo(7.8f, 4.8f, 7.2f, 5.1f, 6.6f, 5.5f)
-            lineTo(5.6f, 4.8f)
-            curveTo(5.2f, 4.5f, 4.7f, 4.5f, 4.3f, 4.9f)
-            lineTo(2.9f, 6.3f)
-            curveTo(2.5f, 6.6f, 2.4f, 7.2f, 2.7f, 7.6f)
-            lineTo(3.4f, 8.6f)
-            curveTo(3f, 9.2f, 2.6f, 9.8f, 2.4f, 10.5f)
-            lineTo(1.2f, 10.7f)
-            curveTo(0.7f, 10.8f, 0.3f, 11.2f, 0.3f, 11.8f)
-            lineTo(0.3f, 13.2f)
-            curveTo(0.3f, 13.8f, 0.7f, 14.2f, 1.2f, 14.3f)
-            lineTo(2.4f, 14.5f)
-            curveTo(2.6f, 15.2f, 3f, 15.8f, 3.4f, 16.4f)
-            lineTo(2.7f, 17.4f)
-            curveTo(2.4f, 17.8f, 2.5f, 18.4f, 2.9f, 18.7f)
-            lineTo(4.3f, 20.1f)
-            curveTo(4.7f, 20.5f, 5.2f, 20.5f, 5.6f, 20.2f)
-            lineTo(6.6f, 19.5f)
-            curveTo(7.2f, 19.9f, 7.8f, 20.2f, 8.5f, 20.4f)
-            lineTo(8.7f, 21.7f)
-            curveTo(8.8f, 22.2f, 9.3f, 22.6f, 9.8f, 22.6f)
-            lineTo(11.2f, 22.6f)
-            curveTo(11.7f, 22.6f, 12.2f, 22.2f, 12.3f, 21.7f)
-            lineTo(12.5f, 20.4f)
-            curveTo(13.2f, 20.2f, 13.8f, 19.9f, 14.4f, 19.5f)
-            lineTo(15.4f, 20.2f)
-            curveTo(15.8f, 20.5f, 16.3f, 20.5f, 16.7f, 20.1f)
-            lineTo(18.1f, 18.7f)
-            curveTo(18.5f, 18.4f, 18.6f, 17.8f, 18.3f, 17.4f)
-            lineTo(17.6f, 16.4f)
-            curveTo(18f, 15.8f, 18.4f, 15.2f, 18.6f, 14.5f)
-            lineTo(19.8f, 14.3f)
-            curveTo(20.3f, 14.2f, 20.7f, 13.8f, 20.7f, 13.2f)
-            lineTo(20.7f, 11.8f)
-            curveTo(20.7f, 11.2f, 20.3f, 10.8f, 19.8f, 10.7f)
+            // Symmetrical gear teeth centered at (12, 12)
+            moveTo(19.14f, 12.94f)
+            curveTo(19.18f, 12.64f, 19.2f, 12.33f, 19.2f, 12f)
+            curveTo(19.2f, 11.68f, 19.18f, 11.36f, 19.13f, 11.06f)
+            lineTo(21.16f, 9.48f)
+            curveTo(21.34f, 9.34f, 21.39f, 9.07f, 21.28f, 8.87f)
+            lineTo(19.36f, 5.55f)
+            curveTo(19.24f, 5.33f, 18.99f, 5.26f, 18.77f, 5.33f)
+            lineTo(16.38f, 6.29f)
+            curveTo(15.88f, 5.91f, 15.35f, 5.59f, 14.76f, 5.35f)
+            lineTo(14.4f, 2.81f)
+            curveTo(14.36f, 2.57f, 14.16f, 2.4f, 13.92f, 2.4f)
+            lineTo(10.08f, 2.4f)
+            curveTo(9.84f, 2.4f, 9.65f, 2.57f, 9.61f, 2.81f)
+            lineTo(9.25f, 5.35f)
+            curveTo(8.66f, 5.59f, 8.12f, 5.92f, 7.63f, 6.29f)
+            lineTo(5.24f, 5.33f)
+            curveTo(5.02f, 5.25f, 4.77f, 5.33f, 4.65f, 5.55f)
+            lineTo(2.73f, 8.87f)
+            curveTo(2.61f, 9.08f, 2.65f, 9.34f, 2.85f, 9.48f)
+            lineTo(4.88f, 11.06f)
+            curveTo(4.83f, 11.36f, 4.79f, 11.69f, 4.79f, 12f)
+            curveTo(4.79f, 12.32f, 4.81f, 12.64f, 4.86f, 12.94f)
+            lineTo(2.83f, 14.52f)
+            curveTo(2.65f, 14.66f, 2.6f, 14.93f, 2.71f, 15.13f)
+            lineTo(4.63f, 18.45f)
+            curveTo(4.75f, 18.67f, 5f, 18.74f, 5.22f, 18.67f)
+            lineTo(7.61f, 17.71f)
+            curveTo(8.11f, 18.09f, 8.64f, 18.41f, 9.23f, 18.65f)
+            lineTo(9.59f, 21.19f)
+            curveTo(9.64f, 21.43f, 9.83f, 21.6f, 10.08f, 21.6f)
+            lineTo(13.92f, 21.6f)
+            curveTo(14.16f, 21.6f, 14.36f, 21.43f, 14.39f, 21.19f)
+            lineTo(14.75f, 18.65f)
+            curveTo(15.34f, 18.41f, 15.88f, 18.08f, 16.37f, 17.71f)
+            lineTo(18.76f, 18.67f)
+            curveTo(18.98f, 18.75f, 19.23f, 18.67f, 19.35f, 18.45f)
+            lineTo(21.27f, 15.13f)
+            curveTo(21.39f, 14.91f, 21.34f, 14.66f, 21.15f, 14.52f)
+            lineTo(19.14f, 12.94f)
             close()
         }
     }
@@ -533,6 +531,49 @@ object AppleIcons {
             curveTo(9.7f, 20.9f, 10.8f, 21.1f, 12f, 21.1f)
             curveTo(17.2f, 21.1f, 21.5f, 17.3f, 21.5f, 12f)
             curveTo(21.5f, 7.3f, 17.2f, 3.5f, 12f, 3.5f)
+            close()
+        }
+    }
+
+    /** WhatsApp brand icon (Speech bubble with phone receiver cutout) */
+    val WhatsApp: ImageVector by lazy {
+        buildIcon("AppleWhatsApp", pathFillType = PathFillType.EvenOdd) {
+            // Outer speech bubble
+            moveTo(12.04f, 2f)
+            curveTo(6.58f, 2f, 2.13f, 6.45f, 2.13f, 11.91f)
+            curveTo(2.13f, 13.66f, 2.59f, 15.36f, 3.45f, 16.86f)
+            lineTo(2.05f, 22f)
+            lineTo(7.3f, 20.62f)
+            curveTo(8.75f, 21.41f, 10.38f, 21.83f, 12.04f, 21.83f)
+            curveTo(17.5f, 21.83f, 21.95f, 17.38f, 21.95f, 11.92f)
+            curveTo(21.95f, 9.27f, 20.92f, 6.78f, 19.05f, 4.91f)
+            curveTo(17.18f, 3.03f, 14.69f, 2f, 12.04f, 2f)
+            close()
+
+            // Inner phone handset receiver cutout
+            moveTo(17.53f, 14.37f)
+            curveTo(17.23f, 14.22f, 15.75f, 13.49f, 15.48f, 13.39f)
+            curveTo(15.2f, 13.29f, 15.01f, 13.24f, 14.81f, 13.54f)
+            curveTo(14.62f, 13.84f, 14.07f, 14.48f, 13.9f, 14.68f)
+            curveTo(13.73f, 14.88f, 13.56f, 14.9f, 13.26f, 14.75f)
+            curveTo(12.96f, 14.6f, 12.01f, 14.29f, 10.88f, 13.28f)
+            curveTo(10f, 12.5f, 9.4f, 11.53f, 9.23f, 11.23f)
+            curveTo(9.06f, 10.93f, 9.21f, 10.77f, 9.36f, 10.62f)
+            curveTo(9.5f, 10.49f, 9.66f, 10.27f, 9.81f, 10.1f)
+            curveTo(9.96f, 9.93f, 10.01f, 9.81f, 10.11f, 9.61f)
+            curveTo(10.21f, 9.41f, 10.16f, 9.24f, 10.08f, 9.09f)
+            curveTo(10.01f, 8.94f, 9.41f, 7.47f, 9.17f, 6.87f)
+            curveTo(8.92f, 6.29f, 8.68f, 6.37f, 8.5f, 6.36f)
+            curveTo(8.33f, 6.35f, 8.13f, 6.35f, 7.93f, 6.35f)
+            curveTo(7.74f, 6.35f, 7.42f, 6.42f, 7.15f, 6.72f)
+            curveTo(6.88f, 7.01f, 6.12f, 7.72f, 6.12f, 9.17f)
+            curveTo(6.12f, 10.62f, 7.18f, 12.02f, 7.32f, 12.22f)
+            curveTo(7.47f, 12.41f, 9.41f, 15.41f, 12.38f, 16.69f)
+            curveTo(13.08f, 17f, 13.64f, 17.18f, 14.06f, 17.32f)
+            curveTo(14.77f, 17.54f, 15.42f, 17.51f, 15.93f, 17.43f)
+            curveTo(16.5f, 17.35f, 17.68f, 16.72f, 17.93f, 16.02f)
+            curveTo(18.17f, 15.32f, 18.17f, 14.72f, 18.1f, 14.6f)
+            curveTo(18.03f, 14.48f, 17.83f, 14.41f, 17.53f, 14.37f)
             close()
         }
     }

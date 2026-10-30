@@ -12,6 +12,10 @@ object RegistrationNormalizer {
     // Vintage / Commercial / Defense / Diplomatic / Old formats
     private val EXTENDED_PATTERN = Regex("^[A-Z0-9]{6,12}$")
 
+    // Pattern to locate registration numbers inside text or labels
+    private val EMBEDDED_STANDARD_REGEX = Regex("""\b([A-Z]{2})\s*[-_.]?\s*([0-9]{1,2})\s*[-_.]?\s*([A-Z]{0,3})\s*[-_.]?\s*([0-9]{4})\b""", RegexOption.IGNORE_CASE)
+    private val EMBEDDED_BH_REGEX = Regex("""\b([0-9]{2})\s*[-_.]?\s*BH\s*[-_.]?\s*([0-9]{4})\s*[-_.]?\s*([A-Z]{1,2})\b""", RegexOption.IGNORE_CASE)
+
     fun normalize(raw: String): String {
         val sb = StringBuilder(raw.length)
         for (i in 0 until raw.length) {
@@ -23,6 +27,32 @@ object RegistrationNormalizer {
             }
         }
         return sb.toString()
+    }
+
+    /**
+     * Extracts a clean vehicle registration number from noisy text, table headers,
+     * or labels (e.g., "पंजी. संख्या / Regn. Number: RJ14AB1234").
+     */
+    fun extractRegistrationNumber(raw: String): String {
+        val trimmed = raw.trim()
+        if (trimmed.isEmpty()) return ""
+
+        val bhMatch = EMBEDDED_BH_REGEX.find(trimmed)
+        if (bhMatch != null) {
+            return normalize(bhMatch.value)
+        }
+
+        val stdMatch = EMBEDDED_STANDARD_REGEX.find(trimmed)
+        if (stdMatch != null) {
+            return normalize(stdMatch.value)
+        }
+
+        // Strip known Hindi and English label prefixes if present
+        val labelCleaned = trimmed
+            .replace(Regex("""^(?i)(पंजीकरण\s*संख्या|पंजीकरण\s*सं\.?|पंजी\.?\s*संख्या|पंजी\s*सं\.?|वाहन\s*पंजीकरण\s*संख्या|वाहन\s*पंजी\.?\s*सं\.?|वाहन\s*संख्या|वाहन\s*नं\.?|वाहन\s*क्रमांक|गाड़ी\s*नं\.?|गाड़ी\s*नंबर|गाड़ी\s*नं\.?|गाड़ी\s*नंबर|रजिस्ट्रेशन\s*नं\.?|रजिस्ट्रेशन\s*नंबर|vehicle\s*regn?\.?\s*no\.?|vehicle\s*registration\s*no\.?|vehicle\s*number|vehicle\s*no\.?|veh\s*regn?\.?\s*no\.?|veh\s*no\.?|registration\s*no\.?|registration\s*number|regn?\.?\s*no\.?|regn?\.?\s*number|plate\s*no\.?|number\s*plate|rc\s*no\.?|rc\s*number|rto\s*reg\s*no\.?|rto\s*no\.?|car\s*no\.?|bike\s*no\.?|truck\s*no\.?|bus\s*no\.?)\s*[:/-]?\s*"""), "")
+            .trim()
+
+        return normalize(labelCleaned)
     }
 
     /**
@@ -142,6 +172,103 @@ object FieldValidators {
     private val EMAIL_REGEX = Regex("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")
 
     fun isValidName(name: String): Boolean = name.trim().length >= 2
+
+    /**
+     * Content-aware extractor for Insured/Customer Name and Salutation/Title.
+     * Separates titles (Shri, Smt, Kumari, Mr, Mrs, Ms, Dr, M/s, etc.) and strips bilingual labels.
+     */
+    fun extractCustomerNameAndTitle(rawName: String, rawTitle: String = ""): Pair<String, String> {
+        var clean = rawName.trim()
+            .replace(Regex("""^(?i)(बीमित\s*का\s*नाम|बीमाधारक\s*का\s*नाम|बीमाधारक|ग्राहक\s*का\s*नाम|प्रस्तावक\s*का\s*नाम|प्रस्तावक|वाहन\s*स्वामी|स्वामी\s*का\s*नाम|मालिक\s*का\s*नाम|पार्टी\s*का\s*नाम|name\s*of\s*insured|insured(?:'s)?\s*name|customer\s*name|cust\s*name|proposer\s*name|name\s*of\s*proposer|policyholder\s*name|policy\s*holder\s*name|policyholder|client\s*name|owner\s*name|party\s*name|applicant\s*name|name)\s*[:/-]?\s*"""), "")
+            .trim()
+
+        var title = rawTitle.trim()
+
+        val salutations = listOf(
+            "Shri", "Smt", "Kumari", "Km", "Mr", "Mrs", "Ms", "Dr", "M/s", "Messrs",
+            "Prof", "Capt", "Major", "Maj", "Col", "Lt", "Hon", "Rev", "Adv", "CA", "CS", "Er"
+        )
+        val hindiSalutations = mapOf(
+            "श्री" to "Shri",
+            "श्रीमती" to "Smt.",
+            "सुश्री" to "Kumari",
+            "कुमारी" to "Kumari",
+            "डॉक्टर" to "Dr.",
+            "डॉ" to "Dr.",
+            "मेसर्स" to "M/s"
+        )
+
+        for ((hSal, mapped) in hindiSalutations) {
+            val prefixRegex = Regex("""^${Regex.escape(hSal)}\.?\s+""")
+            if (prefixRegex.containsMatchIn(clean)) {
+                if (title.isBlank()) title = mapped
+                clean = clean.replace(prefixRegex, "").trim()
+                break
+            }
+        }
+
+        if (title.isBlank()) {
+            for (sal in salutations) {
+                val prefixRegex = Regex("""^(?i)${Regex.escape(sal)}\.?\s+""")
+                if (prefixRegex.containsMatchIn(clean)) {
+                    title = if (sal.equals("m/s", ignoreCase = true)) "M/s" else sal.replaceFirstChar { it.uppercase() }
+                    clean = clean.replace(prefixRegex, "").trim()
+                    break
+                }
+            }
+        }
+
+        // Title case formatting for customer name
+        val formattedName = clean.split(Regex("\\s+")).filter { it.isNotBlank() }.joinToString(" ") { word ->
+            if (word.all { it.isUpperCase() } && word.length <= 4) word // Preserves business acronyms (e.g. PVT, LTD, LLP)
+            else word.lowercase().replaceFirstChar { it.uppercase() }
+        }
+
+        return Pair(formattedName, title)
+    }
+
+    fun extractCleanEmail(rawEmail: String): String {
+        val trimmed = rawEmail.trim()
+        val match = EMAIL_REGEX.find(trimmed)
+            ?: Regex("""[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}""").find(trimmed)
+        return match?.value?.lowercase() ?: ""
+    }
+
+    fun extractCleanPolicyNumber(rawPolicy: String): String {
+        return rawPolicy.trim()
+            .replace(Regex("""^(?i)(पॉलिसी\s*संख्या|पॉलिसी\s*सं\.?|पॉलिसी\s*नंबर|बीमा\s*पत्र\s*सं\.?|बीमा\s*पत्र\s*संख्या|प्रमाण\s*पत्र\s*सं\.?|कवर\s*नोट\s*सं\.?|अनुसूची\s*सं\.?|अनुसूची\s*संख्या|policy\s*no\.?|policy\s*number|pol\s*no\.?|pol\s*number|pol/cert\s*no\.?|certificate\s*no\.?|cert\s*no\.?|schedule\s*no\.?|cover\s*note\s*no\.?|cn\s*no\.?|doc\s*no\.?)\s*[:/-]?\s*"""), "")
+            .trim()
+            .trimEnd('.', ',', ';', '>')
+    }
+
+    fun extractCleanAddress(rawAddress: String): String {
+        return rawAddress.trim()
+            .replace(Regex("""^(?i)(पता|पत्राचार\s*का\s*पता|स्थायी\s*पता|बीमित\s*का\s*पता|ग्राहक\s*का\s*पता|निवास\s*का\s*पता|comm\.?\s*address|communication\s*address|res\.?\s*address|residential\s*address|corr\.?\s*address|correspondence\s*address|perm\.?\s*address|permanent\s*address|insured\s*address|customer\s*address|postal\s*address|address|addr)\s*[:/-]?\s*"""), "")
+            .replace(Regex("""[\r\n\t]+"""), " ")
+            .replace(Regex("""\s{2,}"""), " ")
+            .trim()
+    }
+
+    fun extractCleanVin(rawVin: String): String {
+        return rawVin.trim()
+            .replace(Regex("""^(?i)(चेसिस\s*संख्या|चेसिस\s*सं\.?|चेसिस\s*नंबर|चेसिस|फ्रेम\s*सं\.?|फ्रेम\s*संख्या|chassis\s*no\.?|chassis\s*number|chassis|chasis\s*no\.?|chasis|chass\s*no\.?|vin\s*no\.?|vin\s*number|vin|frame\s*no\.?|frame\s*number|ch\s*no\.?)\s*[:/-]?\s*"""), "")
+            .filter { it.isLetterOrDigit() }
+            .uppercase()
+    }
+
+    fun extractCleanEngineNo(rawEngine: String): String {
+        return rawEngine.trim()
+            .replace(Regex("""^(?i)(इंजन\s*संख्या|इंजन\s*सं\.?|इंजन\s*नंबर|इंजन|मोटर\s*सं\.?|मोटर\s*संख्या|मोटर\s*नंबर|engine\s*no\.?|engine\s*number|eng\s*no\.?|eng\s*number|engine|motor\s*no\.?|motor\s*number|motor)\s*[:/-]?\s*"""), "")
+            .filter { it.isLetterOrDigit() }
+            .uppercase()
+    }
+
+    fun extractCleanMakeModel(rawMakeModel: String): String {
+        return rawMakeModel.trim()
+            .replace(Regex("""^(?i)(वाहन\s*का\s*मेक/?मॉडल|वाहन\s*विवरण|वाहन\s*मॉडल|मेक/?मॉडल|वाहन\s*का\s*प्रकार|make\s*/?\s*model|make\s*&\s*model|vehicle\s*make|vehicle\s*model|veh\s*make|veh\s*model|vehicle\s*description|desc\s*of\s*vehicle|veh\s*desc|model\s*variant|variant|description|model)\s*[:/-]?\s*"""), "")
+            .replace(Regex("""\s{2,}"""), " ")
+            .trim()
+    }
 
     fun normalizeMobile(mobile: String): String {
         var clean = mobile.trim()

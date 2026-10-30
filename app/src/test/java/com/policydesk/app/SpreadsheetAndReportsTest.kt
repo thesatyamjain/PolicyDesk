@@ -34,6 +34,21 @@ class SpreadsheetAndReportsTest {
     }
 
     @Test
+    fun parseDateToEpochMs_extracts_expiry_date_from_psu_policy_period_strings() {
+        val expected = LocalDate.of(2027, 10, 16)
+            .atStartOfDay(ZoneId.systemDefault())
+            .toInstant()
+            .toEpochMilli()
+
+        val rawPsu = "पॉलिसी प्रभावी समय /Policy Effective from 19:15 hours, on 17/10/2026की अर्धरात्रि तक /to midnight of 16/10/2027>> (for Own Damage)"
+        assertEquals(expected, SpreadsheetParser.parseDateToEpochMs(rawPsu))
+
+        assertEquals(expected, SpreadsheetParser.parseDateToEpochMs("to midnight of 16/10/2027>>"))
+        assertEquals(expected, SpreadsheetParser.parseDateToEpochMs("16/10/2027>>"))
+        assertEquals(expected, SpreadsheetParser.parseDateToEpochMs("17/10/2026 to 16/10/2027"))
+    }
+
+    @Test
     fun parsePremium_cleans_currency_and_symbols() {
         assertEquals(14500.0, SpreadsheetParser.parsePremium("14500") ?: 0.0, 0.001)
         assertEquals(14500.0, SpreadsheetParser.parsePremium("14,500") ?: 0.0, 0.001)
@@ -69,6 +84,67 @@ class SpreadsheetAndReportsTest {
         assertEquals("totalPremium", mapping[5])
         // REGISTRATION NO (index 2) must be mapped to regNo
         assertEquals("regNo", mapping[2])
+    }
+
+    @Test
+    fun autoMapHeaders_handles_all_hindi_and_english_field_abbreviations() {
+        val hindiHeaders = listOf(
+            "वाहन सं", "बीमित का नाम", "श्री/श्रीमती", "मोबाइल नं", "ई-मेल",
+            "पत्राचार का पता", "कंपनी क्षेत्र", "बीमा कंपनी", "पॉलिसी सं",
+            "समाप्ति तिथि", "टीपी प्रीमियम", "ओडी प्रीमियम", "कुल देय प्रीमियम",
+            "वाहन विवरण", "मेक", "मॉडल", "चेसिस सं", "इंजन सं", "टिप्पणी", "जारी तिथि"
+        )
+        val hindiMapping = com.policydesk.app.ui.importer.ImportViewModel.autoMapHeaders(hindiHeaders)
+
+        assertEquals("regNo", hindiMapping[0])
+        assertEquals("name", hindiMapping[1])
+        assertEquals("title", hindiMapping[2])
+        assertEquals("mobile", hindiMapping[3])
+        assertEquals("email", hindiMapping[4])
+        assertEquals("address", hindiMapping[5])
+        assertEquals("sector", hindiMapping[6])
+        assertEquals("insurer", hindiMapping[7])
+        assertEquals("policyNumber", hindiMapping[8])
+        assertEquals("expiryDate", hindiMapping[9])
+        assertEquals("tpPremium", hindiMapping[10])
+        assertEquals("odPremium", hindiMapping[11])
+        assertEquals("totalPremium", hindiMapping[12])
+        assertEquals("makeModel", hindiMapping[13])
+        assertEquals("make", hindiMapping[14])
+        assertEquals("model", hindiMapping[15])
+        assertEquals("vin", hindiMapping[16])
+        assertEquals("engineNo", hindiMapping[17])
+        assertEquals("notes", hindiMapping[18])
+        assertEquals("saleDate", hindiMapping[19])
+
+        val englishAbbrHeaders = listOf(
+            "VEH REGN NO", "CUST NAME", "SALUTATION", "CELL NO", "EMAIL ID",
+            "RES. ADDRESS", "SECTOR", "INSURER", "POL NO", "EXP DT",
+            "TP PREM", "OD PREM", "TOT PREM", "DESC OF VEHICLE", "MFG",
+            "SUBMODEL", "CHASSIS NO", "MOTOR NO", "REMARKS", "BOOKED DATE"
+        )
+        val engMapping = com.policydesk.app.ui.importer.ImportViewModel.autoMapHeaders(englishAbbrHeaders)
+
+        assertEquals("regNo", engMapping[0])
+        assertEquals("name", engMapping[1])
+        assertEquals("title", engMapping[2])
+        assertEquals("mobile", engMapping[3])
+        assertEquals("email", engMapping[4])
+        assertEquals("address", engMapping[5])
+        assertEquals("sector", engMapping[6])
+        assertEquals("insurer", engMapping[7])
+        assertEquals("policyNumber", engMapping[8])
+        assertEquals("expiryDate", engMapping[9])
+        assertEquals("tpPremium", engMapping[10])
+        assertEquals("odPremium", engMapping[11])
+        assertEquals("totalPremium", engMapping[12])
+        assertEquals("makeModel", engMapping[13])
+        assertEquals("make", engMapping[14])
+        assertEquals("model", engMapping[15])
+        assertEquals("vin", engMapping[16])
+        assertEquals("engineNo", engMapping[17])
+        assertEquals("notes", engMapping[18])
+        assertEquals("saleDate", engMapping[19])
     }
 
     @Test

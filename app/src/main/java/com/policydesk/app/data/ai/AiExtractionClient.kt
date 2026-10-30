@@ -52,8 +52,8 @@ object AiExtractionClient {
     const val DEFAULT_CLOUDFLARE_AI_ENDPOINT = "https://policydesk-ai.satyamjain.workers.dev"
 
     private const val SYSTEM_PROMPT = """
-You are an expert vehicle insurance policy document parser specializing in Indian motor insurance (Private Cars, Two Wheelers, Commercial Vehicles).
-Extract the policy information from the document into a JSON object matching these keys:
+You are an expert Indian motor vehicle insurance policy document parser specializing in Private Cars, Two Wheelers, and Commercial Vehicles across both PSU insurers (National Insurance, New India Assurance, Oriental Insurance, United India Insurance) and Private insurers.
+Extract the policy information from the document into a JSON object matching these exact keys:
 {
   "regNo": "Vehicle registration number (e.g. MH12AB1234, DL01A9999, 22BH1234AA) without spaces or hyphens",
   "customerName": "Insured person or company name without salutations",
@@ -64,17 +64,53 @@ Extract the policy information from the document into a JSON object matching the
   "sector": "PSU or Private (National Insurance, New India Assurance, Oriental Insurance, and United India Insurance are PSU; all others like HDFC ERGO, ICICI Lombard, Digit, Tata AIG, Bajaj Allianz are Private)",
   "insurer": "Canonical name of the insurance company",
   "policyNumber": "Policy or certificate number",
-  "expiryDate": "Policy expiry / valid-till date in DD/MM/YYYY format (check 'Period of Insurance: To midnight of')",
+  "expiryDate": "Policy expiration / valid-till date in DD/MM/YYYY format",
   "totalPremium": "Final gross total premium payable in INR including GST as a numeric value",
   "makeModel": "Vehicle make and model variant (e.g. Swift Dzire VXI, Creta SX)",
   "vin": "Chassis number or VIN (typically 17 alphanumeric characters)",
   "engineNo": "Engine number"
 }
-Rules:
-1. Return ONLY the raw JSON object. Do not wrap in markdown quotes.
-2. If a field is not found in the document, return an empty string. NEVER guess or hallucinate.
-3. For expiryDate, always convert the expiration date to DD/MM/YYYY.
-4. For totalPremium, return the final payable gross amount (Total Premium Payable / Gross Premium) without currency symbols or commas.
+CONTENT AWARENESS RULES & ABBREVIATIONS FOR ALL FIELDS:
+1. VEHICLE REGISTRATION NUMBER (regNo):
+   - Abbreviations / Labels: 'REG NO', 'REGN NO', 'REGN NUMBER', 'REGISTRATION NO', 'VEH NO', 'VEHICLE NO', 'VEHICLE NUMBER', 'VEH REGN NO', 'VEH REG NO', 'PLATE NO', 'NUMBER PLATE', 'RC NO', 'RC NUMBER', 'RTO REG NO', 'RTO NO', 'CAR NO', 'BIKE NO', 'TRUCK NO', 'BUS NO', 'पंजी. संख्या', 'पंजी संख्या', 'पंजीकरण संख्या', 'पंजी सं', 'वाहन पंजी सं', 'गाड़ी नं', 'गाड़ी नंबर', 'वाहन संख्या', 'रजिस्ट्रेशन नं'.
+   - Extract the vehicle license plate (e.g. RJ14AB1234, UP16CD5678, DL01A9999, 22BH1234AA).
+   - NEVER confuse Policy Number, Engine Number, or Chassis Number with Registration Number.
+2. INSURED NAME (customerName) & TITLE (title):
+   - Abbreviations / Labels: 'INSURED NAME', 'NAME OF INSURED', 'INSURED'S NAME', 'CUST NAME', 'CUSTOMER NAME', 'PROPOSER NAME', 'NAME OF PROPOSER', 'POLICYHOLDER', 'POLICY HOLDER NAME', 'CLIENT NAME', 'OWNER NAME', 'VEHICLE OWNER', 'APPLICANT NAME', 'PARTY NAME', 'बीमित का नाम', 'बीमाधारक का नाम', 'बीमाधारक', 'ग्राहक का नाम', 'प्रस्तावक का नाम', 'वाहन स्वामी', 'मालिक का नाम'.
+   - Titles / Salutations: 'Shri', 'Sh.', 'Sri', 'Smt', 'Smt.', 'Kumari', 'Km', 'Km.', 'Mr', 'Mr.', 'Mrs', 'Mrs.', 'Ms', 'Ms.', 'Dr', 'Dr.', 'M/s', 'Messrs', 'Prof', 'Capt', 'Major', 'Col', 'Lt', 'Hon', 'Rev', 'Adv', 'CA', 'CS', 'Er', 'श्री', 'श्रीमती', 'सुश्री', 'कुमारी', 'डॉ', 'डॉक्टर', 'मेसर्स'.
+   - Extract title into "title". Keep only clean individual or business name in "customerName".
+3. EXPIRY DATE (expiryDate):
+   - Abbreviations / Labels: 'EXP DATE', 'EXP. DATE', 'EXPIRY DATE', 'EXPIRY', 'EXP', 'VALID TILL', 'VALID UPTO', 'VALID UP TO', 'VALID TO', 'TO MIDNIGHT OF', 'PERIOD OF INSURANCE TO', 'POLICY PERIOD TO', 'END DATE', 'EXPIRATION DATE', 'VALIDITY TO', 'DUE DATE', 'EXP DT', 'RENEWAL DATE', 'RENEWAL DUE DATE', 'RISK EXPIRY', 'समाप्ति तिथि', 'वैधता समाप्त', 'की अर्धरात्रि तक', 'अंतिम तिथि', 'समाप्ति दिनांक', 'नवीनीकरण तिथि'.
+   - In period strings like 'Policy Effective from [Start Date] to midnight of [Expiry Date]' or 'की अर्धरात्रि तक [Expiry Date]', ALWAYS choose the END date ('to midnight of' / 'की अर्धरात्रि तक'). NEVER choose the start date ('Effective from').
+   - Example: In 'Policy Effective from 17/10/2026 की अर्धरात्रि तक /to midnight of 16/10/2027>>', the expiryDate is '16/10/2027'.
+   - Format cleanly as DD/MM/YYYY. Strip trailing symbols like '>>' or punctuation.
+4. MOBILE NUMBER (mobile):
+   - Abbreviations / Labels: 'MOB NO', 'MOB', 'MOBILE NO', 'MOBILE NUMBER', 'CELL NO', 'CONTACT NO', 'PHONE NO', 'TEL NO', 'TELEPHONE NO', 'WHATSAPP NO', 'PH NO', 'मोबाइल नं', 'मोबाइल नंबर', 'दूरभाष नं', 'संपर्क सूत्र', 'संपर्क नंबर', 'फोन नं'.
+   - Extract 10-digit mobile number starting with 6, 7, 8, or 9. Strip +91, 0, or spaces.
+5. EMAIL (email):
+   - Abbreviations / Labels: 'EMAIL ID', 'EMAIL-ID', 'E-MAIL ID', 'E-MAIL', 'EMAIL', 'E MAIL', 'MAIL ID', 'EMAIL ADDRESS', 'ईमेल', 'ई-मेल', 'ईमेल आईडी'.
+   - Must be a valid email format.
+6. TOTAL PREMIUM (totalPremium):
+   - Abbreviations / Labels: 'TOT PREM', 'TOTAL PREM', 'TOTAL PREMIUM', 'GROSS PREM', 'GROSS PREMIUM', 'PREMIUM PAYABLE', 'TOTAL PAYABLE', 'TOTAL AMOUNT', 'FINAL PREMIUM', 'NET + GST', 'NET+GST', 'TOTAL CHG', 'AMT PAYABLE', 'PREMIUM AMT', 'GROSS AMT', 'TOT AMT', 'GWP', 'NWP', 'कुल प्रीमियम', 'सकल प्रीमियम', 'देय प्रीमियम', 'कुल देय राशि', 'अंतिम प्रीमियम'.
+   - Do NOT pick Net Premium or standalone OD/TP premium. Return as clean numeric string (e.g. 14500).
+7. POLICY NUMBER (policyNumber):
+   - Abbreviations / Labels: 'POL NO', 'POLICY NO', 'POLICY NUMBER', 'CERT NO', 'CERTIFICATE NO', 'CERTIFICATE NUMBER', 'SCHEDULE NO', 'POL/CERT NO', 'DOC NO', 'CN NO', 'COVER NOTE NO', 'पॉलिसी सं', 'पॉलिसी संख्या', 'पॉलिसी नंबर', 'बीमा पत्र सं', 'प्रमाण पत्र सं', 'अनुसूची सं'.
+   - Do NOT confuse with proposal, quote, or customer ID.
+8. MAKE & MODEL (makeModel):
+   - Abbreviations / Labels: 'MAKE/MODEL', 'MAKE & MODEL', 'VEH MAKE', 'VEH MODEL', 'VEHICLE MAKE', 'VEHICLE MODEL', 'VEHICLE DESCRIPTION', 'DESC OF VEHICLE', 'VEH DESC', 'MODEL VARIANT', 'वाहन का मेक/मॉडल', 'वाहन विवरण', 'मेक / मॉडल', 'वाहन मॉडल'.
+9. CHASSIS / VIN (vin):
+   - Abbreviations / Labels: 'CHASSIS NO', 'CHASSIS NUMBER', 'CHASSIS', 'CHASIS NO', 'CHASS NO', 'VIN NO', 'VIN NUMBER', 'FRAME NO', 'CH NO', 'चेसिस सं', 'चेसिस संख्या', 'चेसिस नंबर', 'फ्रेम सं'.
+   - Extract alphanumeric chassis identifier (typically 17 characters).
+10. ENGINE NUMBER (engineNo):
+    - Abbreviations / Labels: 'ENGINE NO', 'ENGINE NUMBER', 'ENG NO', 'ENG NUMBER', 'MOTOR NO', 'MOTOR NUMBER', 'इंजन सं', 'इंजन संख्या', 'इंजन नंबर', 'मोटर सं'.
+    - Do not swap vin and engineNo.
+11. SECTOR (sector) & INSURER (insurer):
+    - PSU: National Insurance (NIC/NICL), New India Assurance (NIA/NIACL), Oriental Insurance (OIC/OICL), United India Insurance (UIIC/UIICL) -> "PSU".
+    - Private: All other insurers (Bajaj Allianz BAGIC, ICICI Lombard ILGIC, HDFC ERGO, Go Digit GODIGIT, Tata AIG TAGIC, SBI General SBIG, Reliance RGICL, IFFCO Tokio ITGI, Shriram SGIC, Royal Sundaram RSGI, Chola MS, Universal Sompo USGIC, Future Generali FGII, Zuno/Edelweiss, Zurich Kotak, etc.) -> "Private".
+12. ADDRESS (address):
+    - Abbreviations / Labels: 'COMM. ADDRESS', 'COMM ADDRESS', 'COMMUNICATION ADDRESS', 'RES. ADDRESS', 'RESIDENTIAL ADDRESS', 'CORR. ADDRESS', 'PERM. ADDRESS', 'INSURED ADDRESS', 'CUSTOMER ADDRESS', 'POSTAL ADDRESS', 'ADDR', 'ADD.', 'पता', 'पत्राचार का पता', 'स्थायी पता', 'बीमित का पता', 'निवास का पता'. Include PIN code.
+13. Return ONLY the raw JSON object. Do not wrap in markdown quotes.
+14. If a field is not found in the document, return an empty string. NEVER guess or hallucinate.
 """
 
     suspend fun testConnection(config: AiConfig): Result<String> = withContext(Dispatchers.IO) {
@@ -87,13 +123,16 @@ Rules:
             when (config.provider) {
                 AiProvider.CLOUDFLARE_AI -> {
                     val endpoint = config.customEndpoint.ifBlank { DEFAULT_CLOUDFLARE_AI_ENDPOINT }
-                    val healthUrl = if (endpoint.endsWith("/")) "${endpoint}health" else "$endpoint/health"
+                    val cleanEndpoint = endpoint.trimEnd('/')
+                    val healthUrl = "$cleanEndpoint/health"
                     val conn = URL(healthUrl).openConnection() as HttpURLConnection
                     conn.requestMethod = "GET"
                     conn.connectTimeout = 10000
                     conn.readTimeout = 10000
                     val code = conn.responseCode
                     if (code in 200..299) {
+                        // Check or trigger agreement endpoint if present
+                        trySubmitCloudflareAgreement(cleanEndpoint)
                         Result.success("Connection successful! Cloudflare Workers AI active (@cf/meta/llama-3.2-11b-vision-instruct)")
                     } else {
                         Result.failure(Exception("Cloudflare endpoint returned HTTP $code"))
@@ -353,10 +392,14 @@ Rules:
     }
 
     private fun extractWithCloudflare(context: Context, pdfUri: Uri, config: AiConfig): ExtractionResult {
-        val endpoint = config.customEndpoint.ifBlank { DEFAULT_CLOUDFLARE_AI_ENDPOINT }
+        val endpoint = config.customEndpoint.ifBlank { DEFAULT_CLOUDFLARE_AI_ENDPOINT }.trimEnd('/')
         val base64Image = renderPdfOrImageToBase64(context, pdfUri)
             ?: return ExtractionResult.Error("Could not render document for Cloudflare AI scanning.")
 
+        return executeCloudflareExtraction(endpoint, base64Image, isRetry = false)
+    }
+
+    private fun executeCloudflareExtraction(endpoint: String, base64Image: String, isRetry: Boolean): ExtractionResult {
         return try {
             val url = URL(endpoint)
             val conn = url.openConnection() as HttpURLConnection
@@ -384,10 +427,44 @@ Rules:
             } else {
                 val stream = conn.errorStream ?: conn.inputStream
                 val errText = BufferedReader(InputStreamReader(stream)).readText()
-                ExtractionResult.Error("Cloudflare Workers AI error ($code): $errText")
+
+                // Cloudflare Error 5016: Meta Llama 3.2 license agreement required
+                if ((errText.contains("5016") || errText.contains("agree")) && !isRetry) {
+                    val agreed = trySubmitCloudflareAgreement(endpoint)
+                    if (agreed) {
+                        return executeCloudflareExtraction(endpoint, base64Image, isRetry = true)
+                    }
+                    return ExtractionResult.Error(
+                        "Cloudflare Workers AI requires a one-time Meta Llama 3.2 license agreement on your account.\n\n" +
+                        "How to fix:\n" +
+                        "1. Run deploy.bat in the 'policydesk-ai' folder, OR\n" +
+                        "2. Open Cloudflare Dashboard > Workers AI to accept Llama terms, OR\n" +
+                        "3. Switch to Google Gemini (free API key) in Settings > AI."
+                    )
+                }
+
+                val parsedMsg = try {
+                    JSONObject(errText).optString("error", errText)
+                } catch (_: Exception) { errText }
+                ExtractionResult.Error("Cloudflare Workers AI error ($code): $parsedMsg")
             }
         } catch (e: Exception) {
             ExtractionResult.Error("Cloudflare Workers AI request failed: ${e.message}")
+        }
+    }
+
+    private fun trySubmitCloudflareAgreement(endpoint: String): Boolean {
+        return try {
+            val cleanEndpoint = endpoint.trimEnd('/')
+            val agreeUrl = URL("$cleanEndpoint/agree")
+            val conn = agreeUrl.openConnection() as HttpURLConnection
+            conn.requestMethod = "GET"
+            conn.connectTimeout = 15000
+            conn.readTimeout = 15000
+            val code = conn.responseCode
+            code in 200..299
+        } catch (_: Exception) {
+            false
         }
     }
 
@@ -404,10 +481,33 @@ Rules:
     private fun parseExtractionJson(parsed: JSONObject, rawJsonStr: String): ExtractionResult {
         return try {
             val rawReg = parsed.optString("regNo", "")
-            val normalizedReg = RegistrationNormalizer.repairOcrMisreads(RegistrationNormalizer.normalize(rawReg))
+            val extractedReg = RegistrationNormalizer.extractRegistrationNumber(rawReg)
+            val normalizedReg = RegistrationNormalizer.repairOcrMisreads(extractedReg)
 
             val rawMobile = parsed.optString("mobile", "")
             val normalizedMobile = FieldValidators.normalizeMobile(rawMobile)
+
+            val rawEmail = parsed.optString("email", "")
+            val cleanEmail = FieldValidators.extractCleanEmail(rawEmail)
+
+            val rawName = parsed.optString("customerName", "")
+            val rawTitle = parsed.optString("title", "")
+            val (cleanName, cleanTitle) = FieldValidators.extractCustomerNameAndTitle(rawName, rawTitle)
+
+            val rawPolicyNo = parsed.optString("policyNumber", "")
+            val cleanPolicyNo = FieldValidators.extractCleanPolicyNumber(rawPolicyNo)
+
+            val rawAddress = parsed.optString("address", "")
+            val cleanAddress = FieldValidators.extractCleanAddress(rawAddress)
+
+            val rawVin = parsed.optString("vin", "")
+            val cleanVin = FieldValidators.extractCleanVin(rawVin)
+
+            val rawEngine = parsed.optString("engineNo", "")
+            val cleanEngine = FieldValidators.extractCleanEngineNo(rawEngine)
+
+            val rawMakeModel = parsed.optString("makeModel", "")
+            val cleanMakeModel = FieldValidators.extractCleanMakeModel(rawMakeModel)
 
             val rawPremium = parsed.optString("totalPremium", "")
             val cleanPremium = SpreadsheetParser.parsePremium(rawPremium)?.let {
@@ -427,19 +527,19 @@ Rules:
 
             val data = ExtractedPolicyData(
                 regNo = normalizedReg,
-                customerName = parsed.optString("customerName", "").trim(),
-                title = parsed.optString("title", "").trim(),
+                customerName = cleanName,
+                title = cleanTitle,
                 mobile = normalizedMobile,
-                email = parsed.optString("email", "").trim(),
-                address = parsed.optString("address", "").trim(),
+                email = cleanEmail,
+                address = cleanAddress,
                 sector = finalSector,
                 insurer = finalInsurer,
-                policyNumber = parsed.optString("policyNumber", "").trim(),
+                policyNumber = cleanPolicyNo,
                 expiryDate = cleanExpiry,
                 totalPremium = cleanPremium,
-                makeModel = parsed.optString("makeModel", "").trim(),
-                vin = parsed.optString("vin", "").trim().uppercase(),
-                engineNo = parsed.optString("engineNo", "").trim().uppercase(),
+                makeModel = cleanMakeModel,
+                vin = cleanVin,
+                engineNo = cleanEngine,
                 rawJson = rawJsonStr
             )
             ExtractionResult.Success(data)

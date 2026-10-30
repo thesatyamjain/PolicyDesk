@@ -21,6 +21,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import com.policydesk.app.ui.components.BindBackToTop
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.policydesk.app.ui.components.AppleButton
@@ -74,7 +76,7 @@ import java.time.LocalDate
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReportsScreen(
-    onNavigateBack: () -> Unit,
+    onNavigateBack: (() -> Unit)? = null,
     onNavigateToVehicleDetail: (String) -> Unit,
     onNavigateToRenew: (String) -> Unit,
     viewModel: ReportsViewModel = hiltViewModel()
@@ -91,6 +93,7 @@ fun ReportsScreen(
         topBar = {
             com.policydesk.app.ui.components.LiquidGlassTopBar(
                 title = "Reports & Analytics",
+                subtitle = "Performance & Revenue Insights",
                 onNavigateBack = onNavigateBack
             )
         },
@@ -198,7 +201,11 @@ fun SalesTabContent(
     val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
     val labelSecondary = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
 
+    val listState = rememberLazyListState()
+    BindBackToTop(listState)
+
     LazyColumn(
+        state = listState,
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 120.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
@@ -321,7 +328,11 @@ fun MissedRenewalsTabContent(
         OverdueFilter.OVER_90 -> missed.over90Days
     }
 
+    val listState = rememberLazyListState()
+    BindBackToTop(listState)
+
     LazyColumn(
+        state = listState,
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 120.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
@@ -446,9 +457,18 @@ fun MissedRenewalsTabContent(
                     },
                     onWhatsApp = {
                         val mobile = item.vehicle.customer.mobile
-                        val formattedMobile = if (mobile.startsWith("91")) mobile else "91$mobile"
-                        val msg = Uri.encode("Hello ${item.vehicle.customer.name}, your insurance policy for ${item.vehicle.regNo} has expired. Would you like to renew it today?")
-                        val url = "https://wa.me/$formattedMobile?text=$msg"
+                        val cleanMobile = mobile.filter { it.isDigit() }
+                        val formattedMobile = if (cleanMobile.length == 10) "91$cleanMobile" else cleanMobile
+                        val p = item.currentPolicy
+                        val msg = com.policydesk.app.data.profile.AdvisorProfileManager.formatRenewalMessage(
+                            context = context,
+                            customerName = item.vehicle.customer.name,
+                            regNo = item.vehicle.regNo,
+                            insurer = p?.insurer ?: "",
+                            expiryDate = p?.expiryDate?.let { UiFormatters.formatDate(it) } ?: "Overdue",
+                            premium = p?.totalPremium?.let { UiFormatters.formatCurrency(it) } ?: ""
+                        )
+                        val url = "https://wa.me/$formattedMobile?text=${Uri.encode(msg)}"
                         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
                     }
                 )
@@ -529,7 +549,7 @@ fun MissedRenewalCard(
                 AppleSecondaryButton(
                     text = "WhatsApp",
                     onClick = onWhatsApp,
-                    icon = AppleIcons.Message,
+                    icon = AppleIcons.WhatsApp,
                     tintColor = if (isDark) com.policydesk.app.ui.theme.AppleDarkSystemGreen else com.policydesk.app.ui.theme.AppleSystemGreen,
                     height = 36.dp,
                     modifier = Modifier.weight(1.2f)
@@ -553,7 +573,11 @@ fun AnalyticsTabContent(aggregate: ReportsAggregate) {
     val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
     val labelSecondary = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
 
+    val listState = rememberLazyListState()
+    BindBackToTop(listState)
+
     LazyColumn(
+        state = listState,
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 120.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)

@@ -82,6 +82,7 @@ fun PolicyDeskTheme(
 
     val view = LocalView.current
     if (!view.isInEditMode) {
+        @Suppress("DEPRECATION")
         SideEffect {
             try {
                 var currentContext = view.context

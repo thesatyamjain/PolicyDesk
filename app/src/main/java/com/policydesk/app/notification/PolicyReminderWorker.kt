@@ -28,6 +28,10 @@ class PolicyReminderWorker(
     }
 
     override suspend fun doWork(): Result {
+        if (!NotificationPreferenceManager.areNotificationsEnabled(applicationContext)) {
+            return Result.success()
+        }
+
         val entryPoint = EntryPointAccessors.fromApplication(
             applicationContext,
             ReminderWorkerEntryPoint::class.java

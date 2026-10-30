@@ -1,9 +1,15 @@
 package com.policydesk.app.ui.settings
 
+import android.Manifest
 import android.content.Intent
+import android.net.Uri
+import android.os.Build
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import com.policydesk.app.data.profile.AdvisorProfile
+import com.policydesk.app.data.profile.AdvisorProfileManager
+import com.policydesk.app.ui.components.AppleAlertDialog
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -120,11 +126,75 @@ fun SettingsScreen(
     }
 
     var showKey by remember { mutableStateOf(false) }
+    var showPrivacyDialog by remember { mutableStateOf(false) }
+    var showTermsDialog by remember { mutableStateOf(false) }
+    var showResetConfirmDialog by remember { mutableStateOf(false) }
+
+    var advisorName by remember(state.advisorProfile.advisorName) { mutableStateOf(state.advisorProfile.advisorName) }
+    var agencyName by remember(state.advisorProfile.agencyName) { mutableStateOf(state.advisorProfile.agencyName) }
+    var advisorPhone by remember(state.advisorProfile.advisorPhone) { mutableStateOf(state.advisorProfile.advisorPhone) }
+    var customTemplate by remember(state.advisorProfile.customWhatsappTemplate) { mutableStateOf(state.advisorProfile.customWhatsappTemplate) }
+    var profileSavedFeedback by remember { mutableStateOf(false) }
+
+    val notifPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) {
+        viewModel.refreshNotificationPermission()
+    }
+
+    if (showPrivacyDialog) {
+        AppleAlertDialog(
+            onDismissRequest = { showPrivacyDialog = false },
+            title = "Privacy Policy",
+            message = "PolicyDesk is strictly a Local-First application.\n\n" +
+                    "• Zero Cloud Tracking: All your vehicle, policy, and client data is stored locally on this device in an encrypted SQLite database.\n\n" +
+                    "• Bring-Your-Own-Key (BYOK): Your AI API keys are stored only inside the hardware-backed Android Keystore and never sent to our servers.\n\n" +
+                    "• Private Google Drive: Cloud backups remain 100% inside your personal Google Drive account in a dedicated private vault.\n\n" +
+                    "• Regulatory Compliance: Designed in full compliance with the Indian Digital Personal Data Protection (DPDP) Act.",
+            confirmText = "Understood",
+            onConfirm = { showPrivacyDialog = false },
+            dismissText = null
+        )
+    }
+
+    if (showTermsDialog) {
+        AppleAlertDialog(
+            onDismissRequest = { showTermsDialog = false },
+            title = "Terms of Service",
+            message = "PolicyDesk Advisor Edition Terms:\n\n" +
+                    "• Professional Tool: PolicyDesk is an administrative management tool for insurance advisors, brokers, and agents.\n\n" +
+                    "• Document Disclaimer: AI-extracted policy data should be verified before issuing official quotes or executing renewals.\n\n" +
+                    "• 100% Data Ownership: You own all rights to your client portfolio and data. PolicyDesk does not claim or harvest any client data.\n\n" +
+                    "• Offline Availability: The app operates without internet for record browsing, search, and client contact actions.",
+            confirmText = "Accept",
+            onConfirm = { showTermsDialog = false },
+            dismissText = null
+        )
+    }
+
+    if (showResetConfirmDialog) {
+        AppleAlertDialog(
+            onDismissRequest = { showResetConfirmDialog = false },
+            title = "Reset All Data",
+            message = "Are you sure you want to delete all vehicles, policies, and client records from this device? This will erase your local portfolio database. This cannot be undone.",
+            confirmText = "Delete Everything",
+            isDestructive = true,
+            onConfirm = {
+                showResetConfirmDialog = false
+                viewModel.resetAllData {
+                    Toast.makeText(context, "All local records have been cleared", Toast.LENGTH_SHORT).show()
+                }
+            },
+            dismissText = "Cancel",
+            onDismiss = { showResetConfirmDialog = false }
+        )
+    }
 
     Scaffold(
         topBar = {
             LiquidGlassTopBar(
                 title = "Settings",
+                subtitle = "Preferences, Profile & Compliance",
                 onNavigateBack = onNavigateBack
             )
         },
@@ -199,7 +269,119 @@ fun SettingsScreen(
                 }
             }
 
-            // SECTION 1: SECURITY & APP LOCK
+            // SECTION 1: ADVISOR & AGENCY PROFILE
+            LiquidGlassGroupedSection(title = "Advisor & Agency Profile") {
+                Text(
+                    text = "Personalize your business identity and customized WhatsApp renewal messages sent to clients.",
+                    fontSize = 13.sp,
+                    lineHeight = 18.sp,
+                    color = labelSecondary
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                OutlinedTextField(
+                    value = advisorName,
+                    onValueChange = { advisorName = it; profileSavedFeedback = false },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Advisor / Agent Name") },
+                    placeholder = { Text("e.g. Satyam Jain") },
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = formFieldColors()
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = agencyName,
+                    onValueChange = { agencyName = it; profileSavedFeedback = false },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Agency / Firm Name") },
+                    placeholder = { Text("e.g. Jain Insurance Services") },
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = formFieldColors()
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = advisorPhone,
+                    onValueChange = { advisorPhone = it; profileSavedFeedback = false },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Advisor Contact Number") },
+                    placeholder = { Text("e.g. +91 9876543210") },
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = formFieldColors()
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Text(
+                    text = "WHATSAPP RENEWAL MESSAGE TEMPLATE",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = labelSecondary,
+                    letterSpacing = 0.4.sp
+                )
+                Spacer(modifier = Modifier.height(3.dp))
+                Text(
+                    text = "Placeholders: {customer}, {vehicle}, {insurer}, {expiry}, {premium}, {signature}",
+                    fontSize = 11.sp,
+                    color = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
+                )
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                OutlinedTextField(
+                    value = if (customTemplate.isBlank()) AdvisorProfileManager.DEFAULT_TEMPLATE else customTemplate,
+                    onValueChange = { customTemplate = it; profileSavedFeedback = false },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Message Template") },
+                    minLines = 3,
+                    maxLines = 6,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = formFieldColors()
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    AppleButton(
+                        text = if (profileSavedFeedback) "Saved" else "Save Profile",
+                        onClick = {
+                            viewModel.saveAdvisorProfile(
+                                AdvisorProfile(
+                                    advisorName = advisorName.trim(),
+                                    agencyName = agencyName.trim(),
+                                    advisorPhone = advisorPhone.trim(),
+                                    customWhatsappTemplate = customTemplate.trim()
+                                )
+                            )
+                            profileSavedFeedback = true
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            Toast.makeText(context, "Advisor Profile Saved", Toast.LENGTH_SHORT).show()
+                        },
+                        modifier = Modifier.weight(1.2f)
+                    )
+
+                    AppleSecondaryButton(
+                        text = "Reset Template",
+                        onClick = {
+                            customTemplate = AdvisorProfileManager.DEFAULT_TEMPLATE
+                            profileSavedFeedback = false
+                        },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+
+            // SECTION 2: SECURITY & APP LOCK
             LiquidGlassGroupedSection(title = "Security & Privacy") {
                 Row(
                     modifier = Modifier
@@ -400,7 +582,7 @@ fun SettingsScreen(
                     AppleButton(
                         text = if (state.isTestingAi) "Testing..." else "Test Connection",
                         onClick = viewModel::testAiConnection,
-                        enabled = state.aiConfig.apiKey.isNotBlank() && !state.isTestingAi,
+                        enabled = (state.aiConfig.provider == AiProvider.CLOUDFLARE_AI || state.aiConfig.apiKey.isNotBlank()) && !state.isTestingAi,
                         isLoading = state.isTestingAi,
                         modifier = Modifier.weight(1.3f)
                     )
@@ -633,12 +815,219 @@ fun SettingsScreen(
                 )
             }
 
-            // SECTION 4: NOTIFICATIONS & REMINDERS
-            LiquidGlassGroupedSection(title = "Reminders & Alerts") {
-                DetailRow(label = "Expiry Cadence", value = "30d, 15d, 7d, 1d & on day")
-                DetailRow(label = "Daily Digest", value = "9:00 AM daily")
+            // SECTION 5: REMINDERS & RENEWAL ALERTS
+            LiquidGlassGroupedSection(title = "Reminders & Renewal Alerts") {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(30.dp)
+                                .background(AppleSystemOrange, RoundedCornerShape(8.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Notifications,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text("Policy Expiry Notifications", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = labelPrimary)
+                            Text("Automated background reminders via WorkManager", fontSize = 12.sp, color = labelSecondary)
+                        }
+                    }
+                    AppleSwitch(
+                        checked = state.areNotificationsEnabled,
+                        onCheckedChange = viewModel::toggleNotifications
+                    )
+                }
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !state.hasNotificationPermission) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(AppleSystemOrange.copy(alpha = 0.12f), RoundedCornerShape(10.dp))
+                            .border(1.dp, AppleSystemOrange.copy(alpha = 0.35f), RoundedCornerShape(10.dp))
+                            .padding(10.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = "System notification permission is required for alerts.",
+                                color = AppleSystemOrange,
+                                fontSize = 12.sp,
+                                modifier = Modifier.weight(1f)
+                            )
+                            androidx.compose.material3.TextButton(
+                                onClick = {
+                                    notifPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                }
+                            ) {
+                                Text("Allow", color = if (isDark) AppleDarkSystemBlue else AppleSystemBlue, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                DetailRow(label = "Expiry Cadence", value = "30d, 15d, 7d, 1d & same-day")
+                DetailRow(label = "Daily Summary", value = "9:00 AM daily")
                 DetailRow(label = "Reboot Recovery", value = "Auto-reschedules on boot")
-                DetailRow(label = "Engine", value = "Local WorkManager & NotificationManager")
+                DetailRow(label = "Alert Engine", value = "WorkManager & NotificationManager")
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                AppleSecondaryButton(
+                    text = "Send Test Notification",
+                    onClick = {
+                        viewModel.sendTestNotification()
+                        Toast.makeText(context, "Test notification sent", Toast.LENGTH_SHORT).show()
+                    },
+                    icon = Icons.Default.Notifications,
+                    tintColor = if (isDark) AppleDarkSystemBlue else AppleSystemBlue,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            // SECTION 6: ABOUT & COMPLIANCE
+            LiquidGlassGroupedSection(title = "About & Compliance") {
+                DetailRow(label = "Application", value = "PolicyDesk Advisor")
+                DetailRow(label = "Version", value = "v${state.appVersionName} (Build ${state.appVersionCode})")
+                DetailRow(label = "Built By", value = "The Software Labs & Satyam Jain")
+                DetailRow(label = "Architecture", value = "100% Local-First & Encrypted")
+                DetailRow(label = "Compliance", value = "Digital Personal Data Protection Act (DPDP)")
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                LiquidGlassListRow(
+                    title = "The Software Labs",
+                    subtitle = "thesoftwarelabs.pages.dev • Built by The Software Labs & Satyam Jain",
+                    icon = AppleIcons.House,
+                    iconBgColor = if (isDark) AppleDarkSystemBlue else AppleSystemBlue,
+                    onClick = {
+                        val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://thesoftwarelabs.pages.dev"))
+                        context.startActivity(browserIntent)
+                    }
+                )
+
+                LiquidGlassListRow(
+                    title = "Share PolicyDesk App",
+                    subtitle = "Recommend PolicyDesk to insurance colleagues",
+                    icon = AppleIcons.Share,
+                    iconBgColor = AppleSystemBlue,
+                    onClick = {
+                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_SUBJECT, "PolicyDesk - Vehicle Insurance Advisor App")
+                            putExtra(
+                                Intent.EXTRA_TEXT,
+                                "PolicyDesk: The offline-first vehicle policy and renewal tracking app for insurance advisors.\n" +
+                                        "Automated WhatsApp reminders, AI document scanner, and Excel import.\n" +
+                                        "Built by The Software Labs & Satyam Jain\n" +
+                                        "https://thesoftwarelabs.pages.dev"
+                            )
+                        }
+                        context.startActivity(Intent.createChooser(shareIntent, "Share PolicyDesk"))
+                    }
+                )
+
+                LiquidGlassListRow(
+                    title = "Support & Feedback",
+                    subtitle = "Report issues or suggest features directly to developers",
+                    icon = AppleIcons.Message,
+                    iconBgColor = AppleSystemGreen,
+                    onClick = {
+                        val intent = Intent(Intent.ACTION_SENDTO).apply {
+                            data = Uri.parse("mailto:support@policydesk.app")
+                            putExtra(Intent.EXTRA_SUBJECT, "PolicyDesk App Feedback [v${state.appVersionName}]")
+                            putExtra(Intent.EXTRA_TEXT, "Device: ${Build.MANUFACTURER} ${Build.MODEL}\nAndroid: ${Build.VERSION.RELEASE}\n\nFeedback:")
+                        }
+                        try {
+                            context.startActivity(intent)
+                        } catch (_: Exception) {
+                            Toast.makeText(context, "No email client found", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                )
+
+                LiquidGlassListRow(
+                    title = "Privacy Policy",
+                    subtitle = "Local-first storage & zero data tracking commitments",
+                    icon = AppleIcons.ShieldCheck,
+                    iconBgColor = AppleSystemBlue,
+                    onClick = { showPrivacyDialog = true }
+                )
+
+                LiquidGlassListRow(
+                    title = "Terms of Service",
+                    subtitle = "Advisor license, disclaimer & compliance standards",
+                    icon = AppleIcons.DocText,
+                    iconBgColor = if (isDark) AppleDarkSystemBlue else AppleSystemBlue,
+                    showDivider = false,
+                    onClick = { showTermsDialog = true }
+                )
+            }
+
+            // SECTION 7: DATA MANAGEMENT & RESET
+            LiquidGlassGroupedSection(title = "Data Management & Reset") {
+                Text(
+                    text = "Erase all local vehicle entries, policy records, and cached files from this device.",
+                    fontSize = 13.sp,
+                    lineHeight = 18.sp,
+                    color = labelSecondary
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+
+                AppleSecondaryButton(
+                    text = "Reset All Records",
+                    onClick = { showResetConfirmDialog = true },
+                    icon = AppleIcons.Trash,
+                    tintColor = AppleSystemRed,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            // BRANDING FOOTER
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Built by The Software Labs & Satyam Jain",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = labelSecondary
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "thesoftwarelabs.pages.dev",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (isDark) AppleDarkSystemBlue else AppleSystemBlue,
+                    modifier = Modifier.clickable {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://thesoftwarelabs.pages.dev"))
+                        context.startActivity(browserIntent)
+                    }
+                )
             }
 
             Spacer(modifier = Modifier.height(24.dp))

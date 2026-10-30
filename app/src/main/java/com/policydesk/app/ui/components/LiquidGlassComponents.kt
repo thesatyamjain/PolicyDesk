@@ -50,6 +50,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
@@ -102,10 +103,39 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.input.pointer.pointerInput
 import com.policydesk.app.ui.theme.IosLabelTertiary
 import com.policydesk.app.ui.theme.IosSeparator
 
 val LocalHazeState = compositionLocalOf<HazeState?> { null }
+val LocalScrollToTopTrigger = compositionLocalOf { 0L }
+val LocalScrollToTopDispatcher = compositionLocalOf<(() -> Unit)> { {} }
+
+@Composable
+fun BindBackToTop(listState: LazyListState) {
+    val trigger = LocalScrollToTopTrigger.current
+    LaunchedEffect(trigger) {
+        if (trigger > 0L) {
+            listState.animateScrollToItem(0)
+        }
+    }
+}
+
+@Composable
+fun BindBackToTop(scrollState: ScrollState) {
+    val trigger = LocalScrollToTopTrigger.current
+    LaunchedEffect(trigger) {
+        if (trigger > 0L) {
+            scrollState.animateScrollTo(0)
+        }
+    }
+}
 
 /**
  * Root Ambient Aurora Mesh Canvas for Apple Liquid Glass (iOS HIG).
@@ -152,9 +182,35 @@ fun LiquidGlassCanvas(
     }
 }
 
+private val DarkMeniscusColors = listOf(
+    Color(0xFF1E1E22).copy(alpha = 0.85f),
+    Color(0xFF141416).copy(alpha = 0.65f),
+    Color(0xFF0F0F12).copy(alpha = 0.50f),
+    Color(0xFF1A1A1E).copy(alpha = 0.70f)
+)
+
+private val LightMeniscusColors = listOf(
+    Color.White.copy(alpha = 0.82f),
+    Color.White.copy(alpha = 0.46f),
+    Color.White.copy(alpha = 0.35f),
+    Color.White.copy(alpha = 0.55f)
+)
+
+private val DarkGlassBrush = Brush.linearGradient(
+    colors = DarkMeniscusColors,
+    start = Offset.Zero,
+    end = Offset.Infinite
+)
+
+private val LightGlassBrush = Brush.linearGradient(
+    colors = LightMeniscusColors,
+    start = Offset.Zero,
+    end = Offset.Infinite
+)
+
 /**
  * Modifier that applies True Apple Liquid Glass (matching My Warranties):
- * 1. Dual-layer ambient & contact edge shadow
+ * 1. Dual-layer ambient & contact edge shadow (Light mode) or pure surface elevation (Dark mode)
  * 2. 4-stop diagonal meniscus refraction gradient
  * 3. 1.1dp 92% white dual-incident specular border
  */
@@ -167,39 +223,27 @@ fun Modifier.liquidGlass(
     borderAlphaTop: Float = if (isDark) 0.28f else 0.92f,
     borderAlphaBottom: Float = if (isDark) 0.08f else 0.50f
 ): Modifier {
-    val meniscusColors = if (isDark) {
-        listOf(
-            Color(0xFF1E1E22).copy(alpha = 0.85f),
-            Color(0xFF141416).copy(alpha = 0.65f),
-            Color(0xFF0F0F12).copy(alpha = 0.50f),
-            Color(0xFF1A1A1E).copy(alpha = 0.70f)
-        )
-    } else {
-        listOf(
-            Color.White.copy(alpha = 0.82f),
-            Color.White.copy(alpha = 0.46f),
-            Color.White.copy(alpha = 0.35f),
-            Color.White.copy(alpha = 0.55f)
-        )
-    }
+    val borderColor = Color.White.copy(alpha = borderAlphaTop)
+    val brush = if (isDark) DarkGlassBrush else LightGlassBrush
 
-    val shadowColor = if (isDark) Color(0x66000000) else Color(0x140F172A)
-    val borderColor = if (isDark) Color.White.copy(alpha = borderAlphaTop) else Color.White.copy(alpha = borderAlphaTop)
-
-    return this
-        .shadow(
+    // In dark mode, iOS design uses surface luminance hierarchy and specular edge highlights.
+    // Offscreen GPU Gaussian shadows on black backgrounds are invisible and drop scroll frames.
+    val shadowModifier = if (!isDark && elevation > 0.dp) {
+        Modifier.shadow(
             elevation = elevation,
             shape = shape,
-            ambientColor = shadowColor,
-            spotColor = shadowColor
+            ambientColor = Color(0x140F172A),
+            spotColor = Color(0x140F172A)
         )
+    } else {
+        Modifier
+    }
+
+    return this
+        .then(shadowModifier)
         .clip(shape)
         .background(
-            brush = Brush.linearGradient(
-                colors = meniscusColors,
-                start = Offset.Zero,
-                end = Offset.Infinite
-            ),
+            brush = brush,
             shape = shape
         )
         .border(
@@ -263,7 +307,10 @@ fun LiquidGlassCard(
     ) {
         Column(
             modifier = modifier
-                .scale(scale)
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                }
                 .liquidGlass(shape = shape, elevation = elevation, isDark = isDark)
                 .clip(shape)
                 .then(clickModifier)
@@ -283,10 +330,15 @@ fun LiquidGlassTopBar(
     modifier: Modifier = Modifier,
     subtitle: String? = null,
     onNavigateBack: (() -> Unit)? = null,
+    onDoubleTap: (() -> Unit)? = null,
     actions: @Composable () -> Unit = {}
 ) {
     val isDark = isSystemInDarkTheme()
     val haptic = LocalHapticFeedback.current
+    val scrollDispatcher = LocalScrollToTopDispatcher.current
+    val effectiveDoubleTap = onDoubleTap ?: scrollDispatcher
+    var lastTopTapTime by remember { mutableStateOf(0L) }
+
     val primaryText = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
     val secondaryText = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
     val accentBlue = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
@@ -295,6 +347,14 @@ fun LiquidGlassTopBar(
     Box(
         modifier = modifier
             .fillMaxWidth()
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onDoubleTap = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        effectiveDoubleTap.invoke()
+                    }
+                )
+            }
             .background(
                 brush = Brush.verticalGradient(
                     colors = if (isDark) listOf(
@@ -346,7 +406,21 @@ fun LiquidGlassTopBar(
                     }
                     Spacer(modifier = Modifier.width(4.dp))
                 }
-                Column {
+                Column(
+                    modifier = Modifier.clickable(
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() }
+                    ) {
+                        val now = System.currentTimeMillis()
+                        if (now - lastTopTapTime < 450L) {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            effectiveDoubleTap.invoke()
+                            lastTopTapTime = 0L
+                        } else {
+                            lastTopTapTime = now
+                        }
+                    }
+                ) {
                     Text(
                         text = title,
                         fontSize = if (subtitle == null) 22.sp else 19.sp,
@@ -368,7 +442,7 @@ fun LiquidGlassTopBar(
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 actions()
             }
@@ -1299,6 +1373,7 @@ fun LiquidGlassDock(
     currentTab: DockTab,
     onTabSelected: (DockTab) -> Unit,
     modifier: Modifier = Modifier,
+    onScrollToTop: (() -> Unit)? = null,
     onAddClicked: (() -> Unit)? = null,
     hazeState: HazeState? = null
 ) {
@@ -1306,6 +1381,11 @@ fun LiquidGlassDock(
     val dockShape = RoundedCornerShape(28.dp)
     val haptic = LocalHapticFeedback.current
     val activeHaze = hazeState ?: LocalHazeState.current
+    val scrollDispatcher = LocalScrollToTopDispatcher.current
+    val effectiveScrollToTop = onScrollToTop ?: scrollDispatcher
+
+    var lastTapTime by remember { mutableStateOf(0L) }
+    var lastTappedTab by remember { mutableStateOf<DockTab?>(null) }
 
     val tabs = remember {
         listOf(
@@ -1355,6 +1435,14 @@ fun LiquidGlassDock(
                 )
                 .clip(dockShape)
                 .then(hazeMod)
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onDoubleTap = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            effectiveScrollToTop.invoke()
+                        }
+                    )
+                }
                 .background(
                     brush = Brush.linearGradient(
                         colors = if (isDark) {
@@ -1466,8 +1554,18 @@ fun LiquidGlassDock(
                                     indication = null,
                                     interactionSource = remember { MutableInteractionSource() }
                                 ) {
-                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    onTabSelected(tab)
+                                    val now = System.currentTimeMillis()
+                                    val isDoubleTap = (lastTappedTab == tab && (now - lastTapTime) < 450L)
+                                    lastTapTime = now
+                                    lastTappedTab = tab
+
+                                    if (isDoubleTap) {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        effectiveScrollToTop.invoke()
+                                    } else {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        onTabSelected(tab)
+                                    }
                                 },
                             contentAlignment = Alignment.Center
                         ) {

@@ -20,6 +20,13 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
+import com.policydesk.app.data.profile.AdvisorProfile
+import com.policydesk.app.data.profile.AdvisorProfileManager
+import com.policydesk.app.notification.NotificationHelper
+import com.policydesk.app.notification.NotificationPreferenceManager
+import androidx.core.app.NotificationManagerCompat
+import android.os.Build
+
 data class SettingsUiState(
     val aiConfig: AiConfig = AiConfig(),
     val isTestingAi: Boolean = false,
@@ -33,7 +40,12 @@ data class SettingsUiState(
     val syncStatusText: String = "Local-First Active",
     val syncMessage: String? = null,
     val totalRecords: Int = 0,
-    val isAppLockEnabled: Boolean = false
+    val isAppLockEnabled: Boolean = false,
+    val advisorProfile: AdvisorProfile = AdvisorProfile(),
+    val areNotificationsEnabled: Boolean = true,
+    val hasNotificationPermission: Boolean = true,
+    val appVersionName: String = "1.0.0",
+    val appVersionCode: Long = 1L
 )
 
 @HiltViewModel
@@ -64,6 +76,20 @@ class SettingsViewModel @Inject constructor(
                 .format(java.time.format.DateTimeFormatter.ofPattern("dd MMM, hh:mm a"))
         } else "Not synced yet"
 
+        val profile = AdvisorProfileManager.getProfile(context)
+        val notifEnabled = NotificationPreferenceManager.areNotificationsEnabled(context)
+        val hasPerm = NotificationManagerCompat.from(context).areNotificationsEnabled()
+        val pkgInfo = try {
+            context.packageManager.getPackageInfo(context.packageName, 0)
+        } catch (_: Exception) { null }
+        val vName = pkgInfo?.versionName ?: "1.0.0"
+        val vCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            pkgInfo?.longVersionCode ?: 1L
+        } else {
+            @Suppress("DEPRECATION")
+            pkgInfo?.versionCode?.toLong() ?: 1L
+        }
+
         viewModelScope.launch {
             val vehicles = repository.getAllVehicles().first()
             _uiState.update {
@@ -75,9 +101,44 @@ class SettingsViewModel @Inject constructor(
                     isDriveLinked = isLinked,
                     driveFileName = fileName,
                     lastSyncTime = syncTimeStr,
-                    syncStatusText = if (isLinked) "Google Drive Linked & Active" else "Local-First Active"
+                    syncStatusText = if (isLinked) "Google Drive Linked & Active" else "Local-First Active",
+                    advisorProfile = profile,
+                    areNotificationsEnabled = notifEnabled,
+                    hasNotificationPermission = hasPerm,
+                    appVersionName = vName,
+                    appVersionCode = vCode
                 )
             }
+        }
+    }
+
+    fun saveAdvisorProfile(profile: AdvisorProfile) {
+        AdvisorProfileManager.saveProfile(context, profile)
+        _uiState.update { it.copy(advisorProfile = profile) }
+    }
+
+    fun toggleNotifications(enabled: Boolean) {
+        NotificationPreferenceManager.setNotificationsEnabled(context, enabled)
+        _uiState.update { it.copy(areNotificationsEnabled = enabled) }
+    }
+
+    fun sendTestNotification() {
+        NotificationHelper.showTestNotification(context)
+    }
+
+    fun refreshNotificationPermission() {
+        val hasPerm = NotificationManagerCompat.from(context).areNotificationsEnabled()
+        _uiState.update { it.copy(hasNotificationPermission = hasPerm) }
+    }
+
+    fun resetAllData(onComplete: () -> Unit = {}) {
+        viewModelScope.launch {
+            val vehicles = repository.getAllVehicles().first()
+            if (vehicles.isNotEmpty()) {
+                repository.softDeleteVehicles(vehicles.map { it.vehicle.regNo })
+            }
+            loadSettings()
+            onComplete()
         }
     }
 
