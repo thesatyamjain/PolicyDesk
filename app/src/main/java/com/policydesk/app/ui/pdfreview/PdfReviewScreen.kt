@@ -25,6 +25,8 @@ import androidx.compose.foundation.verticalScroll
 import com.policydesk.app.ui.components.AppleAlertDialog
 import com.policydesk.app.ui.components.AppleButton
 import com.policydesk.app.ui.components.AppleSecondaryButton
+import com.policydesk.app.ui.components.LiquidGlassCanvas
+import com.policydesk.app.ui.components.LiquidGlassCard
 import com.policydesk.app.ui.theme.AppleIcons
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -138,7 +140,8 @@ fun PdfReviewScreen(
         )
     }
 
-    Scaffold(
+    LiquidGlassCanvas(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
         topBar = {
             com.policydesk.app.ui.components.LiquidGlassTopBar(
                 title = "PDF Policy Review",
@@ -169,74 +172,127 @@ fun PdfReviewScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-                    .padding(24.dp),
+                    .padding(horizontal = 20.dp, vertical = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(72.dp)
-                        .background(StatusOverdueRedBg, CircleShape),
-                    contentAlignment = Alignment.Center
+                LiquidGlassCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(22.dp)
                 ) {
-                    Icon(
-                        imageVector = AppleIcons.DocText,
-                        contentDescription = null,
-                        tint = StatusOverdueRed,
-                        modifier = Modifier.size(36.dp)
-                    )
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(64.dp)
+                                .background(
+                                    if (isDark) Color(0xFF0A84FF).copy(alpha = 0.16f) else Color(0xFF007AFF).copy(alpha = 0.12f),
+                                    CircleShape
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = AppleIcons.DocText,
+                                contentDescription = null,
+                                tint = if (isDark) Color(0xFF0A84FF) else Color(0xFF007AFF),
+                                modifier = Modifier.size(32.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Text(
+                            text = "Import Policy Document",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = labelPrimary
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text(
+                            text = "Select insurer PDF documents to automatically extract vehicle schedule, customer info, and policy dates.",
+                            fontSize = 13.sp,
+                            lineHeight = 18.sp,
+                            color = labelSecondary,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        AppleButton(
+                            text = "Select Policy PDF(s)",
+                            onClick = { pdfPickerLauncher.launch(arrayOf("application/pdf")) },
+                            icon = AppleIcons.Upload,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        AppleSecondaryButton(
+                            text = "Fill Policy Manually",
+                            onClick = viewModel::switchToManualEntry,
+                            icon = AppleIcons.SquareAndPencil,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
                 }
-
-                Spacer(modifier = Modifier.height(18.dp))
-                Text(
-                    text = "Import Policy PDF",
-                    fontSize = 19.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = labelPrimary
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "Pick one or multiple insurer PDFs from storage or share directly to PolicyDesk from WhatsApp or Gmail.",
-                    fontSize = 13.sp,
-                    color = labelSecondary,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                )
-
-                Spacer(modifier = Modifier.height(28.dp))
-
-                AppleButton(
-                    text = "Select Policy PDF(s)",
-                    onClick = { pdfPickerLauncher.launch(arrayOf("application/pdf")) },
-                    icon = AppleIcons.Upload,
-                    modifier = Modifier.fillMaxWidth()
-                )
             }
         } else if (state.isExtracting) {
             // Extracting in progress
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues),
+                    .padding(paddingValues)
+                    .padding(horizontal = 20.dp, vertical = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                CircularProgressIndicator(
-                    color = if (isDark) com.policydesk.app.ui.theme.AppleDarkSystemBlue else com.policydesk.app.ui.theme.AppleSystemBlue,
-                    strokeWidth = 3.dp
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = "Reading policy document...",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = labelPrimary
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = "Extracting customer, vehicle & expiry dates with your AI key",
-                    fontSize = 12.sp,
-                    color = labelSecondary
-                )
+                LiquidGlassCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(22.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(28.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Box(
+                            modifier = Modifier.size(60.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                color = if (isDark) com.policydesk.app.ui.theme.AppleDarkSystemBlue else com.policydesk.app.ui.theme.AppleSystemBlue,
+                                strokeWidth = 3.5.dp,
+                                modifier = Modifier.size(48.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        Text(
+                            text = "Analyzing Document",
+                            fontSize = 19.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = labelPrimary
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text(
+                            text = "Reading policy schedule, vehicle registration, and coverage dates...",
+                            fontSize = 13.sp,
+                            lineHeight = 18.sp,
+                            color = labelSecondary,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                    }
+                }
             }
         } else if (state.extractionError != null) {
             // Error Screen
@@ -244,53 +300,110 @@ fun PdfReviewScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-                    .padding(24.dp),
+                    .padding(horizontal = 20.dp, vertical = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                Icon(
-                    imageVector = AppleIcons.Warning,
-                    contentDescription = null,
-                    tint = StatusOverdueRed,
-                    modifier = Modifier.size(48.dp)
-                )
-                Spacer(modifier = Modifier.height(14.dp))
-                Text(
-                    text = "Extraction Issue",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = labelPrimary
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = state.extractionError ?: "Unknown error",
-                    fontSize = 13.sp,
-                    color = labelSecondary,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                )
-                Spacer(modifier = Modifier.height(24.dp))
+                LiquidGlassCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(22.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(60.dp)
+                                .background(StatusOverdueRedBg, CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = AppleIcons.Warning,
+                                contentDescription = null,
+                                tint = StatusOverdueRed,
+                                modifier = Modifier.size(30.dp)
+                            )
+                        }
 
-                AppleButton(
-                    text = "Retry Extraction",
-                    onClick = viewModel::retryCurrentPdf,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                        Spacer(modifier = Modifier.height(16.dp))
 
-                Spacer(modifier = Modifier.height(10.dp))
+                        Text(
+                            text = "Extraction Issue",
+                            fontSize = 19.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = labelPrimary
+                        )
 
-                AppleSecondaryButton(
-                    text = "Try Another PDF",
-                    onClick = { pdfPickerLauncher.launch(arrayOf("application/pdf")) },
-                    modifier = Modifier.fillMaxWidth()
-                )
+                        Spacer(modifier = Modifier.height(8.dp))
 
-                Spacer(modifier = Modifier.height(10.dp))
+                        Text(
+                            text = state.extractionError ?: "Unable to read policy information.",
+                            fontSize = 13.sp,
+                            lineHeight = 18.sp,
+                            color = labelSecondary,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
 
-                AppleSecondaryButton(
-                    text = "Open AI Settings",
-                    onClick = onNavigateToSettings,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(
+                                    if (isDark) Color(0xFF2C2C2E) else Color(0xFFF2F2F7),
+                                    RoundedCornerShape(12.dp)
+                                )
+                                .padding(horizontal = 14.dp, vertical = 10.dp)
+                        ) {
+                            Text(
+                                text = "Tip: If the PDF is a scanned photocopy or non-standard format, you can continue by entering details manually.",
+                                fontSize = 12.sp,
+                                lineHeight = 16.sp,
+                                color = labelSecondary,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(22.dp))
+
+                        AppleButton(
+                            text = "Retry Extraction",
+                            onClick = viewModel::retryCurrentPdf,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        AppleSecondaryButton(
+                            text = "Continue Manually",
+                            onClick = viewModel::switchToManualEntry,
+                            icon = AppleIcons.SquareAndPencil,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            AppleSecondaryButton(
+                                text = "Another PDF",
+                                onClick = { pdfPickerLauncher.launch(arrayOf("application/pdf")) },
+                                modifier = Modifier.weight(1f)
+                            )
+                            AppleSecondaryButton(
+                                text = "AI Settings",
+                                onClick = onNavigateToSettings,
+                                icon = AppleIcons.GearShape,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                }
             }
         } else {
             // Review & Confirm Screen
@@ -305,23 +418,37 @@ fun PdfReviewScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(StatusActiveGreenBg, RoundedCornerShape(8.dp))
-                        .padding(12.dp)
+                        .background(StatusActiveGreenBg, RoundedCornerShape(14.dp))
+                        .padding(horizontal = 14.dp, vertical = 12.dp)
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = AppleIcons.Checkmark,
-                            contentDescription = null,
-                            tint = StatusActiveGreen,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Values extracted from PDF. Review carefully before saving.",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = StatusActiveGreen
-                        )
+                        Box(
+                            modifier = Modifier
+                                .size(28.dp)
+                                .background(StatusActiveGreen.copy(alpha = 0.2f), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = AppleIcons.Checkmark,
+                                contentDescription = null,
+                                tint = StatusActiveGreen,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text(
+                                text = "Policy Details Extracted",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = StatusActiveGreen
+                            )
+                            Text(
+                                text = "Review and verify extracted fields before saving.",
+                                fontSize = 11.sp,
+                                color = StatusActiveGreen.copy(alpha = 0.85f)
+                            )
+                        }
                     }
                 }
 
@@ -516,4 +643,5 @@ fun PdfReviewScreen(
             }
         }
     }
+}
 }

@@ -125,6 +125,10 @@ class PdfReviewViewModel @Inject constructor(
         }
     }
 
+    fun switchToManualEntry() {
+        _uiState.update { it.copy(extractionError = null, isExtracting = false) }
+    }
+
     private fun loadPdf(uri: Uri, password: String? = null) {
         _uiState.update {
             it.copy(
