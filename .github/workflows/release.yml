@@ -149,11 +149,10 @@ jobs:
             echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> $GITHUB_ENV
             echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> $GITHUB_ENV
           else
-            echo "No custom keystore secret provided. Generating CI release signing key..."
-            keytool -genkeypair -v -keystore release.keystore -alias policydesk -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=PolicyDesk, OU=Mobile, O=PolicyDesk, L=Mumbai, ST=MH, C=IN"
-            echo "KEYSTORE_FILE=$(pwd)/release.keystore" >> $GITHUB_ENV
+            echo "Using repository signing key (matches Google Cloud OAuth SHA-1)..."
+            echo "KEYSTORE_FILE=$(pwd)/app/keystore/policydesk-signing.jks" >> $GITHUB_ENV
             echo "KEYSTORE_PASSWORD=android" >> $GITHUB_ENV
-            echo "KEY_ALIAS=policydesk" >> $GITHUB_ENV
+            echo "KEY_ALIAS=androiddebugkey" >> $GITHUB_ENV
             echo "KEY_PASSWORD=android" >> $GITHUB_ENV
           fi
 
@@ -206,11 +205,10 @@ jobs:
             echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> $GITHUB_ENV
             echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> $GITHUB_ENV
           else
-            echo "No custom keystore secret provided. Generating CI release signing key..."
-            keytool -genkeypair -v -keystore release.keystore -alias policydesk -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=PolicyDesk, OU=Mobile, O=PolicyDesk, L=Mumbai, ST=MH, C=IN"
-            echo "KEYSTORE_FILE=$(pwd)/release.keystore" >> $GITHUB_ENV
+            echo "Using repository signing key (matches Google Cloud OAuth SHA-1)..."
+            echo "KEYSTORE_FILE=$(pwd)/app/keystore/policydesk-signing.jks" >> $GITHUB_ENV
             echo "KEYSTORE_PASSWORD=android" >> $GITHUB_ENV
-            echo "KEY_ALIAS=policydesk" >> $GITHUB_ENV
+            echo "KEY_ALIAS=androiddebugkey" >> $GITHUB_ENV
             echo "KEY_PASSWORD=android" >> $GITHUB_ENV
           fi
 

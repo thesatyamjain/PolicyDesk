@@ -45,6 +45,7 @@ proguard/
 # Keystore files
 *.jks
 *.keystore
+!app/keystore/policydesk-signing.jks
 *.key
 *.pepk
 

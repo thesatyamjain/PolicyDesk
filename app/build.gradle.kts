@@ -31,6 +31,11 @@ android {
                 storePassword = project.findProperty("KEYSTORE_PASSWORD")?.toString() ?: System.getenv("KEYSTORE_PASSWORD") ?: ""
                 keyAlias = project.findProperty("KEY_ALIAS")?.toString() ?: System.getenv("KEY_ALIAS") ?: ""
                 keyPassword = project.findProperty("KEY_PASSWORD")?.toString() ?: System.getenv("KEY_PASSWORD") ?: ""
+            } else if (file("keystore/policydesk-signing.jks").exists()) {
+                storeFile = file("keystore/policydesk-signing.jks")
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
             } else {
                 // Development fallback: signs release apk with debug keystore for local testing/verification
                 val debugKeystore = signingConfigs.getByName("debug")
