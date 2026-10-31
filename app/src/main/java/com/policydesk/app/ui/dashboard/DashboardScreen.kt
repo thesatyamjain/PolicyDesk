@@ -39,6 +39,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import com.policydesk.app.ui.components.BindBackToTop
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Assessment
@@ -366,14 +367,19 @@ fun DashboardScreen(
                                 )
                             }
 
-                            // Apple Glass Settings Button (Consistent 34.dp circular housing matching Add Button)
+                            // Apple Glass Settings Button (Frosted glass secondary navigation control)
                             Box(
                                 modifier = Modifier
                                     .size(34.dp)
                                     .clip(CircleShape)
                                     .background(
-                                        if (isDark) AppleDarkSystemBlue else AppleSystemBlue,
+                                        if (isDark) Color(0x29FFFFFF) else Color(0x14000000),
                                         CircleShape
+                                    )
+                                    .border(
+                                        width = 0.5.dp,
+                                        color = Color.White.copy(alpha = if (isDark) 0.18f else 0.45f),
+                                        shape = CircleShape
                                     )
                                     .clickable {
                                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -384,8 +390,8 @@ fun DashboardScreen(
                                 Icon(
                                     imageVector = AppleIcons.GearShape,
                                     contentDescription = "Settings",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(19.dp)
+                                    tint = if (isDark) IosDarkLabelPrimary else IosLabelPrimary,
+                                    modifier = Modifier.size(18.dp)
                                 )
                             }
                         }
@@ -663,7 +669,10 @@ fun DashboardScreen(
 
                         Box(
                             modifier = Modifier
-                                .scale(pillScale)
+                                .graphicsLayer {
+                                    scaleX = pillScale
+                                    scaleY = pillScale
+                                }
                                 .clip(pillShape)
                                 .background(pillBg, pillShape)
                                 .border(
@@ -726,7 +735,10 @@ fun DashboardScreen(
 
                         Box(
                             modifier = Modifier
-                                .scale(pillScale)
+                                .graphicsLayer {
+                                    scaleX = pillScale
+                                    scaleY = pillScale
+                                }
                                 .clip(pillShape)
                                 .background(pillBg, pillShape)
                                 .border(

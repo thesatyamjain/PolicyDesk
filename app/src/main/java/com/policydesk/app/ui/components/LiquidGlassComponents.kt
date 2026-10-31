@@ -781,7 +781,10 @@ fun LiquidGlassFloatingButton(
 
     Box(
         modifier = modifier
-            .scale(scale)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
             .shadow(6.dp, pillShape, spotColor = AppleSystemBlue.copy(alpha = 0.35f))
             .background(
                 brush = Brush.verticalGradient(blueGradient),
@@ -885,7 +888,10 @@ fun AppleButton(
 
     Box(
         modifier = modifier
-            .scale(scale)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
             .height(height)
             .shadow(
                 elevation = if (enabled) 5.dp else 0.dp,
@@ -1025,7 +1031,10 @@ fun AppleSecondaryButton(
 
     Box(
         modifier = modifier
-            .scale(scale)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
             .height(height)
             .shadow(
                 elevation = if (enabled) 2.dp else 0.dp,
@@ -1579,7 +1588,10 @@ fun LiquidGlassDock(
                                     tint = if (isSelected) activeColor else inactiveColor,
                                     modifier = Modifier
                                         .size(19.dp)
-                                        .scale(iconScale)
+                                        .graphicsLayer {
+                                            scaleX = iconScale
+                                            scaleY = iconScale
+                                        }
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(

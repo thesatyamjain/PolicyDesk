@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -970,14 +971,57 @@ fun SettingsScreen(
                     DetailRow(label = "Last Synced Time", value = state.lastSyncTime)
 
                     state.syncMessage?.let { msg ->
-                        Spacer(modifier = Modifier.height(8.dp))
+                        val isError = msg.contains("failed", ignoreCase = true) || 
+                                      msg.contains("cancelled", ignoreCase = true) || 
+                                      msg.contains("error", ignoreCase = true) ||
+                                      msg.contains("10:")
+                        val isSuccess = msg.contains("success", ignoreCase = true) || 
+                                        msg.contains("linked", ignoreCase = true) || 
+                                        msg.contains("restored", ignoreCase = true) ||
+                                        msg.contains("complete", ignoreCase = true)
+                        val tintColor = when {
+                            isError -> AppleSystemRed
+                            isSuccess -> AppleSystemGreen
+                            else -> AppleSystemBlue
+                        }
+                        val friendlyText = if (msg.contains("10:") || msg.contains("failed: 10")) {
+                            "Google Sign-In verification in progress. New OAuth fingerprints can take a few minutes to take effect in Google Play Services."
+                        } else {
+                            msg
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(AppleSystemBlue.copy(alpha = 0.1f), RoundedCornerShape(8.dp))
-                                .padding(10.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(tintColor.copy(alpha = if (isDark) 0.14f else 0.08f))
+                                .border(
+                                    width = 0.5.dp,
+                                    color = tintColor.copy(alpha = if (isDark) 0.35f else 0.25f),
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+                                .padding(horizontal = 12.dp, vertical = 10.dp)
                         ) {
-                            Text(text = msg, fontSize = 12.sp, color = AppleSystemBlue, fontWeight = FontWeight.Medium)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (isError) AppleIcons.Warning else if (isSuccess) AppleIcons.Checkmark else Icons.Default.CloudDone,
+                                    contentDescription = null,
+                                    tint = tintColor,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Text(
+                                    text = friendlyText,
+                                    fontSize = 12.sp,
+                                    lineHeight = 16.sp,
+                                    color = tintColor,
+                                    fontWeight = FontWeight.Medium,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
                         }
                     }
 
@@ -1017,14 +1061,57 @@ fun SettingsScreen(
                     DetailRow(label = "Drive Status", value = "Not Linked")
 
                     state.syncMessage?.let { msg ->
-                        Spacer(modifier = Modifier.height(8.dp))
+                        val isError = msg.contains("failed", ignoreCase = true) || 
+                                      msg.contains("cancelled", ignoreCase = true) || 
+                                      msg.contains("error", ignoreCase = true) ||
+                                      msg.contains("10:")
+                        val isSuccess = msg.contains("success", ignoreCase = true) || 
+                                        msg.contains("linked", ignoreCase = true) || 
+                                        msg.contains("restored", ignoreCase = true) ||
+                                        msg.contains("complete", ignoreCase = true)
+                        val tintColor = when {
+                            isError -> AppleSystemRed
+                            isSuccess -> AppleSystemGreen
+                            else -> AppleSystemBlue
+                        }
+                        val friendlyText = if (msg.contains("10:") || msg.contains("failed: 10")) {
+                            "Google Sign-In verification in progress. New OAuth fingerprints can take a few minutes to take effect in Google Play Services."
+                        } else {
+                            msg
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(AppleSystemBlue.copy(alpha = 0.1f), RoundedCornerShape(8.dp))
-                                .padding(10.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(tintColor.copy(alpha = if (isDark) 0.14f else 0.08f))
+                                .border(
+                                    width = 0.5.dp,
+                                    color = tintColor.copy(alpha = if (isDark) 0.35f else 0.25f),
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+                                .padding(horizontal = 12.dp, vertical = 10.dp)
                         ) {
-                            Text(text = msg, fontSize = 12.sp, color = AppleSystemBlue, fontWeight = FontWeight.Medium)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (isError) AppleIcons.Warning else if (isSuccess) AppleIcons.Checkmark else Icons.Default.CloudDone,
+                                    contentDescription = null,
+                                    tint = tintColor,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Text(
+                                    text = friendlyText,
+                                    fontSize = 12.sp,
+                                    lineHeight = 16.sp,
+                                    color = tintColor,
+                                    fontWeight = FontWeight.Medium,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
                         }
                     }
 
@@ -1204,27 +1291,68 @@ fun SettingsScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(AppleSystemOrange.copy(alpha = 0.12f), RoundedCornerShape(10.dp))
-                            .border(1.dp, AppleSystemOrange.copy(alpha = 0.35f), RoundedCornerShape(10.dp))
-                            .padding(10.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(if (isDark) AppleSystemOrange.copy(alpha = 0.14f) else AppleSystemOrange.copy(alpha = 0.08f))
+                            .border(
+                                width = 0.5.dp,
+                                color = AppleSystemOrange.copy(alpha = if (isDark) 0.35f else 0.25f),
+                                shape = RoundedCornerShape(14.dp)
+                            )
+                            .padding(horizontal = 14.dp, vertical = 12.dp)
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text(
-                                text = "System notification permission is required for alerts.",
-                                color = AppleSystemOrange,
-                                fontSize = 12.sp,
-                                modifier = Modifier.weight(1f)
-                            )
-                            androidx.compose.material3.TextButton(
-                                onClick = {
-                                    notifPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                }
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .background(AppleSystemOrange.copy(alpha = 0.20f)),
+                                contentAlignment = Alignment.Center
                             ) {
-                                Text("Allow", color = if (isDark) AppleDarkSystemBlue else AppleSystemBlue, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                Icon(
+                                    imageVector = Icons.Default.Notifications,
+                                    contentDescription = null,
+                                    tint = AppleSystemOrange,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Notifications Disabled",
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 12.sp,
+                                    color = labelPrimary
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = "Enable permission to receive automated renewal countdown alerts.",
+                                    fontSize = 11.sp,
+                                    lineHeight = 15.sp,
+                                    color = labelSecondary
+                                )
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(AppleSystemOrange.copy(alpha = 0.18f))
+                                    .clickable {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        notifPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                    }
+                                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "Allow",
+                                    color = AppleSystemOrange,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp
+                                )
                             }
                         }
                     }

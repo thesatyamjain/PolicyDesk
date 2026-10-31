@@ -571,13 +571,60 @@ CONTENT AWARENESS RULES & ABBREVIATIONS FOR ALL FIELDS:
         }
     }
 
+    private fun getPdfPageCount(context: Context, uri: Uri): Int {
+        val mimeType = context.contentResolver.getType(uri) ?: ""
+        if (mimeType.startsWith("image/")) return 1
+        return try {
+            context.contentResolver.openFileDescriptor(uri, "r")?.use { pfd ->
+                val renderer = PdfRenderer(pfd)
+                val count = renderer.pageCount
+                renderer.close()
+                count
+            } ?: 1
+        } catch (_: Exception) { 1 }
+    }
+
+    private fun renderPdfSinglePage(context: Context, uri: Uri, pageIndex: Int, scale: Float = 1.8f): String? {
+        val mimeType = context.contentResolver.getType(uri) ?: ""
+        if (mimeType.startsWith("image/")) {
+            return if (pageIndex == 0) renderPdfOrImageToBase64(context, uri, maxPages = 1, scale = scale) else null
+        }
+        return try {
+            context.contentResolver.openFileDescriptor(uri, "r")?.use { pfd ->
+                val renderer = PdfRenderer(pfd)
+                if (pageIndex >= renderer.pageCount) {
+                    renderer.close()
+                    return null
+                }
+                val page = renderer.openPage(pageIndex)
+                val bitmapWidth = (page.width * scale).toInt()
+                val bitmapHeight = (page.height * scale).toInt()
+                val bitmap = Bitmap.createBitmap(bitmapWidth, bitmapHeight, Bitmap.Config.ARGB_8888)
+                val canvas = Canvas(bitmap)
+                canvas.drawColor(Color.WHITE)
+                val matrix = Matrix().apply { setScale(scale, scale) }
+                page.render(bitmap, null, matrix, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+                page.close()
+                renderer.close()
+
+                val outputStream = ByteArrayOutputStream()
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 92, outputStream)
+                bitmap.recycle()
+                Base64.encodeToString(outputStream.toByteArray(), Base64.NO_WRAP)
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     private fun extractWithCloudflare(context: Context, pdfUri: Uri, config: AiConfig): ExtractionResult {
         val endpoint = config.customEndpoint.ifBlank { DEFAULT_CLOUDFLARE_AI_ENDPOINT }.trimEnd('/')
+        val pageCount = getPdfPageCount(context, pdfUri)
 
-        // Pass 1: Crisp single-page schedule scan calibrated to Llama 3.2 Vision's native 1120px window
-        val singlePageImage = renderPdfOrImageToBase64(context, pdfUri, maxPages = 1, scale = 1.7f)
-        if (singlePageImage != null) {
-            val pass1 = executeCloudflareExtraction(endpoint, singlePageImage, isRetry = false)
+        // Pass 1: Crisp single-page schedule scan calibrated to Llama 3.2 Vision's native window
+        val page0Image = renderPdfSinglePage(context, pdfUri, pageIndex = 0, scale = 1.8f)
+        if (page0Image != null) {
+            val pass1 = executeCloudflareExtraction(endpoint, page0Image, isRetry = false)
             if (pass1 is ExtractionResult.Success) {
                 if (pass1.data.regNo.isNotBlank() || pass1.data.policyNumber.isNotBlank() || pass1.data.customerName.isNotBlank()) {
                     return pass1
@@ -585,23 +632,36 @@ CONTENT AWARENESS RULES & ABBREVIATIONS FOR ALL FIELDS:
             }
         }
 
-        // Pass 2: High-density schedule scan (scale 2.0f)
-        val highResImage = renderPdfOrImageToBase64(context, pdfUri, maxPages = 1, scale = 2.0f)
-        if (highResImage != null) {
-            val pass2 = executeCloudflareExtraction(endpoint, highResImage, isRetry = true)
-            if (pass2 is ExtractionResult.Success) {
-                return pass2
+        // Pass 2: If document has multiple pages, scan Page 1 (where Indian motor policies often place schedule)
+        if (pageCount > 1) {
+            val page1Image = renderPdfSinglePage(context, pdfUri, pageIndex = 1, scale = 1.8f)
+            if (page1Image != null) {
+                val pass2 = executeCloudflareExtraction(endpoint, page1Image, isRetry = true)
+                if (pass2 is ExtractionResult.Success) {
+                    if (pass2.data.regNo.isNotBlank() || pass2.data.policyNumber.isNotBlank() || pass2.data.customerName.isNotBlank()) {
+                        return pass2
+                    }
+                }
             }
         }
 
-        // Pass 3: Multi-page composite (Pages 0 & 1)
+        // Pass 3: Multi-page composite (Pages 0 & 1 combined)
         val multiPageImage = renderPdfOrImageToBase64(context, pdfUri, maxPages = 2, scale = 1.4f)
         if (multiPageImage != null) {
             val pass3 = executeCloudflareExtraction(endpoint, multiPageImage, isRetry = true)
             if (pass3 is ExtractionResult.Success) {
                 return pass3
             }
-            return pass3
+        }
+
+        // Pass 4: High-density schedule scan on Page 0 (scale 2.2f)
+        val highResImage = renderPdfSinglePage(context, pdfUri, pageIndex = 0, scale = 2.2f)
+        if (highResImage != null) {
+            val pass4 = executeCloudflareExtraction(endpoint, highResImage, isRetry = true)
+            if (pass4 is ExtractionResult.Success) {
+                return pass4
+            }
+            return pass4
         }
 
         return ExtractionResult.Error("Could not render document for Cloudflare AI scanning.")
