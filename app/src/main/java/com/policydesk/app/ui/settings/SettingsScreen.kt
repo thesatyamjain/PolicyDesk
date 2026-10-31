@@ -33,8 +33,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.ContentPaste
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Visibility
@@ -61,8 +65,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -127,7 +133,11 @@ fun SettingsScreen(
         viewModel.handleGoogleSignInResult(result.data)
     }
 
+    val clipboardManager = LocalClipboardManager.current
+    val uriHandler = LocalUriHandler.current
+
     var showKey by remember { mutableStateOf(false) }
+    var showCloudflareAdvanced by remember { mutableStateOf(false) }
     var showPrivacyDialog by remember { mutableStateOf(false) }
     var showTermsDialog by remember { mutableStateOf(false) }
     var showResetConfirmDialog by remember { mutableStateOf(false) }
@@ -569,90 +579,236 @@ fun SettingsScreen(
                 val isCloudflare = state.aiConfig.provider == AiProvider.CLOUDFLARE_AI
 
                 if (isCloudflare) {
-                    OutlinedTextField(
-                        value = state.aiConfig.customEndpoint,
-                        onValueChange = viewModel::onCustomEndpointChanged,
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Worker URL (Optional)") },
-                        placeholder = { Text("https://policydesk-ai.satyamjain.workers.dev") },
-                        supportingText = { Text("Zero configuration required. Free for all users.", color = AppleSystemGreen) },
-                        singleLine = true,
-                        shape = RoundedCornerShape(12.dp),
-                        colors = formFieldColors()
-                    )
-                } else {
-                    OutlinedTextField(
-                        value = state.aiConfig.apiKey,
-                        onValueChange = viewModel::onApiKeyChanged,
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text("API Key") },
-                        placeholder = { Text("Paste your API key here") },
-                        singleLine = true,
-                        visualTransformation = if (showKey) VisualTransformation.None else PasswordVisualTransformation(),
-                        trailingIcon = {
-                            IconButton(onClick = { showKey = !showKey }) {
-                                Icon(
-                                    imageVector = if (showKey) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                    contentDescription = "Toggle Key",
-                                    tint = if (isDark) IosDarkLabelTertiary else IosLabelTertiary
+                    // Cloudflare Zero-Clutter Status Card
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (isDark) AppleSystemGreen.copy(alpha = 0.12f) else AppleSystemGreen.copy(alpha = 0.08f))
+                            .border(1.dp, AppleSystemGreen.copy(alpha = 0.25f), RoundedCornerShape(12.dp))
+                            .padding(14.dp)
+                    ) {
+                        Column {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .clip(RoundedCornerShape(4.dp))
+                                        .background(AppleSystemGreen)
+                                )
+                                Text(
+                                    text = "Free Edge AI • Ready to Scan",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = AppleSystemGreen
                                 )
                             }
-                        },
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "Runs directly on serverless edge (Meta Llama 3.2 11B Vision). No API key, developer account, or credit card required.",
+                                fontSize = 12.sp,
+                                lineHeight = 16.sp,
+                                color = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Advanced / Self-Host toggle
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { showCloudflareAdvanced = !showCloudflareAdvanced }
+                            .padding(vertical = 4.dp, horizontal = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Self-Host / Custom Endpoint",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
+                        )
+                        Icon(
+                            imageVector = if (showCloudflareAdvanced) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                            contentDescription = "Toggle Custom Endpoint",
+                            tint = if (isDark) IosDarkLabelTertiary else IosLabelTertiary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+
+                    if (showCloudflareAdvanced) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        OutlinedTextField(
+                            value = state.aiConfig.customEndpoint,
+                            onValueChange = viewModel::onCustomEndpointChanged,
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text("Worker URL (Self-Hosted)") },
+                            placeholder = { Text("https://policydesk-ai.satyamjain.workers.dev") },
+                            supportingText = { Text("Leave blank to use official PolicyDesk Edge.", color = if (isDark) IosDarkLabelTertiary else IosLabelTertiary) },
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp),
+                            colors = formFieldColors()
+                        )
+                    }
+                } else {
+                    // 1. "Get API Key ↗" Helper Row for BYOK
+                    val providerInfo = when (state.aiConfig.provider) {
+                        AiProvider.GEMINI -> Triple(
+                            "Get Free Key from Google AI Studio ↗",
+                            "https://aistudio.google.com/apikey",
+                            "100% Free • Instant setup with your Google account"
+                        )
+                        AiProvider.OPENAI -> Triple(
+                            "Get Key from OpenAI Platform ↗",
+                            "https://platform.openai.com/api-keys",
+                            "Requires OpenAI account with API credits"
+                        )
+                        AiProvider.CLAUDE -> Triple(
+                            "Get Key from Anthropic Console ↗",
+                            "https://console.anthropic.com/settings/keys",
+                            "Requires an Anthropic developer account"
+                        )
+                        else -> Triple("", "", "")
+                    }
+
+                    if (providerInfo.first.isNotBlank()) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(AppleSystemBlue.copy(alpha = 0.08f))
+                                .border(1.dp, AppleSystemBlue.copy(alpha = 0.20f), RoundedCornerShape(10.dp))
+                                .clickable { uriHandler.openUri(providerInfo.second) }
+                                .padding(horizontal = 12.dp, vertical = 9.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = providerInfo.first,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = AppleSystemBlue
+                                )
+                                Text(
+                                    text = providerInfo.third,
+                                    fontSize = 11.sp,
+                                    color = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
+                                )
+                            }
+                            Icon(
+                                imageVector = Icons.Default.OpenInNew,
+                                contentDescription = null,
+                                tint = AppleSystemBlue,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+                    }
+
+                    // 2. API Key Row with 1-Tap Paste Button
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = state.aiConfig.apiKey,
+                            onValueChange = viewModel::onApiKeyChanged,
+                            modifier = Modifier.weight(1f),
+                            label = { Text("API Key") },
+                            placeholder = { Text("Paste your API key here") },
+                            singleLine = true,
+                            visualTransformation = if (showKey) VisualTransformation.None else PasswordVisualTransformation(),
+                            trailingIcon = {
+                                IconButton(onClick = { showKey = !showKey }) {
+                                    Icon(
+                                        imageVector = if (showKey) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                        contentDescription = "Toggle Key",
+                                        tint = if (isDark) IosDarkLabelTertiary else IosLabelTertiary
+                                    )
+                                }
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            colors = formFieldColors()
+                        )
+
+                        AppleSecondaryButton(
+                            text = "Paste",
+                            icon = Icons.Default.ContentPaste,
+                            onClick = {
+                                val clipText = clipboardManager.getText()?.text?.trim()
+                                if (!clipText.isNullOrBlank()) {
+                                    viewModel.onApiKeyChanged(clipText)
+                                    Toast.makeText(context, "API Key pasted", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    Toast.makeText(context, "Clipboard is empty", Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            modifier = Modifier.height(56.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Model Field
+                    OutlinedTextField(
+                        value = state.aiConfig.model,
+                        onValueChange = viewModel::onModelChanged,
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Model Name") },
+                        singleLine = true,
                         shape = RoundedCornerShape(12.dp),
                         colors = formFieldColors()
                     )
-                }
 
-                Spacer(modifier = Modifier.height(10.dp))
-
-                // Model Field
-                OutlinedTextField(
-                    value = state.aiConfig.model,
-                    onValueChange = viewModel::onModelChanged,
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Model Name") },
-                    singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
-                    colors = formFieldColors()
-                )
-
-                // Recommended Model Quick Selector Pills
-                val suggestedModels = when (state.aiConfig.provider) {
-                    AiProvider.CLOUDFLARE_AI -> listOf("@cf/meta/llama-3.2-11b-vision-instruct")
-                    AiProvider.GEMINI -> listOf("gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-2.5-flash")
-                    AiProvider.OPENAI -> listOf("gpt-4o-mini", "gpt-4o")
-                    AiProvider.CLAUDE -> listOf("claude-3-5-haiku-20241022", "claude-3-5-sonnet-20241022")
-                }
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 6.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    suggestedModels.forEach { modelOption ->
-                        val isSelected = state.aiConfig.model.equals(modelOption, ignoreCase = true)
-                        Box(
+                    // Recommended Model Quick Selector Pills
+                    val suggestedModels = when (state.aiConfig.provider) {
+                        AiProvider.GEMINI -> listOf("gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-2.5-flash")
+                        AiProvider.OPENAI -> listOf("gpt-4o-mini", "gpt-4o")
+                        AiProvider.CLAUDE -> listOf("claude-3-5-haiku-20241022", "claude-3-5-sonnet-20241022")
+                        else -> emptyList()
+                    }
+                    if (suggestedModels.isNotEmpty()) {
+                        Row(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(
-                                    if (isSelected) AppleSystemBlue.copy(alpha = 0.15f)
-                                    else if (isDark) IosDarkTertiaryGrouped
-                                    else IosTertiaryGrouped
-                                )
-                                .border(
-                                    1.dp,
-                                    if (isSelected) AppleSystemBlue else Color.Transparent,
-                                    RoundedCornerShape(8.dp)
-                                )
-                                .clickable { viewModel.onModelChanged(modelOption) }
-                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                                .fillMaxWidth()
+                                .padding(top = 6.dp),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            Text(
-                                text = modelOption,
-                                fontSize = 11.sp,
-                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                                color = if (isSelected) AppleSystemBlue else if (isDark) IosDarkLabelSecondary else IosLabelSecondary
-                            )
+                            suggestedModels.forEach { modelOption ->
+                                val isSelected = state.aiConfig.model.equals(modelOption, ignoreCase = true)
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(
+                                            if (isSelected) AppleSystemBlue.copy(alpha = 0.15f)
+                                            else if (isDark) IosDarkTertiaryGrouped
+                                            else IosTertiaryGrouped
+                                        )
+                                        .border(
+                                            1.dp,
+                                            if (isSelected) AppleSystemBlue else Color.Transparent,
+                                            RoundedCornerShape(8.dp)
+                                        )
+                                        .clickable { viewModel.onModelChanged(modelOption) }
+                                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                                ) {
+                                    Text(
+                                        text = modelOption,
+                                        fontSize = 11.sp,
+                                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                                        color = if (isSelected) AppleSystemBlue else if (isDark) IosDarkLabelSecondary else IosLabelSecondary
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -672,7 +828,7 @@ fun SettingsScreen(
                         modifier = Modifier.weight(1.3f)
                     )
 
-                    if (state.aiConfig.apiKey.isNotBlank()) {
+                    if (!isCloudflare && state.aiConfig.apiKey.isNotBlank()) {
                         AppleSecondaryButton(
                             text = "Remove",
                             onClick = viewModel::removeAiKey,

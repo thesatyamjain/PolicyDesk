@@ -72,6 +72,9 @@ class SecureKeyStorage(context: Context) {
             }
         }
         val finalModel = model ?: provider.defaultModel
+        if (provider == AiProvider.CLOUDFLARE_AI) {
+            return AiProvider.CLOUDFLARE_AI.defaultModel
+        }
         if (provider == AiProvider.GEMINI && (finalModel.isBlank() || finalModel.startsWith("gemini-1.") || finalModel.startsWith("gemini-2."))) {
             return "gemini-3.5-flash-lite"
         }

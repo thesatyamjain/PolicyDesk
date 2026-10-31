@@ -230,11 +230,13 @@ CONTENT AWARENESS RULES & ABBREVIATIONS FOR ALL FIELDS:
                     val cfResult = extractWithCloudflare(context, pdfUri, config)
                     if (cfResult is ExtractionResult.Success) {
                         cfResult
-                    } else if (config.apiKey.isNotBlank()) {
-                        // Fallback to Gemini if user has personal key configured
-                        extractWithGemini(base64Pdf, config, password)
                     } else {
-                        cfResult
+                        val geminiKey = com.policydesk.app.data.security.SecureKeyStorage(context).getApiKeyForProvider(AiProvider.GEMINI)
+                        if (geminiKey.isNotBlank()) {
+                            extractWithGemini(base64Pdf, config.copy(apiKey = geminiKey), password)
+                        } else {
+                            cfResult
+                        }
                     }
                 }
                 AiProvider.GEMINI -> extractWithGemini(base64Pdf, config, password)
