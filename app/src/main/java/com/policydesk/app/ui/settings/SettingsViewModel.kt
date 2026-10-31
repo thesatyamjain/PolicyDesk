@@ -44,6 +44,8 @@ data class SettingsUiState(
     val isSyncing: Boolean = false,
     val syncStatusText: String = "Local-First Active",
     val syncMessage: String? = null,
+    val localSnapshots: List<com.policydesk.app.data.drive.LocalSnapshotInfo> = emptyList(),
+    val lastBackupCount: Int = 0,
     val totalRecords: Int = 0,
     val isAppLockEnabled: Boolean = false,
     val advisorProfile: AdvisorProfile = AdvisorProfile(),
@@ -78,6 +80,8 @@ class SettingsViewModel @Inject constructor(
         val fileName = com.policydesk.app.data.drive.GoogleDriveManager.SNAPSHOT_FILE_NAME
         val connectedAccount = com.policydesk.app.data.drive.GoogleDriveManager.getConnectedAccount(context)
         val lastSync = com.policydesk.app.data.drive.GoogleDriveManager.getLastSyncTime(context)
+        val localSnapshots = com.policydesk.app.data.drive.GoogleDriveManager.getLocalSnapshots(context)
+        val backupCount = com.policydesk.app.data.drive.GoogleDriveManager.getLastBackupCount(context)
         val syncTimeStr = if (lastSync > 0) {
             java.time.Instant.ofEpochMilli(lastSync)
                 .atZone(java.time.ZoneId.systemDefault())
@@ -109,6 +113,8 @@ class SettingsViewModel @Inject constructor(
                     isDriveLinked = isLinked,
                     driveFileName = fileName,
                     lastSyncTime = syncTimeStr,
+                    localSnapshots = localSnapshots,
+                    lastBackupCount = backupCount,
                     syncStatusText = if (isLinked) "Google Drive Linked & Active" else "Local-First Active",
                     advisorProfile = profile,
                     areNotificationsEnabled = notifEnabled,
@@ -404,6 +410,7 @@ class SettingsViewModel @Inject constructor(
                 val nowFormatted = java.time.LocalDateTime.now()
                     .format(java.time.format.DateTimeFormatter.ofPattern("dd MMM, hh:mm a"))
                 driveResult.onSuccess {
+                    loadSettings()
                     _uiState.update {
                         it.copy(
                             isSyncing = false,
@@ -491,6 +498,43 @@ class SettingsViewModel @Inject constructor(
                         isSyncing = false,
                         syncStatusText = "No deleted records",
                         syncMessage = "No soft-deleted records found to recover."
+                    )
+                }
+            }
+        }
+    }
+
+    fun restoreFromLocalSnapshot(file: java.io.File) {
+        _uiState.update { it.copy(isSyncing = true, syncMessage = null) }
+        viewModelScope.launch {
+            try {
+                val text = file.readText(Charsets.UTF_8)
+                val result = restoreSnapshotJson(text)
+                result.onSuccess { count ->
+                    loadSettings()
+                    val nowFormatted = java.time.LocalDateTime.now()
+                        .format(java.time.format.DateTimeFormatter.ofPattern("dd MMM, hh:mm a"))
+                    _uiState.update {
+                        it.copy(
+                            isSyncing = false,
+                            lastSyncTime = nowFormatted,
+                            syncStatusText = "Restored from Device",
+                            syncMessage = "Successfully restored $count vehicle records from local backup (${file.name})!"
+                        )
+                    }
+                }.onFailure { err ->
+                    _uiState.update {
+                        it.copy(
+                            isSyncing = false,
+                            syncMessage = "Failed to restore: ${err.message}"
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isSyncing = false,
+                        syncMessage = "Could not read local backup: ${e.message}"
                     )
                 }
             }

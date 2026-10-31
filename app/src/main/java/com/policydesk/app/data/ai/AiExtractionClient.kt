@@ -463,9 +463,8 @@ CONTENT AWARENESS RULES & ABBREVIATIONS FOR ALL FIELDS:
     private fun extractWithCloudflare(context: Context, pdfUri: Uri, config: AiConfig): ExtractionResult {
         val endpoint = config.customEndpoint.ifBlank { DEFAULT_CLOUDFLARE_AI_ENDPOINT }.trimEnd('/')
 
-        // Pass 1: Crisp single-page schedule scan (Page 0 at 2.4x scale)
-        // 99% of Indian vehicle policies have all schedule information on Page 1. High DPI prevents OCR blur.
-        val singlePageImage = renderPdfOrImageToBase64(context, pdfUri, maxPages = 1, scale = 2.4f)
+        // Pass 1: Crisp single-page schedule scan calibrated to Llama 3.2 Vision's native 1120px window
+        val singlePageImage = renderPdfOrImageToBase64(context, pdfUri, maxPages = 1, scale = 1.7f)
         if (singlePageImage != null) {
             val pass1 = executeCloudflareExtraction(endpoint, singlePageImage, isRetry = false)
             if (pass1 is ExtractionResult.Success) {
@@ -475,18 +474,19 @@ CONTENT AWARENESS RULES & ABBREVIATIONS FOR ALL FIELDS:
             }
         }
 
-        // Pass 2: Multi-page composite scan (Pages 0 & 1 combined at 1.8x scale)
-        val multiPageImage = renderPdfOrImageToBase64(context, pdfUri, maxPages = 2, scale = 1.8f)
-        if (multiPageImage != null) {
-            val pass2 = executeCloudflareExtraction(endpoint, multiPageImage, isRetry = true)
+        // Pass 2: High-density schedule scan (scale 2.0f)
+        val highResImage = renderPdfOrImageToBase64(context, pdfUri, maxPages = 1, scale = 2.0f)
+        if (highResImage != null) {
+            val pass2 = executeCloudflareExtraction(endpoint, highResImage, isRetry = true)
             if (pass2 is ExtractionResult.Success) {
                 return pass2
             }
         }
 
-        // Pass 3: Silent retry on single-page to catch transient vision glitches
-        if (singlePageImage != null) {
-            val pass3 = executeCloudflareExtraction(endpoint, singlePageImage, isRetry = true)
+        // Pass 3: Multi-page composite (Pages 0 & 1)
+        val multiPageImage = renderPdfOrImageToBase64(context, pdfUri, maxPages = 2, scale = 1.4f)
+        if (multiPageImage != null) {
+            val pass3 = executeCloudflareExtraction(endpoint, multiPageImage, isRetry = true)
             if (pass3 is ExtractionResult.Success) {
                 return pass3
             }
@@ -524,7 +524,7 @@ CONTENT AWARENESS RULES & ABBREVIATIONS FOR ALL FIELDS:
                         json.optString("insurer").isNotBlank())
 
                 if (isExplicitlyNotPolicy && !hasAnyExtractedField) {
-                    return ExtractionResult.Error("The uploaded file does not appear to be an insurance policy document.")
+                    return ExtractionResult.Error("Could not detect policy details from this page. Please ensure the policy schedule page is selected, or use Continue Manually.")
                 }
                 parseExtractionJson(json, responseText)
             } else {

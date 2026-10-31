@@ -705,7 +705,7 @@ fun SettingsScreen(
             }
 
             // SECTION 3: GOOGLE DRIVE & CLOUD STORAGE
-            LiquidGlassGroupedSection(title = "Google Drive Sync") {
+            LiquidGlassGroupedSection(title = "Cloud Sync & Data Protection") {
                 if (state.isDriveLinked) {
                     Row(
                         modifier = Modifier
@@ -744,8 +744,11 @@ fun SettingsScreen(
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    DetailRow(label = "Total Records", value = "${state.totalRecords} vehicles")
-                    DetailRow(label = "Cloud Vault", value = "PolicyDesk Vault")
+                    DetailRow(label = "Local Active Records", value = "${state.totalRecords} vehicles")
+                    state.lastBackupCount?.let { count ->
+                        DetailRow(label = "Cloud Vault Records", value = "$count vehicles")
+                    }
+                    DetailRow(label = "Cloud Vault Folder", value = "PolicyDesk Vault")
                     DetailRow(label = "Last Synced Time", value = state.lastSyncTime)
 
                     state.syncMessage?.let { msg ->
@@ -767,7 +770,7 @@ fun SettingsScreen(
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         AppleButton(
-                            text = if (state.isSyncing) "Syncing..." else "Sync Now",
+                            text = if (state.isSyncing) "Syncing..." else "Backup to Cloud",
                             onClick = viewModel::triggerSyncNow,
                             enabled = !state.isSyncing,
                             isLoading = state.isSyncing,
@@ -778,37 +781,6 @@ fun SettingsScreen(
                             text = "Restore from Vault",
                             onClick = viewModel::restoreFromDriveVault,
                             enabled = !state.isSyncing,
-                            tintColor = labelPrimary,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        AppleSecondaryButton(
-                            text = "Save to Drive (Share)",
-                            onClick = {
-                                coroutineScope.launch {
-                                    val shareUri = viewModel.getShareableBackupUri()
-                                    val sendIntent = Intent(Intent.ACTION_SEND).apply {
-                                        type = "application/json"
-                                        putExtra(Intent.EXTRA_STREAM, shareUri)
-                                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                    }
-                                    context.startActivity(Intent.createChooser(sendIntent, "Save to Google Drive"))
-                                }
-                            },
-                            enabled = !state.isSyncing,
-                            modifier = Modifier.weight(1.1f)
-                        )
-
-                        AppleSecondaryButton(
-                            text = "Import JSON File",
-                            onClick = { restoreSnapshotLauncher.launch(arrayOf("application/json", "*/*")) },
                             tintColor = labelPrimary,
                             modifier = Modifier.weight(1f)
                         )
@@ -847,36 +819,97 @@ fun SettingsScreen(
                         },
                         modifier = Modifier.fillMaxWidth()
                     )
+                }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        AppleSecondaryButton(
-                            text = "Save to Drive (Share)",
-                            onClick = {
-                                coroutineScope.launch {
-                                    val shareUri = viewModel.getShareableBackupUri()
-                                    val sendIntent = Intent(Intent.ACTION_SEND).apply {
-                                        type = "application/json"
-                                        putExtra(Intent.EXTRA_STREAM, shareUri)
-                                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                    }
-                                    context.startActivity(Intent.createChooser(sendIntent, "Save directly to Google Drive"))
+                // Direct File SAF Hub
+                Text(
+                    text = "Direct File Backup & Drive SAF",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = labelSecondary
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    AppleSecondaryButton(
+                        text = "Save / Share Backup",
+                        onClick = {
+                            coroutineScope.launch {
+                                val shareUri = viewModel.getShareableBackupUri()
+                                val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                                    type = "application/json"
+                                    putExtra(Intent.EXTRA_STREAM, shareUri)
+                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                                 }
-                            },
-                            tintColor = AppleSystemBlue,
-                            modifier = Modifier.weight(1.1f)
-                        )
+                                context.startActivity(Intent.createChooser(sendIntent, "Save to Google Drive / Files"))
+                            }
+                        },
+                        tintColor = AppleSystemBlue,
+                        modifier = Modifier.weight(1.1f)
+                    )
 
-                        AppleSecondaryButton(
-                            text = "Import JSON File",
-                            onClick = { restoreSnapshotLauncher.launch(arrayOf("application/json", "*/*")) },
-                            tintColor = labelPrimary,
-                            modifier = Modifier.weight(1f)
-                        )
+                    AppleSecondaryButton(
+                        text = "Browse Drive / File",
+                        onClick = { restoreSnapshotLauncher.launch(arrayOf("application/json", "*/*")) },
+                        tintColor = labelPrimary,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                // Rolling snapshots section
+                if (state.localSnapshots.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Text(
+                        text = "Device Rolling Snapshots (Offline Protection)",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = labelSecondary
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    state.localSnapshots.forEach { snapshot ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(
+                                    if (isDark) Color(0xFF1E1E22) else Color(0xFFF2F2F7),
+                                    RoundedCornerShape(10.dp)
+                                )
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = snapshot.timestampFormatted,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = labelPrimary
+                                )
+                                Text(
+                                    text = "${snapshot.recordCount} vehicles • ${snapshot.fileSizeFormatted}",
+                                    fontSize = 10.sp,
+                                    color = labelSecondary
+                                )
+                            }
+                            androidx.compose.material3.TextButton(
+                                onClick = { viewModel.restoreFromLocalSnapshot(snapshot.file) },
+                                enabled = !state.isSyncing
+                            ) {
+                                Text(
+                                    text = "Restore",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = AppleSystemBlue
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
                     }
                 }
 
