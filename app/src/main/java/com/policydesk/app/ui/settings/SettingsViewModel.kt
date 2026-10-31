@@ -163,12 +163,15 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun onProviderSelected(provider: AiProvider) {
+        val current = _uiState.value.aiConfig
+        secureStorage.saveAiConfig(current)
+
+        val targetConfig = secureStorage.getAiConfigFor(provider)
+        secureStorage.saveAiConfig(targetConfig)
+
         _uiState.update {
             it.copy(
-                aiConfig = it.aiConfig.copy(
-                    provider = provider,
-                    model = provider.defaultModel
-                ),
+                aiConfig = targetConfig,
                 aiTestMessage = null
             )
         }
@@ -181,6 +184,7 @@ class SettingsViewModel @Inject constructor(
             } else {
                 it.aiConfig.copy(apiKey = apiKey)
             }
+            secureStorage.saveAiConfig(updatedConfig)
             it.copy(
                 aiConfig = updatedConfig,
                 aiTestMessage = null
@@ -190,8 +194,10 @@ class SettingsViewModel @Inject constructor(
 
     fun onCustomEndpointChanged(endpoint: String) {
         _uiState.update {
+            val updatedConfig = it.aiConfig.copy(customEndpoint = endpoint)
+            secureStorage.saveAiConfig(updatedConfig)
             it.copy(
-                aiConfig = it.aiConfig.copy(customEndpoint = endpoint),
+                aiConfig = updatedConfig,
                 aiTestMessage = null
             )
         }
@@ -199,8 +205,10 @@ class SettingsViewModel @Inject constructor(
 
     fun onModelChanged(model: String) {
         _uiState.update {
+            val updatedConfig = it.aiConfig.copy(model = model)
+            secureStorage.saveAiConfig(updatedConfig)
             it.copy(
-                aiConfig = it.aiConfig.copy(model = model),
+                aiConfig = updatedConfig,
                 aiTestMessage = null
             )
         }
@@ -212,7 +220,8 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun removeAiKey() {
-        secureStorage.removeAiKey()
+        val currentProvider = _uiState.value.aiConfig.provider
+        secureStorage.removeAiKey(currentProvider)
         _uiState.update {
             it.copy(
                 aiConfig = it.aiConfig.copy(apiKey = ""),
@@ -225,8 +234,8 @@ class SettingsViewModel @Inject constructor(
         val current = _uiState.value.aiConfig
         val cleanKey = current.apiKey.trim()
         var cleanModel = current.model.trim().removePrefix("models/")
-        if (current.provider == AiProvider.GEMINI && (cleanModel.isBlank() || cleanModel == "gemini-1.5-flash")) {
-            cleanModel = "gemini-2.5-flash"
+        if (current.provider == AiProvider.GEMINI && (cleanModel.isBlank() || cleanModel.startsWith("gemini-1.") || cleanModel.startsWith("gemini-2."))) {
+            cleanModel = "gemini-3.5-flash-lite"
         }
         val config = current.copy(apiKey = cleanKey, model = cleanModel)
         _uiState.update { it.copy(aiConfig = config, isTestingAi = true, aiTestMessage = null) }
@@ -366,10 +375,20 @@ class SettingsViewModel @Inject constructor(
                 }
             }
         } catch (e: Exception) {
+            val userFriendlyMessage = when {
+                e is com.google.android.gms.common.api.ApiException && e.statusCode == 10 ->
+                    "Google Sign-In Error 10 (Developer Error): SHA-1 fingerprint mismatch in Google Cloud Console. Use 'Browse Drive / File' below for instant zero-config Drive sync."
+                e is com.google.android.gms.common.api.ApiException && e.statusCode == 7 ->
+                    "Network error connecting to Google. Please check your internet connection."
+                e is com.google.android.gms.common.api.ApiException && e.statusCode == 12501 ->
+                    "Sign-in was cancelled."
+                else ->
+                    "Google Sign-In was cancelled or failed: ${e.localizedMessage ?: "Unknown error"}"
+            }
             _uiState.update {
                 it.copy(
                     syncStatusText = "Sign-In Failed",
-                    syncMessage = "Google Sign-In was cancelled or failed: ${e.localizedMessage ?: "Unknown error"}"
+                    syncMessage = userFriendlyMessage
                 )
             }
         }

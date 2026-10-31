@@ -619,7 +619,7 @@ fun SettingsScreen(
                 // Recommended Model Quick Selector Pills
                 val suggestedModels = when (state.aiConfig.provider) {
                     AiProvider.CLOUDFLARE_AI -> listOf("@cf/meta/llama-3.2-11b-vision-instruct")
-                    AiProvider.GEMINI -> listOf("gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash")
+                    AiProvider.GEMINI -> listOf("gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-2.5-flash")
                     AiProvider.OPENAI -> listOf("gpt-4o-mini", "gpt-4o")
                     AiProvider.CLAUDE -> listOf("claude-3-5-haiku-20241022", "claude-3-5-sonnet-20241022")
                 }

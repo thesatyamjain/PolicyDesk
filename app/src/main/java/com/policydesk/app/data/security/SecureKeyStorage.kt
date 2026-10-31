@@ -48,16 +48,49 @@ class SecureKeyStorage(context: Context) {
         )
     }
 
+    fun getApiKeyForProvider(provider: AiProvider): String {
+        val specificKey = prefs.getString("ai_api_key_${provider.name}", null)
+        if (specificKey != null) return specificKey
+        // Backward-compatibility migration: check if active provider has old un-prefixed "ai_api_key"
+        val activeProviderStr = prefs.getString("ai_provider", AiProvider.CLOUDFLARE_AI.name)
+        if (activeProviderStr == provider.name) {
+            val legacyKey = prefs.getString("ai_api_key", "") ?: ""
+            if (legacyKey.isNotBlank()) {
+                prefs.edit().putString("ai_api_key_${provider.name}", legacyKey).apply()
+                return legacyKey
+            }
+        }
+        return ""
+    }
+
+    fun getModelForProvider(provider: AiProvider): String {
+        var model = prefs.getString("ai_model_${provider.name}", null)
+        if (model == null) {
+            val activeProviderStr = prefs.getString("ai_provider", AiProvider.CLOUDFLARE_AI.name)
+            if (activeProviderStr == provider.name) {
+                model = prefs.getString("ai_model", provider.defaultModel)
+            }
+        }
+        val finalModel = model ?: provider.defaultModel
+        if (provider == AiProvider.GEMINI && (finalModel.isBlank() || finalModel.startsWith("gemini-1.") || finalModel.startsWith("gemini-2."))) {
+            return "gemini-3.5-flash-lite"
+        }
+        return finalModel
+    }
+
     fun getAiConfig(): AiConfig {
         val providerStr = prefs.getString("ai_provider", AiProvider.CLOUDFLARE_AI.name) ?: AiProvider.CLOUDFLARE_AI.name
         val provider = try { AiProvider.valueOf(providerStr) } catch (_: Exception) { AiProvider.CLOUDFLARE_AI }
-        val apiKey = prefs.getString("ai_api_key", "") ?: ""
-        var model = prefs.getString("ai_model", provider.defaultModel) ?: provider.defaultModel
+        val apiKey = getApiKeyForProvider(provider)
+        val model = getModelForProvider(provider)
         val customEndpoint = prefs.getString("ai_custom_endpoint", "") ?: ""
-        // Auto-migrate retired Gemini models to current gemini-3.5-flash-lite
-        if (provider == AiProvider.GEMINI && (model.isBlank() || model.startsWith("gemini-1.") || model.startsWith("gemini-2."))) {
-            model = "gemini-3.5-flash-lite"
-        }
+        return AiConfig(provider, apiKey, model, customEndpoint)
+    }
+
+    fun getAiConfigFor(provider: AiProvider): AiConfig {
+        val apiKey = getApiKeyForProvider(provider)
+        val model = getModelForProvider(provider)
+        val customEndpoint = prefs.getString("ai_custom_endpoint", "") ?: ""
         return AiConfig(provider, apiKey, model, customEndpoint)
     }
 
@@ -65,14 +98,17 @@ class SecureKeyStorage(context: Context) {
         val cleanModel = config.model.trim().removePrefix("models/").ifBlank { config.provider.defaultModel }
         prefs.edit()
             .putString("ai_provider", config.provider.name)
+            .putString("ai_api_key_${config.provider.name}", config.apiKey.trim())
+            .putString("ai_model_${config.provider.name}", cleanModel)
+            .putString("ai_custom_endpoint", config.customEndpoint.trim())
             .putString("ai_api_key", config.apiKey.trim())
             .putString("ai_model", cleanModel)
-            .putString("ai_custom_endpoint", config.customEndpoint.trim())
             .apply()
     }
 
-    fun removeAiKey() {
+    fun removeAiKey(provider: AiProvider = getAiConfig().provider) {
         prefs.edit()
+            .remove("ai_api_key_${provider.name}")
             .remove("ai_api_key")
             .apply()
     }
