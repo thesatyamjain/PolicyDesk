@@ -265,58 +265,167 @@ CONTENT AWARENESS RULES & ABBREVIATIONS FOR ALL FIELDS:
         return false
     }
 
-    private fun fetchAvailableGeminiModel(cleanKey: String): String? {
-        return try {
-            val listUrl = URL("https://generativelanguage.googleapis.com/v1beta/models?key=${cleanKey}")
-            val listConn = listUrl.openConnection() as HttpURLConnection
-            listConn.requestMethod = "GET"
-            listConn.connectTimeout = 8000
-            listConn.readTimeout = 8000
-            if (listConn.responseCode == 200) {
-                val raw = BufferedReader(InputStreamReader(listConn.inputStream)).readText()
-                val modelsArray = JSONObject(raw).optJSONArray("models") ?: return null
-                val supported = mutableListOf<String>()
-                for (i in 0 until modelsArray.length()) {
-                    val m = modelsArray.optJSONObject(i) ?: continue
-                    val name = m.optString("name", "").removePrefix("models/")
-                    val methods = m.optJSONArray("supportedGenerationMethods")
-                    var canGenerate = false
-                    if (methods != null) {
-                        for (j in 0 until methods.length()) {
-                            if (methods.optString(j) == "generateContent") {
-                                canGenerate = true
-                                break
+    suspend fun fetchLiveModels(
+        provider: AiProvider,
+        apiKey: String,
+        customEndpoint: String = ""
+    ): Result<List<String>> = withContext(Dispatchers.IO) {
+        val cleanKey = apiKey.trim()
+        when (provider) {
+            AiProvider.GEMINI -> {
+                if (cleanKey.isBlank()) {
+                    return@withContext Result.success(listOf("gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-2.5-flash"))
+                }
+                try {
+                    val url = URL("https://generativelanguage.googleapis.com/v1beta/models?key=$cleanKey")
+                    val conn = url.openConnection() as HttpURLConnection
+                    conn.connectTimeout = 8000
+                    conn.readTimeout = 8000
+                    val code = conn.responseCode
+                    if (code == 200) {
+                        val raw = BufferedReader(InputStreamReader(conn.inputStream)).readText()
+                        val modelsArray = JSONObject(raw).optJSONArray("models") ?: return@withContext Result.success(listOf("gemini-3.5-flash-lite", "gemini-3.8-flash"))
+                        val candidates = mutableListOf<String>()
+                        for (i in 0 until modelsArray.length()) {
+                            val m = modelsArray.optJSONObject(i) ?: continue
+                            val name = m.optString("name", "").removePrefix("models/")
+                            val methods = m.optJSONArray("supportedGenerationMethods")
+                            var canGen = false
+                            if (methods != null) {
+                                for (j in 0 until methods.length()) {
+                                    if (methods.optString(j) == "generateContent") {
+                                        canGen = true
+                                        break
+                                    }
+                                }
+                            }
+                            if (canGen && (name.contains("flash") || name.contains("pro") || name.startsWith("gemini-"))) {
+                                if (!name.contains("embedding") && !name.contains("aqa") && !name.contains("imagen") && !name.contains("learnlm")) {
+                                    candidates.add(name)
+                                }
                             }
                         }
+                        val sorted = candidates.sortedWith(
+                            compareByDescending<String> { it.contains("3.5-flash-lite") }
+                                .thenByDescending { it.contains("3.8-flash") }
+                                .thenByDescending { it.contains("2.5-flash") && !it.contains("lite") }
+                                .thenByDescending { it.contains("2.0-flash") }
+                                .thenByDescending { it.contains("flash") }
+                                .thenByDescending { it.contains("pro") }
+                        ).distinct()
+                        Result.success(if (sorted.isNotEmpty()) sorted else listOf("gemini-3.5-flash-lite", "gemini-3.8-flash"))
+                    } else {
+                        val errorText = try {
+                            val stream = conn.errorStream ?: conn.inputStream
+                            val raw = BufferedReader(InputStreamReader(stream)).readText()
+                            JSONObject(raw).optJSONObject("error")?.optString("message") ?: raw
+                        } catch (_: Exception) { conn.responseMessage }
+                        Result.failure(Exception("HTTP $code: $errorText"))
                     }
-                    if (canGenerate) supported.add(name)
+                } catch (e: Exception) {
+                    Result.failure(e)
                 }
-                // Priority: 3.5-flash-lite > 3.8-flash > 2.5-flash > first flash model > first supported model
-                supported.firstOrNull { it.contains("3.5-flash-lite") }
-                    ?: supported.firstOrNull { it.contains("3.8-flash") }
-                    ?: supported.firstOrNull { it.contains("2.5-flash") }
-                    ?: supported.firstOrNull { it.contains("flash") }
-                    ?: supported.firstOrNull()
-            } else {
-                null
             }
-        } catch (_: Exception) {
-            null
+            AiProvider.OPENAI -> {
+                if (cleanKey.isBlank()) {
+                    return@withContext Result.success(listOf("gpt-4o-mini", "gpt-4o", "o1-mini"))
+                }
+                try {
+                    val url = URL("https://api.openai.com/v1/models")
+                    val conn = url.openConnection() as HttpURLConnection
+                    conn.setRequestProperty("Authorization", "Bearer $cleanKey")
+                    conn.connectTimeout = 8000
+                    conn.readTimeout = 8000
+                    val code = conn.responseCode
+                    if (code == 200) {
+                        val raw = BufferedReader(InputStreamReader(conn.inputStream)).readText()
+                        val dataArray = JSONObject(raw).optJSONArray("data") ?: return@withContext Result.success(listOf("gpt-4o-mini", "gpt-4o"))
+                        val candidates = mutableListOf<String>()
+                        for (i in 0 until dataArray.length()) {
+                            val m = dataArray.optJSONObject(i) ?: continue
+                            val id = m.optString("id", "")
+                            if (id.startsWith("gpt-4o") || id.startsWith("o1") || id.startsWith("o3") || id.startsWith("gpt-4-turbo")) {
+                                if (!id.contains("audio") && !id.contains("realtime")) {
+                                    candidates.add(id)
+                                }
+                            }
+                        }
+                        val sorted = candidates.sortedWith(
+                            compareByDescending<String> { it == "gpt-4o-mini" }
+                                .thenByDescending { it == "gpt-4o" }
+                                .thenByDescending { it.startsWith("o3") }
+                                .thenByDescending { it.startsWith("o1") }
+                                .thenByDescending { it.startsWith("gpt-4o") }
+                        ).distinct()
+                        Result.success(if (sorted.isNotEmpty()) sorted else listOf("gpt-4o-mini", "gpt-4o"))
+                    } else {
+                        val errorText = try {
+                            val stream = conn.errorStream ?: conn.inputStream
+                            val raw = BufferedReader(InputStreamReader(stream)).readText()
+                            JSONObject(raw).optJSONObject("error")?.optString("message") ?: raw
+                        } catch (_: Exception) { conn.responseMessage }
+                        Result.failure(Exception("HTTP $code: $errorText"))
+                    }
+                } catch (e: Exception) {
+                    Result.failure(e)
+                }
+            }
+            AiProvider.CLAUDE -> {
+                if (cleanKey.isBlank()) {
+                    return@withContext Result.success(listOf("claude-3-5-haiku-20241022", "claude-3-5-sonnet-20241022", "claude-3-opus-20240229"))
+                }
+                try {
+                    val url = URL("https://api.anthropic.com/v1/models")
+                    val conn = url.openConnection() as HttpURLConnection
+                    conn.setRequestProperty("x-api-key", cleanKey)
+                    conn.setRequestProperty("anthropic-version", "2023-06-01")
+                    conn.connectTimeout = 8000
+                    conn.readTimeout = 8000
+                    val code = conn.responseCode
+                    if (code == 200) {
+                        val raw = BufferedReader(InputStreamReader(conn.inputStream)).readText()
+                        val dataArray = JSONObject(raw).optJSONArray("data") ?: return@withContext Result.success(listOf("claude-3-5-haiku-20241022", "claude-3-5-sonnet-20241022"))
+                        val candidates = mutableListOf<String>()
+                        for (i in 0 until dataArray.length()) {
+                            val m = dataArray.optJSONObject(i) ?: continue
+                            val id = m.optString("id", "")
+                            if (id.isNotBlank()) candidates.add(id)
+                        }
+                        val sorted = candidates.sortedWith(
+                            compareByDescending<String> { it.contains("3-5-haiku") }
+                                .thenByDescending { it.contains("3-5-sonnet") }
+                                .thenByDescending { it.contains("3-haiku") }
+                        ).distinct()
+                        Result.success(if (sorted.isNotEmpty()) sorted else listOf("claude-3-5-haiku-20241022", "claude-3-5-sonnet-20241022"))
+                    } else {
+                        // Fallback gracefully on Claude if key lacks models:list permission
+                        Result.success(listOf("claude-3-5-haiku-20241022", "claude-3-5-sonnet-20241022", "claude-3-opus-20240229"))
+                    }
+                } catch (_: Exception) {
+                    Result.success(listOf("claude-3-5-haiku-20241022", "claude-3-5-sonnet-20241022", "claude-3-opus-20240229"))
+                }
+            }
+            AiProvider.CLOUDFLARE_AI -> {
+                Result.success(listOf("@cf/meta/llama-3.2-11b-vision-instruct", "@cf/meta/llama-3.2-90b-vision-instruct"))
+            }
         }
     }
 
-    private fun extractWithGemini(base64Pdf: String, config: AiConfig, password: String? = null): ExtractionResult {
+    private suspend fun fetchAvailableGeminiModel(cleanKey: String): String? {
+        return fetchLiveModels(AiProvider.GEMINI, cleanKey).getOrNull()?.firstOrNull()
+    }
+
+    private suspend fun extractWithGemini(base64Pdf: String, config: AiConfig, password: String? = null): ExtractionResult {
         val cleanKey = config.apiKey.trim()
         val configuredModel = config.model.trim().removePrefix("models/").ifBlank { "gemini-3.5-flash-lite" }
-        val dynamicallyDiscovered = fetchAvailableGeminiModel(cleanKey)
-        val candidateModels = listOfNotNull(
-            dynamicallyDiscovered,
+        val liveModels = fetchLiveModels(AiProvider.GEMINI, cleanKey).getOrNull() ?: emptyList()
+        val candidateModels = (liveModels + listOfNotNull(
             configuredModel.takeIf { it != "gemini-2.5-flash-lite" },
             "gemini-3.5-flash-lite",
             "gemini-3.8-flash",
             "gemini-2.5-flash",
             "gemini-2.0-flash"
-        ).distinct()
+        )).distinct()
 
         val promptText = if (password.isNullOrBlank()) {
             "Extract all vehicle policy fields from this document:"

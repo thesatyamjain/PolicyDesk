@@ -34,6 +34,8 @@ import android.os.Build
 
 data class SettingsUiState(
     val aiConfig: AiConfig = AiConfig(),
+    val availableModels: List<String> = emptyList(),
+    val isFetchingModels: Boolean = false,
     val isTestingAi: Boolean = false,
     val aiTestMessage: String? = null,
     val aiTestSuccess: Boolean = false,
@@ -102,11 +104,14 @@ class SettingsViewModel @Inject constructor(
             pkgInfo?.versionCode?.toLong() ?: 1L
         }
 
+        val cachedModels = secureStorage.getCachedModels(config.provider)
+
         viewModelScope.launch {
             val vehicles = repository.getAllVehicles().first()
             _uiState.update {
                 it.copy(
                     aiConfig = config,
+                    availableModels = cachedModels,
                     totalRecords = vehicles.size,
                     isAppLockEnabled = lockEnabled,
                     googleAccountEmail = connectedAccount,
@@ -122,6 +127,9 @@ class SettingsViewModel @Inject constructor(
                     appVersionName = vName,
                     appVersionCode = vCode
                 )
+            }
+            if (config.apiKey.isNotBlank() && config.provider != AiProvider.CLOUDFLARE_AI) {
+                fetchLiveModels(config.provider, config.apiKey)
             }
             checkForUpdates(manual = false)
         }
@@ -168,12 +176,18 @@ class SettingsViewModel @Inject constructor(
 
         val targetConfig = secureStorage.getAiConfigFor(provider)
         secureStorage.saveAiConfig(targetConfig)
+        val cachedModels = secureStorage.getCachedModels(provider)
 
         _uiState.update {
             it.copy(
                 aiConfig = targetConfig,
+                availableModels = cachedModels,
                 aiTestMessage = null
             )
+        }
+
+        if (targetConfig.apiKey.isNotBlank() && provider != AiProvider.CLOUDFLARE_AI) {
+            fetchLiveModels(provider, targetConfig.apiKey)
         }
     }
 
@@ -189,6 +203,59 @@ class SettingsViewModel @Inject constructor(
                 aiConfig = updatedConfig,
                 aiTestMessage = null
             )
+        }
+        val currentProvider = _uiState.value.aiConfig.provider
+        val clean = apiKey.trim()
+        if (clean.length >= 10 && currentProvider != AiProvider.CLOUDFLARE_AI) {
+            fetchLiveModels(currentProvider, clean)
+        }
+    }
+
+    fun refreshLiveModels() {
+        val current = _uiState.value.aiConfig
+        fetchLiveModels(current.provider, current.apiKey)
+    }
+
+    private fun fetchLiveModels(provider: AiProvider, apiKey: String) {
+        if (provider == AiProvider.CLOUDFLARE_AI) {
+            val defaultModels = secureStorage.getDefaultModelsFor(provider)
+            _uiState.update { it.copy(availableModels = defaultModels, isFetchingModels = false) }
+            return
+        }
+        if (apiKey.isBlank()) {
+            val defaultModels = secureStorage.getDefaultModelsFor(provider)
+            _uiState.update { it.copy(availableModels = defaultModels, isFetchingModels = false) }
+            return
+        }
+
+        _uiState.update { it.copy(isFetchingModels = true) }
+        viewModelScope.launch {
+            val result = com.policydesk.app.data.ai.AiExtractionClient.fetchLiveModels(provider, apiKey)
+            result.onSuccess { models ->
+                if (models.isNotEmpty()) {
+                    secureStorage.setCachedModels(provider, models)
+                    val currentModel = _uiState.value.aiConfig.model
+                    val isCurrentModelValid = models.any { it.equals(currentModel, ignoreCase = true) }
+                    val activeModel = if (!isCurrentModelValid && (currentModel.isBlank() || currentModel.startsWith("gemini-1.") || currentModel.startsWith("gemini-2."))) {
+                        models.first()
+                    } else currentModel
+
+                    if (activeModel != currentModel) {
+                        onModelChanged(activeModel)
+                    }
+
+                    _uiState.update {
+                        it.copy(
+                            availableModels = models,
+                            isFetchingModels = false
+                        )
+                    }
+                } else {
+                    _uiState.update { it.copy(isFetchingModels = false) }
+                }
+            }.onFailure {
+                _uiState.update { it.copy(isFetchingModels = false) }
+            }
         }
     }
 

@@ -81,6 +81,30 @@ class SecureKeyStorage(context: Context) {
         return finalModel
     }
 
+    fun getCachedModels(provider: AiProvider): List<String> {
+        val raw = prefs.getString("ai_cached_models_${provider.name}", null)
+        if (!raw.isNullOrBlank()) {
+            val list = raw.split(",").map { it.trim() }.filter { it.isNotBlank() }
+            if (list.isNotEmpty()) return list
+        }
+        return getDefaultModelsFor(provider)
+    }
+
+    fun setCachedModels(provider: AiProvider, models: List<String>) {
+        if (models.isEmpty()) return
+        val raw = models.joinToString(",")
+        prefs.edit().putString("ai_cached_models_${provider.name}", raw).apply()
+    }
+
+    fun getDefaultModelsFor(provider: AiProvider): List<String> {
+        return when (provider) {
+            AiProvider.GEMINI -> listOf("gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-2.5-flash")
+            AiProvider.OPENAI -> listOf("gpt-4o-mini", "gpt-4o", "o1-mini")
+            AiProvider.CLAUDE -> listOf("claude-3-5-haiku-20241022", "claude-3-5-sonnet-20241022", "claude-3-opus-20240229")
+            AiProvider.CLOUDFLARE_AI -> listOf("@cf/meta/llama-3.2-11b-vision-instruct", "@cf/meta/llama-3.2-90b-vision-instruct")
+        }
+    }
+
     fun getAiConfig(): AiConfig {
         val providerStr = prefs.getString("ai_provider", AiProvider.CLOUDFLARE_AI.name) ?: AiProvider.CLOUDFLARE_AI.name
         val provider = try { AiProvider.valueOf(providerStr) } catch (_: Exception) { AiProvider.CLOUDFLARE_AI }

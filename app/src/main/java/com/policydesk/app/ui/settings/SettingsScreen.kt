@@ -27,6 +27,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -756,34 +758,78 @@ fun SettingsScreen(
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    // Model Field
-                    OutlinedTextField(
-                        value = state.aiConfig.model,
-                        onValueChange = viewModel::onModelChanged,
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Model Name") },
-                        singleLine = true,
-                        shape = RoundedCornerShape(12.dp),
-                        colors = formFieldColors()
-                    )
-
-                    // Recommended Model Quick Selector Pills
-                    val suggestedModels = when (state.aiConfig.provider) {
-                        AiProvider.GEMINI -> listOf("gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-2.5-flash")
-                        AiProvider.OPENAI -> listOf("gpt-4o-mini", "gpt-4o")
-                        AiProvider.CLAUDE -> listOf("claude-3-5-haiku-20241022", "claude-3-5-sonnet-20241022")
-                        else -> emptyList()
-                    }
-                    if (suggestedModels.isNotEmpty()) {
+                    // Live Model Selector Header
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 10.dp, bottom = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
                         Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            suggestedModels.forEach { modelOption ->
+                            Text(
+                                text = "Available Models",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = labelPrimary
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .size(6.dp)
+                                    .clip(RoundedCornerShape(3.dp))
+                                    .background(if (state.isFetchingModels) AppleDarkSystemBlue else AppleSystemGreen)
+                            )
+                            Text(
+                                text = if (state.isFetchingModels) "Syncing..." else "Live from Provider",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = if (state.isFetchingModels) AppleDarkSystemBlue else AppleSystemGreen
+                            )
+                        }
+
+                        IconButton(
+                            onClick = viewModel::refreshLiveModels,
+                            enabled = !state.isFetchingModels && state.aiConfig.apiKey.isNotBlank(),
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            if (state.isFetchingModels) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(13.dp),
+                                    strokeWidth = 2.dp,
+                                    color = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.Refresh,
+                                    contentDescription = "Refresh Models",
+                                    tint = if (state.aiConfig.apiKey.isNotBlank()) (if (isDark) AppleDarkSystemBlue else AppleSystemBlue) else (if (isDark) IosDarkLabelTertiary else IosLabelTertiary),
+                                    modifier = Modifier.size(15.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    // Dynamic Horizontal Scrollable Model Quick Selector Pills
+                    val modelsList = state.availableModels.ifEmpty {
+                        when (state.aiConfig.provider) {
+                            AiProvider.GEMINI -> listOf("gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-2.5-flash")
+                            AiProvider.OPENAI -> listOf("gpt-4o-mini", "gpt-4o", "o1-mini")
+                            AiProvider.CLAUDE -> listOf("claude-3-5-haiku-20241022", "claude-3-5-sonnet-20241022", "claude-3-opus-20240229")
+                            else -> emptyList()
+                        }
+                    }
+
+                    if (modelsList.isNotEmpty()) {
+                        LazyRow(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            items(modelsList) { modelOption ->
                                 val isSelected = state.aiConfig.model.equals(modelOption, ignoreCase = true)
                                 Box(
                                     modifier = Modifier
@@ -798,8 +844,11 @@ fun SettingsScreen(
                                             if (isSelected) AppleSystemBlue else Color.Transparent,
                                             RoundedCornerShape(8.dp)
                                         )
-                                        .clickable { viewModel.onModelChanged(modelOption) }
-                                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                                        .clickable {
+                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                            viewModel.onModelChanged(modelOption)
+                                        }
+                                        .padding(horizontal = 10.dp, vertical = 6.dp)
                                 ) {
                                     Text(
                                         text = modelOption,
@@ -811,6 +860,19 @@ fun SettingsScreen(
                             }
                         }
                     }
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    // Model Field (Retained for custom / preview models)
+                    OutlinedTextField(
+                        value = state.aiConfig.model,
+                        onValueChange = viewModel::onModelChanged,
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Model Name") },
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        colors = formFieldColors()
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
