@@ -160,7 +160,7 @@ jobs:
         run: |
           TAG="${{ needs.init.outputs.tag }}"
           CLEAN_TAG="${TAG#v}"
-          ./gradlew assembleRelease -PversionName="$CLEAN_TAG" --no-daemon
+          ./gradlew assembleRelease -PversionName="$CLEAN_TAG" -PversionCode="${{ github.run_number }}" --no-daemon
 
       - name: Stage APK Artifact
         run: |
@@ -216,7 +216,7 @@ jobs:
         run: |
           TAG="${{ needs.init.outputs.tag }}"
           CLEAN_TAG="${TAG#v}"
-          ./gradlew bundleRelease -PversionName="$CLEAN_TAG" --no-daemon
+          ./gradlew bundleRelease -PversionName="$CLEAN_TAG" -PversionCode="${{ github.run_number }}" --no-daemon
 
       - name: Stage Bundle Artifact
         run: |
