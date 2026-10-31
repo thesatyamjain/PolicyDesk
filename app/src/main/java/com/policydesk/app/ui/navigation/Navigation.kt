@@ -94,6 +94,15 @@ fun PolicyDeskNavHost(
     var scrollToTopTrigger by remember { mutableStateOf(0L) }
     val onScrollToTop = remember { { scrollToTopTrigger = System.currentTimeMillis() } }
 
+    androidx.compose.runtime.LaunchedEffect(initialPdfUri) {
+        if (initialPdfUri != null && currentRoute != Screen.PdfReview.route) {
+            navController.navigate(Screen.PdfReview.route) {
+                popUpTo(Screen.Dashboard.route) { saveState = true }
+                launchSingleTop = true
+            }
+        }
+    }
+
     CompositionLocalProvider(
         LocalHazeState provides hazeState,
         LocalScrollToTopTrigger provides scrollToTopTrigger,

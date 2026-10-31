@@ -47,22 +47,14 @@ import dagger.hilt.android.AndroidEntryPoint
 @AndroidEntryPoint
 class MainActivity : FragmentActivity() {
 
+    private var currentPdfUri by mutableStateOf<android.net.Uri?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         ThemeManager.init(this)
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        val sharedPdfUri: android.net.Uri? = if (intent?.action == android.content.Intent.ACTION_SEND && intent.type == "application/pdf") {
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                intent.getParcelableExtra(android.content.Intent.EXTRA_STREAM, android.net.Uri::class.java)
-            } else {
-                @Suppress("DEPRECATION")
-                intent.getParcelableExtra(android.content.Intent.EXTRA_STREAM)
-            }
-        } else {
-            null
-        }
-
+        currentPdfUri = extractPdfUri(intent)
         val openRegNo = intent?.getStringExtra("open_reg_no")
         val lockEnabled = AppLockManager.isAppLockEnabled(this)
 
@@ -81,7 +73,7 @@ class MainActivity : FragmentActivity() {
 
                     if (isUnlocked) {
                         PolicyDeskNavHost(
-                            initialPdfUri = sharedPdfUri,
+                            initialPdfUri = currentPdfUri,
                             initialRegNo = openRegNo
                         )
                     } else {
@@ -111,6 +103,28 @@ class MainActivity : FragmentActivity() {
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        val newUri = extractPdfUri(intent)
+        if (newUri != null) {
+            currentPdfUri = newUri
+        }
+    }
+
+    private fun extractPdfUri(intent: android.content.Intent?): android.net.Uri? {
+        if (intent == null) return null
+        return when {
+            intent.action == android.content.Intent.ACTION_SEND && (intent.type == "application/pdf" || intent.type?.startsWith("application/") == true) -> {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                    intent.getParcelableExtra(android.content.Intent.EXTRA_STREAM, android.net.Uri::class.java)
+                } else {
+                    @Suppress("DEPRECATION")
+                    intent.getParcelableExtra(android.content.Intent.EXTRA_STREAM)
+                }
+            }
+            intent.action == android.content.Intent.ACTION_VIEW -> {
+                intent.data
+            }
+            else -> null
+        }
     }
 }
 
