@@ -2,5 +2,4 @@
 <paths>
     <cache-path name="shared_backups" path="backups/" />
     <cache-path name="ota_updates" path="updates/" />
-    <files-path name="app_files" path="." />
 </paths>

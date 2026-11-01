@@ -177,7 +177,12 @@ class OtaManager @Inject constructor(
                     code == HttpURLConnection.HTTP_MOVED_TEMP ||
                     code == 307 || code == 308
                 ) {
-                    currentUrl = connection.getHeaderField("Location")
+                    val nextUrl = connection.getHeaderField("Location") ?: ""
+                    if (!nextUrl.startsWith("https://", ignoreCase = true)) {
+                        connection.disconnect()
+                        return@withContext Result.failure(SecurityException("Insecure redirect scheme rejected during OTA download: $nextUrl"))
+                    }
+                    currentUrl = nextUrl
                     connection.disconnect()
                     redirectCount++
                 } else if (code == HttpURLConnection.HTTP_OK) {
