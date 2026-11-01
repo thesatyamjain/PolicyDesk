@@ -612,21 +612,13 @@ fun DashboardScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(8.dp)
-                                        .background(AppleSystemGreen, CircleShape)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = "Portfolio in force",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = if (isDark) AppleDarkSystemGreen else AppleSystemGreen,
-                                    letterSpacing = (-0.1).sp
-                                )
-                            }
+                            Text(
+                                text = "Portfolio in force",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (isDark) AppleDarkSystemGreen else AppleSystemGreen,
+                                letterSpacing = (-0.1).sp
+                            )
                             Spacer(modifier = Modifier.height(4.dp))
                             Row(verticalAlignment = Alignment.Bottom) {
                                 Text(
@@ -691,24 +683,13 @@ fun DashboardScreen(
                         elevation = 3.dp,
                         onClick = { viewModel.onFilterSelected(ExpiryFilter.OVERDUE) }
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "Overdue",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = AppleSystemRed,
-                                letterSpacing = (-0.1).sp
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .size(6.dp)
-                                    .background(AppleSystemRed, CircleShape)
-                            )
-                        }
+                        Text(
+                            text = "Overdue",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = AppleSystemRed,
+                            letterSpacing = (-0.1).sp
+                        )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = "${uiState.summary.overdueCount}",
@@ -733,24 +714,13 @@ fun DashboardScreen(
                         elevation = 3.dp,
                         onClick = { viewModel.onFilterSelected(ExpiryFilter.NEXT_7_DAYS) }
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "This week",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = AppleSystemDeepOrange,
-                                letterSpacing = (-0.1).sp
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .size(6.dp)
-                                    .background(AppleSystemDeepOrange, CircleShape)
-                            )
-                        }
+                        Text(
+                            text = "This week",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = AppleSystemDeepOrange,
+                            letterSpacing = (-0.1).sp
+                        )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = "${uiState.summary.next7DaysCount}",
@@ -791,20 +761,12 @@ fun DashboardScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .size(7.dp)
-                                    .background(AppleSystemOrange, CircleShape)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "30-Day Renewal Pipeline",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = labelPrimary
-                            )
-                        }
+                        Text(
+                            text = "30-Day Renewal Pipeline",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = labelPrimary
+                        )
                         Text(
                             text = "${uiState.summary.next30DaysCount} policies",
                             fontSize = 12.sp,
@@ -1214,7 +1176,7 @@ fun VehicleExpiryCard(
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(30.dp)
+                            .size(36.dp)
                             .clip(CircleShape)
                             .background(if (isDark) Color(0x3330D158) else Color(0x1F34C759))
                             .clickable {
@@ -1241,13 +1203,13 @@ fun VehicleExpiryCard(
                             imageVector = AppleIcons.WhatsApp,
                             contentDescription = "WhatsApp reminder",
                             tint = if (isDark) AppleDarkSystemGreen else AppleSystemGreen,
-                            modifier = Modifier.size(15.dp)
+                            modifier = Modifier.size(18.dp)
                         )
                     }
 
                     Box(
                         modifier = Modifier
-                            .size(30.dp)
+                            .size(36.dp)
                             .clip(CircleShape)
                             .background(if (isDark) Color(0x330A84FF) else Color(0x1F007AFF))
                             .clickable {
@@ -1261,7 +1223,7 @@ fun VehicleExpiryCard(
                             imageVector = AppleIcons.Phone,
                             contentDescription = "Call customer",
                             tint = if (isDark) AppleDarkSystemBlue else AppleSystemBlue,
-                            modifier = Modifier.size(15.dp)
+                            modifier = Modifier.size(18.dp)
                         )
                     }
                 }
