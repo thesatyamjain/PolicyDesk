@@ -2,6 +2,7 @@ package com.policydesk.app.ui.settings
 
 import android.Manifest
 import android.content.Intent
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Build
 import android.widget.Toast
@@ -12,6 +13,7 @@ import com.policydesk.app.data.profile.AdvisorProfile
 import com.policydesk.app.data.profile.AdvisorProfileManager
 import com.policydesk.app.data.ota.OtaState
 import com.policydesk.app.ui.components.AppleAlertDialog
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -67,8 +69,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -76,16 +81,19 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.policydesk.app.data.security.AiProvider
 import com.policydesk.app.ui.addpolicy.formFieldColors
+import com.policydesk.app.ui.components.LiquidGlassCard
 import com.policydesk.app.ui.components.LiquidGlassGroupedSection
 import com.policydesk.app.ui.components.LiquidGlassListRow
 import com.policydesk.app.ui.components.LiquidGlassTopBar
 import com.policydesk.app.ui.detail.DetailRow
+import java.io.File
 import com.policydesk.app.ui.theme.AppleSystemBlue
 import com.policydesk.app.ui.theme.AppleSystemGreen
 import com.policydesk.app.ui.theme.AppleSystemOrange
@@ -305,6 +313,19 @@ fun SettingsScreen(
         val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
         val labelSecondary = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
 
+        val avatarBitmap = remember(state.avatarUpdateTimestamp, state.googleAccountPhotoUrl, state.isDriveLinked) {
+            if (state.isDriveLinked) {
+                val file = File(context.filesDir, "google_avatar.png")
+                if (file.exists() && file.length() > 0) {
+                    try {
+                        BitmapFactory.decodeFile(file.absolutePath)?.asImageBitmap()
+                    } catch (_: Exception) {
+                        null
+                    }
+                } else null
+            } else null
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -313,9 +334,211 @@ fun SettingsScreen(
                 .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 120.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            val haptic = LocalHapticFeedback.current
+            val activeBlue = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
+
+            // SECTION HERO: ACCOUNT & CLOUD VAULT IDENTITY (ONE UI / APPLE ID SPEC)
+            if (!state.isDriveLinked) {
+                // SIGNED OUT: PROMINENT ONE UI HERO CALLOUT
+                LiquidGlassCard(
+                    shape = RoundedCornerShape(22.dp),
+                    elevation = 3.dp,
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        googleSignInLauncher.launch(viewModel.getGoogleSignInIntent())
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(end = 16.dp)
+                        ) {
+                            Text(
+                                text = "Sign in to Google Drive",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = labelPrimary,
+                                letterSpacing = (-0.3).sp
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Sync policies, clients & encrypted cloud vault.",
+                                fontSize = 13.sp,
+                                lineHeight = 18.sp,
+                                color = activeBlue,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+
+                        // Circular soft-blue avatar with person silhouette
+                        Box(
+                            modifier = Modifier
+                                .size(54.dp)
+                                .clip(CircleShape)
+                                .background(activeBlue.copy(alpha = 0.14f))
+                                .border(1.dp, activeBlue.copy(alpha = 0.28f), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = AppleIcons.Person,
+                                contentDescription = "Sign in to Google Drive",
+                                tint = activeBlue,
+                                modifier = Modifier.size(28.dp)
+                            )
+                        }
+                    }
+                }
+            } else {
+                // SIGNED IN: ACTIVE VAULT IDENTITY BANNER WITH GOOGLE AVATAR
+                val accountName = state.googleAccountDisplayName?.takeIf { it.isNotBlank() }
+                    ?: state.advisorProfile.advisorName.takeIf { it.isNotBlank() }
+                    ?: state.googleAccountEmail?.substringBefore("@")
+                    ?: "PolicyDesk Advisor"
+
+                LiquidGlassCard(
+                    shape = RoundedCornerShape(22.dp),
+                    elevation = 3.dp,
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        viewModel.triggerSyncNow()
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(end = 14.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = accountName,
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = labelPrimary,
+                                    letterSpacing = (-0.3).sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f, fill = false)
+                                )
+
+                                // Active Vault Badge Pill
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    modifier = Modifier
+                                        .background(AppleSystemGreen.copy(alpha = 0.14f), RoundedCornerShape(6.dp))
+                                        .border(1.dp, AppleSystemGreen.copy(alpha = 0.35f), RoundedCornerShape(6.dp))
+                                        .padding(horizontal = 6.dp, vertical = 2.5.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(6.dp)
+                                            .background(AppleSystemGreen, CircleShape)
+                                    )
+                                    Text(
+                                        text = "ACTIVE VAULT",
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = AppleSystemGreen,
+                                        letterSpacing = 0.4.sp
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(3.dp))
+
+                            Text(
+                                text = state.googleAccountEmail ?: "Personal Drive Vault",
+                                fontSize = 13.sp,
+                                color = labelSecondary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+
+                            Spacer(modifier = Modifier.height(4.dp))
+
+                            Text(
+                                text = if (state.isSyncing) "Syncing with Google Drive..." else "${state.totalRecords} vehicles synced • Tap to sync now",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = if (state.isSyncing) AppleSystemOrange else activeBlue
+                            )
+                        }
+
+                        // Avatar container with live photo or monogram fallback
+                        Box(
+                            modifier = Modifier.size(54.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (avatarBitmap != null) {
+                                Image(
+                                    bitmap = avatarBitmap,
+                                    contentDescription = "Google Profile Picture",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .size(54.dp)
+                                        .clip(CircleShape)
+                                        .border(1.5.dp, if (isDark) Color(0x40FFFFFF) else Color(0x24000000), CircleShape)
+                                )
+                            } else {
+                                val monogram = accountName.firstOrNull()?.uppercaseChar()?.toString() ?: "P"
+                                Box(
+                                    modifier = Modifier
+                                        .size(54.dp)
+                                        .clip(CircleShape)
+                                        .background(
+                                            Brush.linearGradient(
+                                                colors = listOf(
+                                                    activeBlue,
+                                                    Color(0xFF5AC8FA)
+                                                )
+                                            )
+                                        )
+                                        .border(1.5.dp, Color.White.copy(alpha = 0.25f), CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = monogram,
+                                        fontSize = 22.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                }
+                            }
+
+                            // Active green online dot at bottom-end corner
+                            Box(
+                                modifier = Modifier
+                                    .size(13.dp)
+                                    .align(Alignment.BottomEnd)
+                                    .background(AppleSystemGreen, CircleShape)
+                                    .border(2.dp, if (isDark) Color(0xFF1C1C1E) else Color.White, CircleShape)
+                            )
+                        }
+                    }
+                }
+            }
+
             // SECTION 0: APPEARANCE (TRUE DARK THEME)
             val currentThemeMode by ThemeManager.currentTheme.collectAsState()
-            val haptic = LocalHapticFeedback.current
 
             LiquidGlassGroupedSection(title = "Appearance") {
                 Text(

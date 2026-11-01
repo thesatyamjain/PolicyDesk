@@ -40,6 +40,9 @@ data class SettingsUiState(
     val aiTestMessage: String? = null,
     val aiTestSuccess: Boolean = false,
     val googleAccountEmail: String? = null,
+    val googleAccountDisplayName: String? = null,
+    val googleAccountPhotoUrl: String? = null,
+    val avatarUpdateTimestamp: Long = 0L,
     val isDriveLinked: Boolean = false,
     val driveFileName: String = "policydesk_backup.json",
     val lastSyncTime: String = "Not synced yet",
@@ -81,6 +84,8 @@ class SettingsViewModel @Inject constructor(
         val isLinked = com.policydesk.app.data.drive.GoogleDriveManager.isDriveLinked(context)
         val fileName = com.policydesk.app.data.drive.GoogleDriveManager.SNAPSHOT_FILE_NAME
         val connectedAccount = com.policydesk.app.data.drive.GoogleDriveManager.getConnectedAccount(context)
+        val connectedDisplayName = com.policydesk.app.data.drive.GoogleDriveManager.getConnectedDisplayName(context)
+        val connectedPhotoUrl = com.policydesk.app.data.drive.GoogleDriveManager.getConnectedPhotoUrl(context)
         val lastSync = com.policydesk.app.data.drive.GoogleDriveManager.getLastSyncTime(context)
         val localSnapshots = com.policydesk.app.data.drive.GoogleDriveManager.getLocalSnapshots(context)
         val backupCount = com.policydesk.app.data.drive.GoogleDriveManager.getLastBackupCount(context)
@@ -105,6 +110,8 @@ class SettingsViewModel @Inject constructor(
         }
 
         val cachedModels = secureStorage.getCachedModels(config.provider)
+        val avatarFile = File(context.filesDir, "google_avatar.png")
+        val avatarTs = if (avatarFile.exists()) avatarFile.lastModified() else 0L
 
         viewModelScope.launch {
             val vehicles = repository.getAllVehicles().first()
@@ -115,6 +122,9 @@ class SettingsViewModel @Inject constructor(
                     totalRecords = vehicles.size,
                     isAppLockEnabled = lockEnabled,
                     googleAccountEmail = connectedAccount,
+                    googleAccountDisplayName = connectedDisplayName,
+                    googleAccountPhotoUrl = connectedPhotoUrl,
+                    avatarUpdateTimestamp = avatarTs,
                     isDriveLinked = isLinked,
                     driveFileName = fileName,
                     lastSyncTime = syncTimeStr,
@@ -130,6 +140,9 @@ class SettingsViewModel @Inject constructor(
             }
             if (config.apiKey.isNotBlank() && config.provider != AiProvider.CLOUDFLARE_AI) {
                 fetchLiveModels(config.provider, config.apiKey)
+            }
+            if (!connectedPhotoUrl.isNullOrBlank() && !File(context.filesDir, "google_avatar.png").exists()) {
+                fetchAndCacheAvatar(connectedPhotoUrl)
             }
             checkForUpdates(manual = false)
         }
@@ -423,15 +436,21 @@ class SettingsViewModel @Inject constructor(
             val account = task.getResult(com.google.android.gms.common.api.ApiException::class.java)
             val email = account.email
             val displayName = account.displayName ?: email
+            val photoUrl = account.photoUrl?.toString()
             if (!email.isNullOrBlank()) {
-                com.policydesk.app.data.drive.GoogleDriveManager.setConnectedAccount(context, email, displayName)
+                com.policydesk.app.data.drive.GoogleDriveManager.setConnectedAccount(context, email, displayName, photoUrl)
                 _uiState.update {
                     it.copy(
                         googleAccountEmail = email,
+                        googleAccountDisplayName = displayName,
+                        googleAccountPhotoUrl = photoUrl,
                         isDriveLinked = true,
                         syncStatusText = "Google Drive Connected",
                         syncMessage = "Connected as $email. Checking cloud vault..."
                     )
+                }
+                if (!photoUrl.isNullOrBlank()) {
+                    fetchAndCacheAvatar(photoUrl)
                 }
                 val localRecords = _uiState.value.totalRecords
                 if (localRecords == 0) {
@@ -479,11 +498,29 @@ class SettingsViewModel @Inject constructor(
         _uiState.update {
             it.copy(
                 googleAccountEmail = null,
+                googleAccountDisplayName = null,
+                googleAccountPhotoUrl = null,
+                avatarUpdateTimestamp = System.currentTimeMillis(),
                 isDriveLinked = false,
                 driveFileName = com.policydesk.app.data.drive.GoogleDriveManager.SNAPSHOT_FILE_NAME,
                 syncStatusText = "Local-First Active",
                 syncMessage = "Google Drive disconnected. Data is stored safely on this device."
             )
+        }
+    }
+
+    private fun fetchAndCacheAvatar(photoUrl: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val conn = java.net.URL(photoUrl).openConnection() as java.net.HttpURLConnection
+                conn.connectTimeout = 10000
+                conn.readTimeout = 10000
+                if (conn.responseCode in 200..299) {
+                    val bytes = conn.inputStream.use { it.readBytes() }
+                    File(context.filesDir, "google_avatar.png").writeBytes(bytes)
+                    _uiState.update { it.copy(avatarUpdateTimestamp = System.currentTimeMillis()) }
+                }
+            } catch (_: Exception) {}
         }
     }
 

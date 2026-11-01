@@ -60,6 +60,28 @@ object AppleIcons {
         }
     }
 
+    /** SF Symbol: person.fill (Cupertino single user avatar) */
+    val Person: ImageVector by lazy {
+        buildIcon("ApplePerson") {
+            // Head
+            moveTo(12f, 4.5f)
+            curveTo(9.8f, 4.5f, 8f, 6.3f, 8f, 8.5f)
+            curveTo(8f, 10.7f, 9.8f, 12.5f, 12f, 12.5f)
+            curveTo(14.2f, 12.5f, 16f, 10.7f, 16f, 8.5f)
+            curveTo(16f, 6.3f, 14.2f, 4.5f, 12f, 4.5f)
+            close()
+
+            // Body / shoulders
+            moveTo(12f, 14f)
+            curveTo(7.6f, 14f, 4f, 16.5f, 4f, 20f)
+            curveTo(4f, 20.6f, 4.4f, 21f, 5f, 21f)
+            lineTo(19f, 21f)
+            curveTo(19.6f, 21f, 20f, 20.6f, 20f, 20f)
+            curveTo(20f, 16.5f, 16.4f, 14f, 12f, 14f)
+            close()
+        }
+    }
+
     /** SF Symbol: person.2.fill (Cupertino client contacts) */
     val Person2: ImageVector by lazy {
         buildIcon("ApplePerson2") {

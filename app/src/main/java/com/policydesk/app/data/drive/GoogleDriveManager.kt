@@ -81,6 +81,7 @@ object GoogleDriveManager {
     private const val PREFS_NAME = "policydesk_drive_prefs"
     private const val KEY_CONNECTED_ACCOUNT = "connected_google_account"
     private const val KEY_CONNECTED_NAME = "connected_google_name"
+    private const val KEY_CONNECTED_PHOTO_URL = "connected_google_photo_url"
     private const val KEY_AUTO_SYNC_ENABLED = "auto_sync_enabled"
     private const val KEY_LAST_SYNC_TIME = "last_sync_time"
     private const val KEY_BACKUP_URI = "backup_file_uri"
@@ -113,11 +114,20 @@ object GoogleDriveManager {
         return lastAccount?.displayName
     }
 
-    fun setConnectedAccount(context: Context, email: String?, displayName: String? = null) {
+    fun getConnectedPhotoUrl(context: Context): String? {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val saved = prefs.getString(KEY_CONNECTED_PHOTO_URL, null)
+        if (saved != null) return saved
+        val lastAccount = GoogleSignIn.getLastSignedInAccount(context)
+        return lastAccount?.photoUrl?.toString()
+    }
+
+    fun setConnectedAccount(context: Context, email: String?, displayName: String? = null, photoUrl: String? = null) {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .edit()
             .putString(KEY_CONNECTED_ACCOUNT, email)
             .putString(KEY_CONNECTED_NAME, displayName)
+            .putString(KEY_CONNECTED_PHOTO_URL, photoUrl)
             .putBoolean(KEY_AUTO_SYNC_ENABLED, email != null)
             .apply()
     }
@@ -146,10 +156,14 @@ object GoogleDriveManager {
             .edit()
             .remove(KEY_CONNECTED_ACCOUNT)
             .remove(KEY_CONNECTED_NAME)
+            .remove(KEY_CONNECTED_PHOTO_URL)
             .remove(KEY_BACKUP_URI)
             .remove(KEY_BACKUP_NAME)
             .putBoolean(KEY_AUTO_SYNC_ENABLED, false)
             .apply()
+        try {
+            File(context.filesDir, "google_avatar.png").delete()
+        } catch (_: Exception) {}
     }
 
     fun setLastSyncTime(context: Context, timestamp: Long) {
