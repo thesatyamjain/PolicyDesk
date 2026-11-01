@@ -925,6 +925,7 @@ fun DashboardScreen(
                 item {
                     EmptyStateView(
                         hasQuery = uiState.searchQuery.isNotEmpty(),
+                        onClearSearch = { viewModel.onSearchQueryChanged("") },
                         onAddCustomerClicked = { showAddChooserSheet = true },
                         onNavigateToSettings = onNavigateToSettings
                     )
@@ -1176,7 +1177,7 @@ fun VehicleExpiryCard(
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(36.dp)
+                            .size(40.dp)
                             .clip(CircleShape)
                             .background(if (isDark) Color(0x3330D158) else Color(0x1F34C759))
                             .clickable {
@@ -1203,13 +1204,13 @@ fun VehicleExpiryCard(
                             imageVector = AppleIcons.WhatsApp,
                             contentDescription = "WhatsApp reminder",
                             tint = if (isDark) AppleDarkSystemGreen else AppleSystemGreen,
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(20.dp)
                         )
                     }
 
                     Box(
                         modifier = Modifier
-                            .size(36.dp)
+                            .size(40.dp)
                             .clip(CircleShape)
                             .background(if (isDark) Color(0x330A84FF) else Color(0x1F007AFF))
                             .clickable {
@@ -1223,7 +1224,7 @@ fun VehicleExpiryCard(
                             imageVector = AppleIcons.Phone,
                             contentDescription = "Call customer",
                             tint = if (isDark) AppleDarkSystemBlue else AppleSystemBlue,
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }
@@ -1235,6 +1236,7 @@ fun VehicleExpiryCard(
 @Composable
 fun EmptyStateView(
     hasQuery: Boolean,
+    onClearSearch: () -> Unit = {},
     onAddCustomerClicked: () -> Unit = {},
     onNavigateToSettings: () -> Unit = {}
 ) {
@@ -1279,7 +1281,16 @@ fun EmptyStateView(
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
             )
 
-            if (!hasQuery) {
+            if (hasQuery) {
+                Spacer(modifier = Modifier.height(16.dp))
+                AppleSecondaryButton(
+                    text = "Clear Search",
+                    onClick = onClearSearch,
+                    icon = AppleIcons.Clear,
+                    height = 40.dp,
+                    shape = RoundedCornerShape(12.dp)
+                )
+            } else {
                 Spacer(modifier = Modifier.height(20.dp))
                 AppleButton(
                     text = "Add Customer Policy",

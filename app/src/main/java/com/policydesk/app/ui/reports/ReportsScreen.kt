@@ -29,6 +29,7 @@ import com.policydesk.app.ui.components.AppleButton
 import com.policydesk.app.ui.components.AppleSecondaryButton
 import com.policydesk.app.ui.components.LiquidGlassCard
 import com.policydesk.app.ui.theme.AppleIcons
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -150,11 +151,11 @@ fun ReportsScreen(
                                 shape = pillShape
                             )
                             .clickable { viewModel.onPeriodSelected(period) }
-                            .padding(horizontal = 14.dp, vertical = 6.dp)
+                            .padding(horizontal = 16.dp, vertical = 9.dp)
                     ) {
                         Text(
                             text = period.label,
-                            fontSize = 12.sp,
+                            fontSize = 13.sp,
                             fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
                             color = if (isSelected) Color.White else unselectedText
                         )
@@ -168,7 +169,17 @@ fun ReportsScreen(
 
             if (aggregate == null) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Loading report data...", color = labelSecondary)
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(28.dp),
+                            strokeWidth = 2.5.dp,
+                            color = com.policydesk.app.ui.theme.AppleSystemBlue
+                        )
+                        Text("Loading report data...", color = labelSecondary, fontSize = 14.sp)
+                    }
                 }
             } else {
                 when (selectedTab) {

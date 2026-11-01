@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.policydesk.app.domain.model.VehicleWithPolicies
+import com.policydesk.app.ui.components.AppleSecondaryButton
 import com.policydesk.app.ui.components.LiquidGlassCard
 import com.policydesk.app.ui.components.LiquidGlassSegmentedControl
 import com.policydesk.app.ui.components.LiquidGlassTopBar
@@ -229,7 +230,8 @@ fun MonthViewScreen(
                     year = selection.year,
                     month = selection.month,
                     dateGroupedPolicies = data.dateGroupedPolicies,
-                    onNavigateToVehicleDetail = onNavigateToVehicleDetail
+                    onNavigateToVehicleDetail = onNavigateToVehicleDetail,
+                    onJumpToCurrentMonth = viewModel::onToday
                 )
             }
         }
@@ -391,7 +393,8 @@ fun TimelineListView(
     year: Int,
     month: Int,
     dateGroupedPolicies: Map<Int, List<VehicleWithPolicies>>,
-    onNavigateToVehicleDetail: (String) -> Unit
+    onNavigateToVehicleDetail: (String) -> Unit,
+    onJumpToCurrentMonth: () -> Unit = {}
 ) {
     val isDark = isSystemInDarkTheme()
     val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
@@ -416,6 +419,13 @@ fun TimelineListView(
                 Text("No policies expire this month", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = labelPrimary, letterSpacing = (-0.2).sp)
                 Spacer(modifier = Modifier.height(6.dp))
                 Text("Use the navigation arrows to explore other months.", fontSize = 13.sp, color = labelSecondary)
+                Spacer(modifier = Modifier.height(16.dp))
+                AppleSecondaryButton(
+                    text = "Jump to Current Month",
+                    onClick = onJumpToCurrentMonth,
+                    icon = AppleIcons.Calendar,
+                    height = 42.dp
+                )
             }
         }
     } else {

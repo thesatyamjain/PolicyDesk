@@ -37,6 +37,7 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -528,6 +529,50 @@ fun AddPolicyScreen(
                     shape = RoundedCornerShape(10.dp),
                     colors = formFieldColors()
                 )
+            }
+
+            val isDark = isSystemInDarkTheme()
+            if (state.hasAttemptedSave && !state.isFormValid) {
+                val missing = buildList {
+                    if (com.policydesk.app.domain.model.RegistrationNormalizer.normalize(state.regNo).isEmpty()) add("Registration No.")
+                    if (!FieldValidators.isValidPolicyNumber(state.policyNumber)) add("Policy Number")
+                    if (state.expiryDateEpochMs == null) add("Expiry Date")
+                    if ((state.totalPremium.toDoubleOrNull() ?: 0.0) <= 0.0) add("Total Premium")
+                    if (!FieldValidators.isValidName(state.name)) add("Customer Name")
+                    if (!FieldValidators.isValidMobile(state.mobile)) add("Valid Mobile No.")
+                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f),
+                            shape = RoundedCornerShape(10.dp)
+                        )
+                        .border(
+                            1.dp,
+                            MaterialTheme.colorScheme.error.copy(alpha = 0.5f),
+                            RoundedCornerShape(10.dp)
+                        )
+                        .padding(horizontal = 14.dp, vertical = 10.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            text = "Please complete: ${missing.joinToString(", ")}",
+                            fontSize = 12.sp,
+                            color = if (isDark) Color(0xFFFFB4AB) else MaterialTheme.colorScheme.error,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(8.dp))

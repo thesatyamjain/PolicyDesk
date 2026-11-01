@@ -320,7 +320,17 @@ fun VehicleDetailScreen(
                     .padding(paddingValues),
                 contentAlignment = Alignment.Center
             ) {
-                Text("Loading vehicle details...", color = labelSecondary)
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    androidx.compose.material3.CircularProgressIndicator(
+                        modifier = Modifier.size(28.dp),
+                        strokeWidth = 2.5.dp,
+                        color = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
+                    )
+                    Text("Loading vehicle details...", fontSize = 13.sp, color = labelSecondary)
+                }
             }
         } else {
             val vehicle = data.vehicle
@@ -618,7 +628,7 @@ fun ContactActionButton(
     ) {
         Box(
             modifier = Modifier
-                .size(42.dp)
+                .size(46.dp)
                 .background(tintColor.copy(alpha = 0.16f), CircleShape)
                 .border(0.5.dp, tintColor.copy(alpha = 0.35f), CircleShape),
             contentAlignment = Alignment.Center
@@ -627,7 +637,7 @@ fun ContactActionButton(
                 imageVector = icon,
                 contentDescription = label,
                 tint = tintColor,
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(22.dp)
             )
         }
         Spacer(modifier = Modifier.height(4.dp))

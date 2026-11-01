@@ -52,6 +52,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.policydesk.app.data.importer.SpreadsheetParser
+import com.policydesk.app.domain.model.FieldValidators
 import com.policydesk.app.domain.model.RegistrationNormalizer
 import com.policydesk.app.domain.model.Sector
 import com.policydesk.app.ui.addpolicy.FormSectionCard
@@ -623,6 +625,42 @@ fun PdfReviewScreen(
                         shape = RoundedCornerShape(10.dp),
                         colors = formFieldColors()
                     )
+                }
+
+                if (!state.isValid) {
+                    val missingList = mutableListOf<String>()
+                    if (RegistrationNormalizer.normalize(state.regNo).isBlank()) missingList.add("Registration No")
+                    if (!FieldValidators.isValidName(state.customerName)) missingList.add("Customer Name")
+                    if (!FieldValidators.isValidMobile(state.mobile)) missingList.add("10-Digit Mobile")
+                    if (state.sector == null || state.insurer.isBlank()) missingList.add("Insurer")
+                    if (!FieldValidators.isValidPolicyNumber(state.policyNumber)) missingList.add("Policy Number")
+                    if (SpreadsheetParser.parseDateToEpochMs(state.expiryDate) == null) missingList.add("Expiry Date")
+                    if (state.totalPremium.toDoubleOrNull()?.let { it > 0 } != true) missingList.add("Premium Amount")
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(if (isDark) Color(0x33CA8A04) else Color(0x1FFF9500))
+                            .border(1.dp, if (isDark) Color(0x66CA8A04) else Color(0x33FF9500), RoundedCornerShape(10.dp))
+                            .padding(horizontal = 12.dp, vertical = 8.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = AppleIcons.Warning,
+                                contentDescription = null,
+                                tint = StatusExpiringAmber,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Required to save: " + missingList.joinToString(", "),
+                                fontSize = 12.sp,
+                                color = if (isDark) Color(0xFFFEF08A) else labelPrimary,
+                                lineHeight = 16.sp
+                            )
+                        }
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(10.dp))

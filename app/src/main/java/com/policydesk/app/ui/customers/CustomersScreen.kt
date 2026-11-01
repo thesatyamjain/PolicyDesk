@@ -196,10 +196,21 @@ fun CustomersScreen(
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Add policies or import a sheet to populate clients.",
+                            text = if (uiState.searchQuery.isNotEmpty()) "No clients match \"${uiState.searchQuery}\"" else "Add policies or import a sheet to populate clients.",
                             fontSize = 12.sp,
-                            color = labelSecondary
+                            color = labelSecondary,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
                         )
+                        if (uiState.searchQuery.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(14.dp))
+                            com.policydesk.app.ui.components.AppleSecondaryButton(
+                                text = "Clear Search",
+                                onClick = { viewModel.onSearchQueryChanged("") },
+                                icon = AppleIcons.Clear,
+                                height = 38.dp,
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                        }
                     }
                 }
             } else {
@@ -358,27 +369,27 @@ fun CustomerCard(
                 // Call Action
                 Box(
                     modifier = Modifier
-                        .height(30.dp)
-                        .clip(RoundedCornerShape(8.dp))
+                        .height(36.dp)
+                        .clip(RoundedCornerShape(10.dp))
                         .background(if (isDark) Color(0x330A84FF) else Color(0x1F007AFF))
                         .clickable {
                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             onCall()
                         }
-                        .padding(horizontal = 10.dp),
+                        .padding(horizontal = 12.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             imageVector = AppleIcons.Phone,
-                            contentDescription = null,
+                            contentDescription = "Call ${customer.name}",
                             tint = if (isDark) AppleDarkSystemBlue else AppleSystemBlue,
-                            modifier = Modifier.size(13.dp)
+                            modifier = Modifier.size(15.dp)
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = "Call",
-                            fontSize = 11.sp,
+                            fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             color = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
                         )
@@ -388,27 +399,27 @@ fun CustomerCard(
                 // WhatsApp Action
                 Box(
                     modifier = Modifier
-                        .height(30.dp)
-                        .clip(RoundedCornerShape(8.dp))
+                        .height(36.dp)
+                        .clip(RoundedCornerShape(10.dp))
                         .background(if (isDark) Color(0x3330D158) else Color(0x1F34C759))
                         .clickable {
                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             onWhatsApp()
                         }
-                        .padding(horizontal = 10.dp),
+                        .padding(horizontal = 12.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             imageVector = AppleIcons.WhatsApp,
-                            contentDescription = null,
+                            contentDescription = "WhatsApp ${customer.name}",
                             tint = if (isDark) AppleDarkSystemGreen else AppleSystemGreen,
-                            modifier = Modifier.size(13.dp)
+                            modifier = Modifier.size(15.dp)
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = "WhatsApp",
-                            fontSize = 11.sp,
+                            fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             color = if (isDark) AppleDarkSystemGreen else AppleSystemGreen
                         )

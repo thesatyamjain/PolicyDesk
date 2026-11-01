@@ -24,11 +24,13 @@ import com.policydesk.app.ui.components.AppleButton
 import com.policydesk.app.ui.theme.AppleIcons
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -144,7 +146,17 @@ fun RenewPolicyScreen(
                     .padding(paddingValues),
                 contentAlignment = Alignment.Center
             ) {
-                Text("Loading renewal form...", color = labelSecondary)
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(28.dp),
+                        strokeWidth = 2.5.dp,
+                        color = SapphireBlue
+                    )
+                    Text("Loading renewal form...", color = labelSecondary, fontSize = 14.sp)
+                }
             }
         } else {
             val vehicle = item.vehicle
@@ -263,6 +275,48 @@ fun RenewPolicyScreen(
                         shape = RoundedCornerShape(10.dp),
                         colors = formFieldColors()
                     )
+                }
+
+                if (!state.isValid && !state.isSaving) {
+                    val missing = buildList {
+                        if (state.newPolicyNumber.isBlank()) add("Policy Number")
+                        if (state.newExpiryEpochMs == null) add("Expiry Date")
+                        if (state.newPremium.isBlank() || (state.newPremium.toDoubleOrNull() ?: 0.0) <= 0.0) add("Premium Amount")
+                    }
+                    if (missing.isNotEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(
+                                    color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f),
+                                    shape = RoundedCornerShape(10.dp)
+                                )
+                                .border(
+                                    1.dp,
+                                    MaterialTheme.colorScheme.error.copy(alpha = 0.5f),
+                                    RoundedCornerShape(10.dp)
+                                )
+                                .padding(horizontal = 14.dp, vertical = 10.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = AppleIcons.Warning,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Text(
+                                    text = "Required to renew: ${missing.joinToString(", ")}",
+                                    fontSize = 12.sp,
+                                    color = if (isDark) Color(0xFFFFB4AB) else MaterialTheme.colorScheme.error,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
