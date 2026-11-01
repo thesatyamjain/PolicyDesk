@@ -1,5 +1,6 @@
 package com.policydesk.app.ui.navigation
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
@@ -13,14 +14,20 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -28,6 +35,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import kotlinx.coroutines.launch
 import com.policydesk.app.ui.addpolicy.AddPolicyScreen
 import com.policydesk.app.ui.components.DockTab
 import com.policydesk.app.ui.components.LiquidGlassDock
@@ -80,13 +88,20 @@ fun PolicyDeskNavHost(
         else -> Screen.Dashboard.route
     }
 
-    val currentTab = when (currentRoute) {
-        Screen.Dashboard.route -> DockTab.DASHBOARD
-        Screen.Customers.route -> DockTab.CUSTOMERS
-        Screen.MonthView.route -> DockTab.TIMELINE
-        Screen.Reports.route -> DockTab.REPORTS
-        else -> null
-    }
+    val pagerState = rememberPagerState(initialPage = 0, pageCount = { 4 })
+    val coroutineScope = rememberCoroutineScope()
+    val haptic = LocalHapticFeedback.current
+
+    val isTopLevelRoute = currentRoute == null || currentRoute == Screen.Dashboard.route
+    val currentTab = if (isTopLevelRoute) {
+        when (pagerState.currentPage) {
+            0 -> DockTab.DASHBOARD
+            1 -> DockTab.CUSTOMERS
+            2 -> DockTab.TIMELINE
+            3 -> DockTab.REPORTS
+            else -> DockTab.DASHBOARD
+        }
+    } else null
 
     val isTopLevelTab = currentTab != null
     val hazeState = remember { HazeState() }
@@ -94,7 +109,21 @@ fun PolicyDeskNavHost(
     var scrollToTopTrigger by remember { mutableStateOf(0L) }
     val onScrollToTop = remember { { scrollToTopTrigger = System.currentTimeMillis() } }
 
-    androidx.compose.runtime.LaunchedEffect(initialPdfUri) {
+    val pagerPosition = if (isTopLevelRoute) {
+        pagerState.currentPage + pagerState.currentPageOffsetFraction
+    } else null
+
+    BackHandler(enabled = isTopLevelRoute && pagerState.currentPage != 0) {
+        coroutineScope.launch {
+            pagerState.animateScrollToPage(0)
+        }
+    }
+
+    LaunchedEffect(pagerState.settledPage) {
+        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+    }
+
+    LaunchedEffect(initialPdfUri) {
         if (initialPdfUri != null && currentRoute != Screen.PdfReview.route) {
             navController.navigate(Screen.PdfReview.route) {
                 popUpTo(Screen.Dashboard.route) { saveState = true }
@@ -145,81 +174,62 @@ fun PolicyDeskNavHost(
                 }
             ) {
             composable(Screen.Dashboard.route) {
-                DashboardScreen(
-                    onNavigateToAddPolicy = {
-                        navController.navigate(Screen.AddPolicy.route)
-                    },
-                    onNavigateToMonthView = {
-                        navController.navigate(Screen.MonthView.route) {
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier.fillMaxSize(),
+                    userScrollEnabled = !isSelectionActive
+                ) { page ->
+                    when (page) {
+                        0 -> DashboardScreen(
+                            onNavigateToAddPolicy = {
+                                navController.navigate(Screen.AddPolicy.route)
+                            },
+                            onNavigateToMonthView = {
+                                coroutineScope.launch { pagerState.animateScrollToPage(2) }
+                            },
+                            onNavigateToReports = {
+                                coroutineScope.launch { pagerState.animateScrollToPage(3) }
+                            },
+                            onNavigateToCustomers = {
+                                coroutineScope.launch { pagerState.animateScrollToPage(1) }
+                            },
+                            onNavigateToImport = {
+                                navController.navigate(Screen.ImportSpreadsheet.route)
+                            },
+                            onNavigateToPdf = {
+                                navController.navigate(Screen.PdfReview.route)
+                            },
+                            onNavigateToSettings = {
+                                navController.navigate(Screen.Settings.route)
+                            },
+                            onNavigateToVehicleDetail = { regNo ->
+                                navController.navigate(Screen.VehicleDetail.createRoute(regNo))
+                            },
+                            onSelectionModeChange = { isSelectionActive = it }
+                        )
+                        1 -> CustomersScreen(
+                            onNavigateBack = null,
+                            onNavigateToVehicleDetail = { regNo ->
+                                navController.navigate(Screen.VehicleDetail.createRoute(regNo))
                             }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    },
-                    onNavigateToReports = {
-                        navController.navigate(Screen.Reports.route) {
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
+                        )
+                        2 -> MonthViewScreen(
+                            onNavigateBack = null,
+                            onNavigateToVehicleDetail = { regNo ->
+                                navController.navigate(Screen.VehicleDetail.createRoute(regNo))
                             }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    },
-                    onNavigateToCustomers = {
-                        navController.navigate(Screen.Customers.route) {
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
+                        )
+                        3 -> ReportsScreen(
+                            onNavigateBack = null,
+                            onNavigateToVehicleDetail = { regNo ->
+                                navController.navigate(Screen.VehicleDetail.createRoute(regNo))
+                            },
+                            onNavigateToRenew = { regNo ->
+                                navController.navigate(Screen.RenewPolicy.createRoute(regNo))
                             }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    },
-                    onNavigateToImport = {
-                        navController.navigate(Screen.ImportSpreadsheet.route)
-                    },
-                    onNavigateToPdf = {
-                        navController.navigate(Screen.PdfReview.route)
-                    },
-                    onNavigateToSettings = {
-                        navController.navigate(Screen.Settings.route)
-                    },
-                    onNavigateToVehicleDetail = { regNo ->
-                        navController.navigate(Screen.VehicleDetail.createRoute(regNo))
-                    },
-                    onSelectionModeChange = { isSelectionActive = it }
-                )
-            }
-
-            composable(Screen.Customers.route) {
-                CustomersScreen(
-                    onNavigateBack = null,
-                    onNavigateToVehicleDetail = { regNo ->
-                        navController.navigate(Screen.VehicleDetail.createRoute(regNo))
+                        )
                     }
-                )
-            }
-
-            composable(Screen.MonthView.route) {
-                MonthViewScreen(
-                    onNavigateBack = null,
-                    onNavigateToVehicleDetail = { regNo ->
-                        navController.navigate(Screen.VehicleDetail.createRoute(regNo))
-                    }
-                )
-            }
-
-            composable(Screen.Reports.route) {
-                ReportsScreen(
-                    onNavigateBack = null,
-                    onNavigateToVehicleDetail = { regNo ->
-                        navController.navigate(Screen.VehicleDetail.createRoute(regNo))
-                    },
-                    onNavigateToRenew = { regNo ->
-                        navController.navigate(Screen.RenewPolicy.createRoute(regNo))
-                    }
-                )
+                }
             }
 
             composable(
@@ -319,25 +329,24 @@ fun PolicyDeskNavHost(
                 LiquidGlassDock(
                     currentTab = tab,
                     onTabSelected = { selectedTab ->
-                        val targetRoute = when (selectedTab) {
-                            DockTab.DASHBOARD -> Screen.Dashboard.route
-                            DockTab.CUSTOMERS -> Screen.Customers.route
-                            DockTab.TIMELINE -> Screen.MonthView.route
-                            DockTab.REPORTS -> Screen.Reports.route
-                            DockTab.SETTINGS -> Screen.Settings.route
+                        val targetIndex = when (selectedTab) {
+                            DockTab.DASHBOARD -> 0
+                            DockTab.CUSTOMERS -> 1
+                            DockTab.TIMELINE -> 2
+                            DockTab.REPORTS -> 3
+                            DockTab.SETTINGS -> null
                         }
-                        if (currentRoute != targetRoute) {
-                            navController.navigate(targetRoute) {
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
-                                }
-                                launchSingleTop = true
-                                restoreState = true
+                        if (targetIndex != null) {
+                            coroutineScope.launch {
+                                pagerState.animateScrollToPage(targetIndex)
                             }
+                        } else if (selectedTab == DockTab.SETTINGS) {
+                            navController.navigate(Screen.Settings.route)
                         }
                     },
                     onScrollToTop = onScrollToTop,
-                    hazeState = hazeState
+                    hazeState = hazeState,
+                    pagerPosition = pagerPosition
                 )
             }
         }

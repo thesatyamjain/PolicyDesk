@@ -68,6 +68,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.layout.IntrinsicSize
+import kotlin.math.roundToInt
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.offset
 import androidx.compose.material3.CircularProgressIndicator
@@ -1384,7 +1385,8 @@ fun LiquidGlassDock(
     modifier: Modifier = Modifier,
     onScrollToTop: (() -> Unit)? = null,
     onAddClicked: (() -> Unit)? = null,
-    hazeState: HazeState? = null
+    hazeState: HazeState? = null,
+    pagerPosition: Float? = null
 ) {
     val isDark = isSystemInDarkTheme()
     val dockShape = RoundedCornerShape(28.dp)
@@ -1405,7 +1407,11 @@ fun LiquidGlassDock(
         )
     }
 
-    val selectedIndex = tabs.indexOfFirst { it.first == currentTab }.coerceAtLeast(0)
+    val selectedIndex = if (pagerPosition != null) {
+        pagerPosition.roundToInt().coerceIn(0, tabs.size - 1)
+    } else {
+        tabs.indexOfFirst { it.first == currentTab }.coerceAtLeast(0)
+    }
 
     val hazeMod = if (activeHaze != null) {
         try {
@@ -1493,7 +1499,7 @@ fun LiquidGlassDock(
         ) {
             BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                 val itemWidth = maxWidth / tabs.size
-                val pillOffset by animateDpAsState(
+                val animatedPillOffset by animateDpAsState(
                     targetValue = itemWidth * selectedIndex,
                     animationSpec = spring(
                         dampingRatio = 0.76f,
@@ -1501,6 +1507,11 @@ fun LiquidGlassDock(
                     ),
                     label = "dock_gliding_pill"
                 )
+                val pillOffset = if (pagerPosition != null) {
+                    itemWidth * pagerPosition.coerceIn(0f, (tabs.size - 1).toFloat())
+                } else {
+                    animatedPillOffset
+                }
 
                 // 1. Gliding Animated Indicator Pill (My Warranties)
                 Box(
