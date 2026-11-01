@@ -9,9 +9,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -76,6 +78,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -205,6 +208,8 @@ fun AddPolicyScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .consumeWindowInsets(paddingValues)
+                .imePadding()
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -230,7 +235,7 @@ fun AddPolicyScreen(
                     supportingText = if (state.hasAttemptedSave && RegistrationNormalizer.normalize(state.regNo).isEmpty()) {
                         { Text("Registration number is required", color = StatusOverdueRed) }
                     } else null,
-                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters),
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, imeAction = ImeAction.Next),
                     shape = RoundedCornerShape(10.dp),
                     colors = formFieldColors()
                 )
@@ -284,7 +289,7 @@ fun AddPolicyScreen(
                         label = { Text("Chassis No (VIN)") },
                         placeholder = { Text("17 characters") },
                         singleLine = true,
-                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters),
+                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, imeAction = ImeAction.Next),
                         shape = RoundedCornerShape(10.dp),
                         colors = formFieldColors()
                     )
@@ -296,7 +301,7 @@ fun AddPolicyScreen(
                         modifier = Modifier.weight(1f),
                         label = { Text("Engine Number") },
                         singleLine = true,
-                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters),
+                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, imeAction = ImeAction.Next),
                         shape = RoundedCornerShape(10.dp),
                         colors = formFieldColors()
                     )
@@ -363,71 +368,68 @@ fun AddPolicyScreen(
                     onValueChange = viewModel::onPolicyNumberChanged,
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text("Policy Number *") },
+                    placeholder = { Text("e.g. 1234/56789012/00/000") },
                     singleLine = true,
                     isError = state.hasAttemptedSave && !FieldValidators.isValidPolicyNumber(state.policyNumber),
                     supportingText = if (state.hasAttemptedSave && !FieldValidators.isValidPolicyNumber(state.policyNumber)) {
                         { Text("Valid policy number is required", color = StatusOverdueRed) }
                     } else null,
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, imeAction = ImeAction.Next),
                     shape = RoundedCornerShape(10.dp),
                     colors = formFieldColors()
                 )
 
-                // Expiry Date & Total Premium Row
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    // Expiry Date Field (tap anywhere to pick)
-                    Box(modifier = Modifier.weight(1.2f)) {
-                        OutlinedTextField(
-                            value = state.expiryDateEpochMs?.let { UiFormatters.formatDate(it) } ?: "",
-                            onValueChange = {},
-                            modifier = Modifier.fillMaxWidth(),
-                            readOnly = true,
-                            isError = state.hasAttemptedSave && state.expiryDateEpochMs == null,
-                            supportingText = if (state.hasAttemptedSave && state.expiryDateEpochMs == null) {
-                                { Text("Tap to select date", color = StatusOverdueRed) }
-                            } else null,
-                            label = { Text("Expiry Date *") },
-                            placeholder = { Text("Tap to select") },
-                            trailingIcon = {
-                                IconButton(onClick = { showDatePicker = true }) {
-                                    Icon(
-                                        imageVector = AppleIcons.Calendar,
-                                        contentDescription = "Select Date",
-                                        tint = SapphireBlue,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
-                            },
-                            shape = RoundedCornerShape(10.dp),
-                            colors = formFieldColors()
-                        )
-                        // Clickable overlay capturing taps on the whole field
-                        Box(
-                            modifier = Modifier
-                                .matchParentSize()
-                                .clickable { showDatePicker = true }
-                        )
-                    }
-
-                    // Total Premium
+                // Expiry Date Field (tap anywhere to pick)
+                Box(modifier = Modifier.fillMaxWidth()) {
                     OutlinedTextField(
-                        value = state.totalPremium,
-                        onValueChange = viewModel::onTotalPremiumChanged,
-                        modifier = Modifier.weight(1f),
-                        label = { Text("Total Premium *") },
-                        placeholder = { Text("₹ INR") },
-                        singleLine = true,
-                        isError = state.hasAttemptedSave && (state.totalPremium.toDoubleOrNull() ?: 0.0) <= 0.0,
-                        supportingText = if (state.hasAttemptedSave && (state.totalPremium.toDoubleOrNull() ?: 0.0) <= 0.0) {
-                            { Text("Amount > 0 required", color = StatusOverdueRed) }
+                        value = state.expiryDateEpochMs?.let { UiFormatters.formatDate(it) } ?: "",
+                        onValueChange = {},
+                        modifier = Modifier.fillMaxWidth(),
+                        readOnly = true,
+                        isError = state.hasAttemptedSave && state.expiryDateEpochMs == null,
+                        supportingText = if (state.hasAttemptedSave && state.expiryDateEpochMs == null) {
+                            { Text("Tap to select date", color = StatusOverdueRed) }
                         } else null,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        label = { Text("Policy Expiry Date *") },
+                        placeholder = { Text("Tap to pick policy expiration date") },
+                        trailingIcon = {
+                            IconButton(onClick = { showDatePicker = true }) {
+                                Icon(
+                                    imageVector = AppleIcons.Calendar,
+                                    contentDescription = "Select Date",
+                                    tint = SapphireBlue,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        },
                         shape = RoundedCornerShape(10.dp),
                         colors = formFieldColors()
                     )
+                    // Clickable overlay capturing taps on the whole field
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .clickable { showDatePicker = true }
+                    )
                 }
+
+                // Total Premium
+                OutlinedTextField(
+                    value = state.totalPremium,
+                    onValueChange = viewModel::onTotalPremiumChanged,
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Total Premium *") },
+                    placeholder = { Text("e.g. 14500") },
+                    prefix = { Text("₹ ", fontWeight = FontWeight.Bold, color = SapphireBlue) },
+                    singleLine = true,
+                    isError = state.hasAttemptedSave && (state.totalPremium.toDoubleOrNull() ?: 0.0) <= 0.0,
+                    supportingText = if (state.hasAttemptedSave && (state.totalPremium.toDoubleOrNull() ?: 0.0) <= 0.0) {
+                        { Text("Amount > 0 required", color = StatusOverdueRed) }
+                    } else null,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = formFieldColors()
+                )
 
                 if (state.pastExpiryWarning) {
                     WarningBanner(
@@ -446,7 +448,7 @@ fun AddPolicyScreen(
                     TitleDropdown(
                         selectedTitle = state.title,
                         onTitleSelected = viewModel::onTitleChanged,
-                        modifier = Modifier.width(112.dp)
+                        modifier = Modifier.width(96.dp)
                     )
 
                     // Customer Name
@@ -455,53 +457,59 @@ fun AddPolicyScreen(
                         onValueChange = viewModel::onNameChanged,
                         modifier = Modifier.weight(1f),
                         label = { Text("Customer Name *") },
+                        placeholder = { Text("Full Name") },
                         singleLine = true,
                         isError = state.hasAttemptedSave && !FieldValidators.isValidName(state.name),
                         supportingText = if (state.hasAttemptedSave && !FieldValidators.isValidName(state.name)) {
                             { Text("Customer name required (min 2 chars)", color = StatusOverdueRed) }
                         } else null,
+                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
                         shape = RoundedCornerShape(10.dp),
                         colors = formFieldColors()
                     )
                 }
 
-                Row(
+                // Mobile Number (Full width for clear, uncompressed layout)
+                OutlinedTextField(
+                    value = state.mobile,
+                    onValueChange = viewModel::onMobileChanged,
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    // Mobile Number
-                    OutlinedTextField(
-                        value = state.mobile,
-                        onValueChange = viewModel::onMobileChanged,
-                        modifier = Modifier.weight(1.2f),
-                        label = { Text("Mobile Number *") },
-                        placeholder = { Text("10 digits (6-9)") },
-                        singleLine = true,
-                        isError = state.hasAttemptedSave && !FieldValidators.isValidMobile(state.mobile),
-                        supportingText = if (state.hasAttemptedSave && !FieldValidators.isValidMobile(state.mobile)) {
-                            { Text("Valid 10-digit mobile required", color = StatusOverdueRed) }
-                        } else null,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                        shape = RoundedCornerShape(10.dp),
-                        colors = formFieldColors()
-                    )
+                    label = { Text("Mobile Number *") },
+                    placeholder = { Text("10-digit mobile number") },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = AppleIcons.Phone,
+                            contentDescription = null,
+                            tint = SapphireBlue,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    },
+                    singleLine = true,
+                    isError = state.hasAttemptedSave && !FieldValidators.isValidMobile(state.mobile),
+                    supportingText = if (state.hasAttemptedSave && !FieldValidators.isValidMobile(state.mobile)) {
+                        { Text("Valid 10-digit mobile required", color = StatusOverdueRed) }
+                    } else null,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone, imeAction = ImeAction.Next),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = formFieldColors()
+                )
 
-                    // Email Address
-                    OutlinedTextField(
-                        value = state.email,
-                        onValueChange = viewModel::onEmailChanged,
-                        modifier = Modifier.weight(1.3f),
-                        label = { Text("Email Address") },
-                        singleLine = true,
-                        isError = state.hasAttemptedSave && state.email.isNotBlank() && !FieldValidators.isValidEmail(state.email),
-                        supportingText = if (state.hasAttemptedSave && state.email.isNotBlank() && !FieldValidators.isValidEmail(state.email)) {
-                            { Text("Invalid email format", color = StatusOverdueRed) }
-                        } else null,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                        shape = RoundedCornerShape(10.dp),
-                        colors = formFieldColors()
-                    )
-                }
+                // Email Address (Full width for long email visibility)
+                OutlinedTextField(
+                    value = state.email,
+                    onValueChange = viewModel::onEmailChanged,
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Email Address") },
+                    placeholder = { Text("e.g. client@example.com (optional)") },
+                    singleLine = true,
+                    isError = state.hasAttemptedSave && state.email.isNotBlank() && !FieldValidators.isValidEmail(state.email),
+                    supportingText = if (state.hasAttemptedSave && state.email.isNotBlank() && !FieldValidators.isValidEmail(state.email)) {
+                        { Text("Invalid email format", color = StatusOverdueRed) }
+                    } else null,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = formFieldColors()
+                )
 
                 // Residential Address
                 OutlinedTextField(
@@ -509,8 +517,10 @@ fun AddPolicyScreen(
                     onValueChange = viewModel::onAddressChanged,
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text("Residential Address (Optional)") },
+                    placeholder = { Text("House/Flat no., street, city, pincode") },
                     minLines = 2,
                     maxLines = 3,
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Next),
                     shape = RoundedCornerShape(10.dp),
                     colors = formFieldColors()
                 )
@@ -526,6 +536,7 @@ fun AddPolicyScreen(
                     placeholder = { Text("Preferred call time, language, add-ons...") },
                     minLines = 2,
                     maxLines = 4,
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done),
                     shape = RoundedCornerShape(10.dp),
                     colors = formFieldColors()
                 )
@@ -597,7 +608,7 @@ fun AddPolicyScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(48.dp))
         }
     }
 }
@@ -827,6 +838,7 @@ fun MakeModelAutocomplete(
             label = { Text("Vehicle Make & Model") },
             placeholder = { Text("e.g. Maruti Swift Dzire, Hyundai Creta") },
             singleLine = true,
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
             shape = RoundedCornerShape(10.dp),
             colors = formFieldColors()
         )
