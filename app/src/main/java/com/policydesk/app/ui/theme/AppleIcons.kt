@@ -393,7 +393,7 @@ object AppleIcons {
 
     /** SF Symbol: tablecells.fill (Apple Numbers rounded spreadsheet grid) */
     val TableCells: ImageVector by lazy {
-        buildIcon("AppleTableCells") {
+        buildIcon("AppleTableCells", pathFillType = PathFillType.EvenOdd) {
             moveTo(6f, 3.5f)
             lineTo(18f, 3.5f)
             curveTo(20.2f, 3.5f, 21.5f, 4.8f, 21.5f, 7f)
@@ -438,7 +438,7 @@ object AppleIcons {
 
     /** SF Symbol: doc.text.fill (Apple PDF / policy document) */
     val DocText: ImageVector by lazy {
-        buildIcon("AppleDocText") {
+        buildIcon("AppleDocText", pathFillType = PathFillType.EvenOdd) {
             moveTo(6f, 2.5f)
             lineTo(14f, 2.5f)
             lineTo(20f, 8.5f)
@@ -473,7 +473,7 @@ object AppleIcons {
 
     /** SF Symbol: checkmark.shield.fill (Apple Security & Verification) */
     val ShieldCheck: ImageVector by lazy {
-        buildIcon("AppleShieldCheck") {
+        buildIcon("AppleShieldCheck", pathFillType = PathFillType.EvenOdd) {
             moveTo(12f, 2f)
             curveTo(14.5f, 4f, 17.5f, 4.5f, 20f, 4.5f)
             curveTo(20.5f, 4.5f, 21f, 4.9f, 21f, 5.5f)
@@ -627,7 +627,7 @@ object AppleIcons {
 
     /** SF Symbol: exclamationmark.triangle.fill (Apple caution triangle) */
     val Warning: ImageVector by lazy {
-        buildIcon("AppleWarning") {
+        buildIcon("AppleWarning", pathFillType = PathFillType.EvenOdd) {
             moveTo(10.3f, 3.4f)
             curveTo(11f, 2.1f, 13f, 2.1f, 13.7f, 3.4f)
             lineTo(22.3f, 18.2f)
@@ -636,25 +636,29 @@ object AppleIcons {
             curveTo(1.9f, 21f, 1f, 19.5f, 1.7f, 18.2f)
             close()
 
-            // Exclamation pill & dot
-            moveTo(11f, 8.5f)
-            lineTo(13f, 8.5f)
-            lineTo(12.7f, 14f)
-            lineTo(11.3f, 14f)
+            // Exclamation pill with rounded caps (center x = 12)
+            moveTo(12f, 8f)
+            curveTo(12.65f, 8f, 13.15f, 8.45f, 13.1f, 9.1f)
+            lineTo(12.7f, 13.2f)
+            curveTo(12.65f, 13.7f, 12.2f, 14.1f, 12f, 14.1f)
+            curveTo(11.8f, 14.1f, 11.35f, 13.7f, 11.3f, 13.2f)
+            lineTo(10.9f, 9.1f)
+            curveTo(10.85f, 8.45f, 11.35f, 8f, 12f, 8f)
             close()
 
-            moveTo(12f, 16f)
-            curveTo(11.3f, 16f, 10.8f, 16.5f, 10.8f, 17.2f)
-            curveTo(10.8f, 17.9f, 11.3f, 18.4f, 12f, 18.4f)
-            curveTo(12.7f, 18.4f, 13.2f, 17.9f, 13.2f, 17.2f)
-            curveTo(13.2f, 16.5f, 12.7f, 16f, 12f, 16f)
+            // Exclamation dot
+            moveTo(12f, 15.7f)
+            curveTo(12.65f, 15.7f, 13.15f, 16.2f, 13.15f, 16.85f)
+            curveTo(13.15f, 17.5f, 12.65f, 18f, 12f, 18f)
+            curveTo(11.35f, 18f, 10.85f, 17.5f, 10.85f, 16.85f)
+            curveTo(10.85f, 16.2f, 11.35f, 15.7f, 12f, 15.7f)
             close()
         }
     }
 
     /** SF Symbol: xmark.circle.fill (Apple search clear pill) */
     val Clear: ImageVector by lazy {
-        buildIcon("AppleClear") {
+        buildIcon("AppleClear", pathFillType = PathFillType.EvenOdd) {
             moveTo(12f, 2f)
             curveTo(6.5f, 2f, 2f, 6.5f, 2f, 12f)
             curveTo(2f, 17.5f, 6.5f, 22f, 12f, 22f)
@@ -681,7 +685,7 @@ object AppleIcons {
 
     /** SF Symbol: checkmark.circle.fill (Apple verified status) */
     val CheckCircle: ImageVector by lazy {
-        buildIcon("AppleCheckCircle") {
+        buildIcon("AppleCheckCircle", pathFillType = PathFillType.EvenOdd) {
             moveTo(12f, 2f)
             curveTo(6.5f, 2f, 2f, 6.5f, 2f, 12f)
             curveTo(2f, 17.5f, 6.5f, 22f, 12f, 22f)
@@ -758,7 +762,7 @@ object AppleIcons {
 
     /** SF Symbol: lock.fill (Apple iOS security padlock) */
     val Lock: ImageVector by lazy {
-        buildIcon("AppleLock") {
+        buildIcon("AppleLock", pathFillType = PathFillType.EvenOdd) {
             // Shackle (arch)
             moveTo(12f, 2f)
             curveTo(9.2f, 2f, 7f, 4.2f, 7f, 7f)

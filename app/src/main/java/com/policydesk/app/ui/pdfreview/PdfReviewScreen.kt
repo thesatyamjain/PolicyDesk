@@ -316,15 +316,16 @@ fun PdfReviewScreen(
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(60.dp)
-                                .background(StatusOverdueRedBg, CircleShape),
+                                .size(64.dp)
+                                .background(StatusOverdueRedBg, CircleShape)
+                                .border(1.dp, StatusOverdueRed.copy(alpha = 0.25f), CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = AppleIcons.Warning,
-                                contentDescription = null,
+                                contentDescription = "Extraction Issue",
                                 tint = StatusOverdueRed,
-                                modifier = Modifier.size(30.dp)
+                                modifier = Modifier.size(32.dp)
                             )
                         }
 
