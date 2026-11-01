@@ -772,23 +772,25 @@ fun SettingsScreen(
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             Text(
-                                text = "Available Models",
+                                text = "Active Model",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = labelPrimary
                             )
+                            val activeModelName = state.aiConfig.model.ifBlank { state.aiConfig.provider.defaultModel }
                             Box(
                                 modifier = Modifier
-                                    .size(6.dp)
-                                    .clip(RoundedCornerShape(3.dp))
-                                    .background(if (state.isFetchingModels) AppleDarkSystemBlue else AppleSystemGreen)
-                            )
-                            Text(
-                                text = if (state.isFetchingModels) "Syncing..." else "Live from Provider",
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = if (state.isFetchingModels) AppleDarkSystemBlue else AppleSystemGreen
-                            )
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(AppleSystemBlue.copy(alpha = 0.12f))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = activeModelName,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
+                                )
+                            }
                         }
 
                         IconButton(
@@ -814,13 +816,18 @@ fun SettingsScreen(
                     }
 
                     // Dynamic Horizontal Scrollable Model Quick Selector Pills
-                    val modelsList = state.availableModels.ifEmpty {
+                    val baseModelsList = state.availableModels.ifEmpty {
                         when (state.aiConfig.provider) {
                             AiProvider.GEMINI -> listOf("gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-2.5-flash")
                             AiProvider.OPENAI -> listOf("gpt-4o-mini", "gpt-4o", "o1-mini")
                             AiProvider.CLAUDE -> listOf("claude-3-5-haiku-20241022", "claude-3-5-sonnet-20241022", "claude-3-opus-20240229")
                             else -> emptyList()
                         }
+                    }
+                    val modelsList = if (state.aiConfig.model.isNotBlank() && !baseModelsList.any { it.equals(state.aiConfig.model, ignoreCase = true) }) {
+                        listOf(state.aiConfig.model) + baseModelsList
+                    } else {
+                        baseModelsList
                     }
 
                     if (modelsList.isNotEmpty()) {
@@ -837,8 +844,8 @@ fun SettingsScreen(
                                         .clip(RoundedCornerShape(8.dp))
                                         .background(
                                             if (isSelected) AppleSystemBlue.copy(alpha = 0.15f)
-                                            else if (isDark) IosDarkTertiaryGrouped
-                                            else IosTertiaryGrouped
+                                             else if (isDark) IosDarkTertiaryGrouped
+                                             else IosTertiaryGrouped
                                         )
                                         .border(
                                             1.dp,
@@ -861,19 +868,6 @@ fun SettingsScreen(
                             }
                         }
                     }
-
-                    Spacer(modifier = Modifier.height(6.dp))
-
-                    // Model Field (Retained for custom / preview models)
-                    OutlinedTextField(
-                        value = state.aiConfig.model,
-                        onValueChange = viewModel::onModelChanged,
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Model Name") },
-                        singleLine = true,
-                        shape = RoundedCornerShape(12.dp),
-                        colors = formFieldColors()
-                    )
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
