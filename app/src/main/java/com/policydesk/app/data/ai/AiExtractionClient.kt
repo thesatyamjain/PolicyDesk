@@ -200,7 +200,24 @@ CONTENT AWARENESS RULES & ABBREVIATIONS FOR ALL FIELDS:
                     }
                 }
                 AiProvider.CLAUDE -> {
-                    Result.success("Key validated for Anthropic Claude.")
+                    val url = URL("https://api.anthropic.com/v1/models")
+                    val conn = url.openConnection() as HttpURLConnection
+                    conn.requestMethod = "GET"
+                    conn.setRequestProperty("x-api-key", cleanKey)
+                    conn.setRequestProperty("anthropic-version", "2023-06-01")
+                    conn.connectTimeout = 15000
+                    conn.readTimeout = 15000
+                    val code = conn.responseCode
+                    if (code == 200) {
+                        Result.success("Connection successful! Provider: Anthropic Claude")
+                    } else {
+                        val errorText = try {
+                            val stream = conn.errorStream ?: conn.inputStream
+                            val raw = BufferedReader(InputStreamReader(stream)).readText()
+                            JSONObject(raw).optJSONObject("error")?.optString("message") ?: raw
+                        } catch (_: Exception) { conn.responseMessage }
+                        Result.failure(Exception("HTTP $code: $errorText"))
+                    }
                 }
             }
         } catch (e: Exception) {
@@ -240,7 +257,8 @@ CONTENT AWARENESS RULES & ABBREVIATIONS FOR ALL FIELDS:
                     }
                 }
                 AiProvider.GEMINI -> extractWithGemini(base64Pdf, config, password)
-                else -> ExtractionResult.Error("Provider ${config.provider.displayName} PDF intake in beta. Please use Gemini or Cloudflare AI for native document parsing.")
+                AiProvider.CLAUDE -> extractWithClaude(context, pdfUri, base64Pdf, config, password)
+                AiProvider.OPENAI -> extractWithOpenAI(context, pdfUri, config, password)
             }
         } catch (e: Exception) {
             ExtractionResult.Error("Extraction failed: ${e.message}")
@@ -504,6 +522,210 @@ CONTENT AWARENESS RULES & ABBREVIATIONS FOR ALL FIELDS:
         return ExtractionResult.Error(lastError)
     }
 
+    private suspend fun extractWithClaude(
+        context: Context,
+        pdfUri: Uri,
+        base64Pdf: String,
+        config: AiConfig,
+        password: String? = null
+    ): ExtractionResult = withContext(Dispatchers.IO) {
+        val cleanKey = config.apiKey.trim()
+        val configuredModel = config.model.trim().ifBlank { "claude-3-5-sonnet-20241022" }
+
+        val promptText = if (password.isNullOrBlank()) {
+            "Extract all vehicle policy fields from this document into valid JSON according to system instructions."
+        } else {
+            "Extract all vehicle policy fields from this document into valid JSON according to system instructions. Document password: $password"
+        }
+
+        // Method 1: Try Anthropic native document payload (supported by Claude 3.5 Sonnet / 3.7 Sonnet)
+        val documentPayload = JSONObject().apply {
+            put("model", configuredModel)
+            put("max_tokens", 2048)
+            put("system", SYSTEM_PROMPT)
+            put("messages", org.json.JSONArray().put(
+                JSONObject().apply {
+                    put("role", "user")
+                    put("content", org.json.JSONArray().apply {
+                        put(JSONObject().apply {
+                            put("type", "document")
+                            put("source", JSONObject().apply {
+                                put("type", "base64")
+                                put("media_type", "application/pdf")
+                                put("data", base64Pdf)
+                            })
+                        })
+                        put(JSONObject().apply {
+                            put("type", "text")
+                            put("text", promptText)
+                        })
+                    })
+                }
+            ))
+        }
+
+        val directResult = executeClaudeRequest(cleanKey, documentPayload)
+        if (directResult is ExtractionResult.Success) {
+            return@withContext directResult
+        }
+
+        // Method 2: Fallback to rendered page image (works universally across all Claude models including Haiku)
+        val renderedImage = renderPdfOrImageToBase64(context, pdfUri, maxPages = 2, scale = 1.8f)
+        if (renderedImage != null) {
+            val imagePayload = JSONObject().apply {
+                put("model", configuredModel)
+                put("max_tokens", 2048)
+                put("system", SYSTEM_PROMPT)
+                put("messages", org.json.JSONArray().put(
+                    JSONObject().apply {
+                        put("role", "user")
+                        put("content", org.json.JSONArray().apply {
+                            put(JSONObject().apply {
+                                put("type", "image")
+                                put("source", JSONObject().apply {
+                                    put("type", "base64")
+                                    put("media_type", "image/jpeg")
+                                    put("data", renderedImage)
+                                })
+                            })
+                            put(JSONObject().apply {
+                                put("type", "text")
+                                put("text", promptText)
+                            })
+                        })
+                    }
+                ))
+            }
+            val imageResult = executeClaudeRequest(cleanKey, imagePayload)
+            if (imageResult is ExtractionResult.Success) {
+                return@withContext imageResult
+            }
+        }
+
+        return@withContext directResult
+    }
+
+    private fun executeClaudeRequest(apiKey: String, payload: JSONObject): ExtractionResult {
+        return try {
+            val url = URL("https://api.anthropic.com/v1/messages")
+            val conn = url.openConnection() as HttpURLConnection
+            conn.requestMethod = "POST"
+            conn.setRequestProperty("Content-Type", "application/json")
+            conn.setRequestProperty("x-api-key", apiKey)
+            conn.setRequestProperty("anthropic-version", "2023-06-01")
+            conn.doOutput = true
+            conn.connectTimeout = 45000
+            conn.readTimeout = 45000
+
+            OutputStreamWriter(conn.outputStream).use { it.write(payload.toString()) }
+
+            val code = conn.responseCode
+            if (code == 200) {
+                val responseText = BufferedReader(InputStreamReader(conn.inputStream)).readText()
+                val responseJson = JSONObject(responseText)
+                val contentArray = responseJson.optJSONArray("content")
+                val text = contentArray?.optJSONObject(0)?.optString("text") ?: ""
+
+                if (text.isBlank()) {
+                    ExtractionResult.Error("Claude returned empty extraction output.")
+                } else {
+                    parseGeminiResponse(text)
+                }
+            } else {
+                val stream = conn.errorStream ?: conn.inputStream
+                val errorText = BufferedReader(InputStreamReader(stream)).readText()
+                val parsedMsg = try {
+                    JSONObject(errorText).optJSONObject("error")?.optString("message") ?: errorText
+                } catch (_: Exception) { errorText }
+                ExtractionResult.Error("Claude API Error ($code): $parsedMsg")
+            }
+        } catch (e: Exception) {
+            ExtractionResult.Error("Network error connecting to Claude: ${e.message}")
+        }
+    }
+
+    private suspend fun extractWithOpenAI(
+        context: Context,
+        pdfUri: Uri,
+        config: AiConfig,
+        password: String? = null
+    ): ExtractionResult = withContext(Dispatchers.IO) {
+        val cleanKey = config.apiKey.trim()
+        val configuredModel = config.model.trim().ifBlank { "gpt-4o-mini" }
+
+        val imageBase64 = renderPdfOrImageToBase64(context, pdfUri, maxPages = 2, scale = 1.8f)
+            ?: return@withContext ExtractionResult.Error("Could not render PDF document for OpenAI vision extraction.")
+
+        val promptText = if (password.isNullOrBlank()) {
+            "Extract all vehicle policy fields from this document into valid JSON according to system instructions."
+        } else {
+            "Extract all vehicle policy fields from this document into valid JSON according to system instructions. Document password: $password"
+        }
+
+        val requestJson = JSONObject().apply {
+            put("model", configuredModel)
+            put("temperature", 0.1)
+            put("response_format", JSONObject().put("type", "json_object"))
+            put("messages", org.json.JSONArray().apply {
+                put(JSONObject().apply {
+                    put("role", "system")
+                    put("content", SYSTEM_PROMPT)
+                })
+                put(JSONObject().apply {
+                    put("role", "user")
+                    put("content", org.json.JSONArray().apply {
+                        put(JSONObject().apply {
+                            put("type", "text")
+                            put("text", promptText)
+                        })
+                        put(JSONObject().apply {
+                            put("type", "image_url")
+                            put("image_url", JSONObject().apply {
+                                put("url", "data:image/jpeg;base64,$imageBase64")
+                            })
+                        })
+                    })
+                })
+            })
+        }
+
+        try {
+            val url = URL("https://api.openai.com/v1/chat/completions")
+            val conn = url.openConnection() as HttpURLConnection
+            conn.requestMethod = "POST"
+            conn.setRequestProperty("Content-Type", "application/json")
+            conn.setRequestProperty("Authorization", "Bearer $cleanKey")
+            conn.doOutput = true
+            conn.connectTimeout = 45000
+            conn.readTimeout = 45000
+
+            OutputStreamWriter(conn.outputStream).use { it.write(requestJson.toString()) }
+
+            val code = conn.responseCode
+            if (code == 200) {
+                val responseText = BufferedReader(InputStreamReader(conn.inputStream)).readText()
+                val responseJson = JSONObject(responseText)
+                val choices = responseJson.optJSONArray("choices")
+                val text = choices?.optJSONObject(0)?.optJSONObject("message")?.optString("content") ?: ""
+
+                if (text.isBlank()) {
+                    ExtractionResult.Error("OpenAI returned empty extraction output.")
+                } else {
+                    parseGeminiResponse(text)
+                }
+            } else {
+                val stream = conn.errorStream ?: conn.inputStream
+                val errorText = BufferedReader(InputStreamReader(stream)).readText()
+                val parsedMsg = try {
+                    JSONObject(errorText).optJSONObject("error")?.optString("message") ?: errorText
+                } catch (_: Exception) { errorText }
+                ExtractionResult.Error("OpenAI API Error ($code): $parsedMsg")
+            }
+        } catch (e: Exception) {
+            ExtractionResult.Error("Network error connecting to OpenAI: ${e.message}")
+        }
+    }
+
     private fun renderPdfOrImageToBase64(context: Context, uri: Uri, maxPages: Int = 1, scale: Float = 2.4f): String? {
         val mimeType = context.contentResolver.getType(uri) ?: ""
         if (mimeType.startsWith("image/")) {
@@ -744,7 +966,13 @@ CONTENT AWARENESS RULES & ABBREVIATIONS FOR ALL FIELDS:
 
     private fun parseGeminiResponse(text: String): ExtractionResult {
         return try {
-            val cleanJsonStr = text.trim().removePrefix("```json").removePrefix("```").removeSuffix("```").trim()
+            val start = text.indexOf('{')
+            val end = text.lastIndexOf('}')
+            val cleanJsonStr = if (start != -1 && end != -1 && end > start) {
+                text.substring(start, end + 1).trim()
+            } else {
+                text.trim().removePrefix("```json").removePrefix("```").removeSuffix("```").trim()
+            }
             val parsed = JSONObject(cleanJsonStr)
             parseExtractionJson(parsed, cleanJsonStr)
         } catch (e: Exception) {
