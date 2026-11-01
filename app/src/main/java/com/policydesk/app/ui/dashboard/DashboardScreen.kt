@@ -255,22 +255,10 @@ fun DashboardScreen(
                     iconBg = AppleSystemRed.copy(alpha = 0.12f),
                     iconTint = AppleSystemRed,
                     title = "Import from PDF (AI Extraction)",
-                    subtitle = "Auto-extract policy details with your API key",
+                    subtitle = "Auto-extract vehicle & policy details from PDF schedule",
                     onClick = {
                         showAddChooserSheet = false
                         onNavigateToPdf()
-                    }
-                )
-
-                AddOptionCard(
-                    icon = Icons.Default.CloudDone,
-                    iconBg = AppleSystemBlue.copy(alpha = 0.12f),
-                    iconTint = AppleSystemBlue,
-                    title = "Restore from Google Drive",
-                    subtitle = "Restore all vehicles & policies from your Drive backup",
-                    onClick = {
-                        showAddChooserSheet = false
-                        onNavigateToSettings()
                     }
                 )
 
