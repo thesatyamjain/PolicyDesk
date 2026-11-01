@@ -60,6 +60,23 @@ object AppleIcons {
         }
     }
 
+    /** SF Symbol: chevron.right (Cupertino navigation disclosure indicator) */
+    val ChevronRight: ImageVector by lazy {
+        buildIcon("AppleChevronRight") {
+            moveTo(9.29f, 6.71f)
+            curveTo(8.9f, 7.1f, 8.9f, 7.73f, 9.29f, 8.12f)
+            lineTo(13.17f, 12f)
+            lineTo(9.29f, 15.88f)
+            curveTo(8.9f, 16.27f, 8.9f, 16.9f, 9.29f, 17.29f)
+            curveTo(9.68f, 17.68f, 10.31f, 17.68f, 10.7f, 17.29f)
+            lineTo(15.29f, 12.7f)
+            curveTo(15.68f, 12.31f, 15.68f, 11.68f, 15.29f, 11.29f)
+            lineTo(10.7f, 6.71f)
+            curveTo(10.32f, 6.32f, 9.68f, 6.32f, 9.29f, 6.71f)
+            close()
+        }
+    }
+
     /** SF Symbol: person.fill (Cupertino single user avatar) */
     val Person: ImageVector by lazy {
         buildIcon("ApplePerson") {

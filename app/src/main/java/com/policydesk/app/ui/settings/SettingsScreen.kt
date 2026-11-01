@@ -6,18 +6,13 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Build
 import android.widget.Toast
-import androidx.compose.animation.AnimatedVisibility
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import com.policydesk.app.data.profile.AdvisorProfile
-import com.policydesk.app.data.profile.AdvisorProfileManager
-import com.policydesk.app.data.ota.OtaState
-import com.policydesk.app.ui.components.AppleAlertDialog
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,40 +22,24 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CloudDone
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.ContentPaste
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Psychology
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
-import com.policydesk.app.ui.theme.AppleDarkSystemBlue
-import com.policydesk.app.ui.theme.AppleIcons
-import com.policydesk.app.ui.components.AppleButton
-import com.policydesk.app.ui.components.AppleSecondaryButton
-import com.policydesk.app.ui.components.AppleSwitch
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -74,45 +53,41 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.policydesk.app.data.ota.OtaState
 import com.policydesk.app.data.security.AiProvider
-import com.policydesk.app.ui.addpolicy.formFieldColors
+import com.policydesk.app.data.theme.AppTheme
+import com.policydesk.app.data.theme.ThemeManager
+import com.policydesk.app.ui.components.AppleAlertDialog
+import com.policydesk.app.ui.components.AppleSwitch
 import com.policydesk.app.ui.components.LiquidGlassCard
 import com.policydesk.app.ui.components.LiquidGlassGroupedSection
 import com.policydesk.app.ui.components.LiquidGlassListRow
 import com.policydesk.app.ui.components.LiquidGlassTopBar
-import com.policydesk.app.ui.detail.DetailRow
-import java.io.File
+import com.policydesk.app.ui.theme.AppleDarkSystemBlue
+import com.policydesk.app.ui.theme.AppleDarkSystemGreen
+import com.policydesk.app.ui.theme.AppleDarkSystemPurple
+import com.policydesk.app.ui.theme.AppleIcons
 import com.policydesk.app.ui.theme.AppleSystemBlue
 import com.policydesk.app.ui.theme.AppleSystemGreen
 import com.policydesk.app.ui.theme.AppleSystemOrange
+import com.policydesk.app.ui.theme.AppleSystemPurple
 import com.policydesk.app.ui.theme.AppleSystemRed
 import com.policydesk.app.ui.theme.IosDarkLabelPrimary
 import com.policydesk.app.ui.theme.IosDarkLabelSecondary
 import com.policydesk.app.ui.theme.IosDarkLabelTertiary
-import com.policydesk.app.ui.theme.IosDarkTertiaryGrouped
 import com.policydesk.app.ui.theme.IosLabelPrimary
 import com.policydesk.app.ui.theme.IosLabelSecondary
 import com.policydesk.app.ui.theme.IosLabelTertiary
-import com.policydesk.app.ui.theme.IosSystemBackground
-import com.policydesk.app.ui.theme.IosTertiaryGrouped
-import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.runtime.collectAsState
-import com.policydesk.app.data.theme.AppTheme
-import com.policydesk.app.data.theme.ThemeManager
 import kotlinx.coroutines.launch
+import java.io.File
 
 @Composable
 fun SettingsScreen(
@@ -122,14 +97,7 @@ fun SettingsScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-
-    val backupSnapshotLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.CreateDocument("application/json")
-    ) { uri ->
-        if (uri != null) {
-            viewModel.saveSnapshotToUri(uri)
-        }
-    }
+    val haptic = LocalHapticFeedback.current
 
     val restoreSnapshotLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -145,28 +113,21 @@ fun SettingsScreen(
         viewModel.handleGoogleSignInResult(result.data)
     }
 
-    val clipboardManager = LocalClipboardManager.current
-    val uriHandler = LocalUriHandler.current
-
-    var showKey by remember { mutableStateOf(false) }
-    var showCloudflareAdvanced by remember { mutableStateOf(false) }
-    var showPrivacyDialog by remember { mutableStateOf(false) }
-    var showTermsDialog by remember { mutableStateOf(false) }
-    var showResetConfirmDialog by remember { mutableStateOf(false) }
-    var showAllSnapshots by remember { mutableStateOf(false) }
-
-    var advisorName by remember(state.advisorProfile.advisorName) { mutableStateOf(state.advisorProfile.advisorName) }
-    var agencyName by remember(state.advisorProfile.agencyName) { mutableStateOf(state.advisorProfile.agencyName) }
-    var advisorPhone by remember(state.advisorProfile.advisorPhone) { mutableStateOf(state.advisorProfile.advisorPhone) }
-    var customTemplate by remember(state.advisorProfile.customWhatsappTemplate) { mutableStateOf(state.advisorProfile.customWhatsappTemplate) }
-    var profileSavedFeedback by remember { mutableStateOf(false) }
-
     val notifPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) {
         viewModel.refreshNotificationPermission()
     }
 
+    // Modal Sheet & Dialog Presentation States
+    var showProfileSheet by remember { mutableStateOf(false) }
+    var showAiConfigSheet by remember { mutableStateOf(false) }
+    var showSnapshotsSheet by remember { mutableStateOf(false) }
+    var showPrivacyDialog by remember { mutableStateOf(false) }
+    var showTermsDialog by remember { mutableStateOf(false) }
+    var showResetConfirmDialog by remember { mutableStateOf(false) }
+
+    // Dialogs
     if (showPrivacyDialog) {
         AppleAlertDialog(
             onDismissRequest = { showPrivacyDialog = false },
@@ -201,7 +162,7 @@ fun SettingsScreen(
         AppleAlertDialog(
             onDismissRequest = { showResetConfirmDialog = false },
             title = "Reset All Data",
-            message = "Are you sure you want to delete all vehicles, policies, and client records from this device? This will erase your local portfolio database. This cannot be undone.",
+            message = "Are you sure you want to delete all vehicles, policies, and client records from this device? This will permanently erase your local portfolio database. This cannot be undone.",
             confirmText = "Delete Everything",
             isDestructive = true,
             onConfirm = {
@@ -225,7 +186,7 @@ fun SettingsScreen(
         }
 
         if (release != null) {
-            val isDark = androidx.compose.foundation.isSystemInDarkTheme()
+            val isDark = isSystemInDarkTheme()
             val isDownloading = otaState is OtaState.Downloading
             val isReady = otaState is OtaState.ReadyToInstall
 
@@ -312,6 +273,8 @@ fun SettingsScreen(
         val isDark = isSystemInDarkTheme()
         val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
         val labelSecondary = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
+        val labelTertiary = if (isDark) IosDarkLabelTertiary else IosLabelTertiary
+        val activeBlue = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
 
         val avatarBitmap = remember(state.avatarUpdateTimestamp, state.googleAccountPhotoUrl, state.isDriveLinked) {
             if (state.isDriveLinked) {
@@ -334,10 +297,9 @@ fun SettingsScreen(
                 .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 120.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            val haptic = LocalHapticFeedback.current
-            val activeBlue = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
-
-            // SECTION HERO: ACCOUNT & CLOUD VAULT IDENTITY (ONE UI / APPLE ID SPEC)
+            // ==========================================
+            // TOP IDENTITY HERO BANNER (Samsung One UI / Apple ID Spec)
+            // ==========================================
             if (!state.isDriveLinked) {
                 // SIGNED OUT: PROMINENT ONE UI HERO CALLOUT
                 LiquidGlassCard(
@@ -537,17 +499,22 @@ fun SettingsScreen(
                 }
             }
 
-            // SECTION 0: APPEARANCE (TRUE DARK THEME)
+            // ==========================================
+            // GROUP 1: PREFERENCES & IDENTITY
+            // ==========================================
             val currentThemeMode by ThemeManager.currentTheme.collectAsState()
 
-            LiquidGlassGroupedSection(title = "Appearance") {
+            LiquidGlassGroupedSection(title = "Preferences") {
+                // Interactive 3-Segment Theme Switcher Pill
                 Text(
-                    text = "Select your preferred visual style. True Dark uses pure OLED black for maximum contrast and battery conservation.",
-                    fontSize = 13.sp,
-                    lineHeight = 18.sp,
-                    color = labelSecondary
+                    text = "VISUAL APPEARANCE",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = labelSecondary,
+                    letterSpacing = 0.4.sp,
+                    modifier = Modifier.padding(bottom = 6.dp)
                 )
-                Spacer(modifier = Modifier.height(10.dp))
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -555,7 +522,6 @@ fun SettingsScreen(
                     AppTheme.values().forEach { themeOption ->
                         val isSelected = currentThemeMode == themeOption
                         val pillShape = RoundedCornerShape(10.dp)
-                        val activeBlue = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
 
                         Box(
                             modifier = Modifier
@@ -590,963 +556,186 @@ fun SettingsScreen(
                         }
                     }
                 }
-            }
-
-            // SECTION 1: ADVISOR & AGENCY PROFILE
-            LiquidGlassGroupedSection(title = "Advisor & Agency Profile") {
-                Text(
-                    text = "Personalize your business identity and customized WhatsApp renewal messages sent to clients.",
-                    fontSize = 13.sp,
-                    lineHeight = 18.sp,
-                    color = labelSecondary
-                )
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                OutlinedTextField(
-                    value = advisorName,
-                    onValueChange = { advisorName = it; profileSavedFeedback = false },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Advisor / Agent Name") },
-                    placeholder = { Text("e.g. Satyam Jain") },
-                    singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
-                    colors = formFieldColors()
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                OutlinedTextField(
-                    value = agencyName,
-                    onValueChange = { agencyName = it; profileSavedFeedback = false },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Agency / Firm Name") },
-                    placeholder = { Text("e.g. Jain Insurance Services") },
-                    singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
-                    colors = formFieldColors()
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                OutlinedTextField(
-                    value = advisorPhone,
-                    onValueChange = { advisorPhone = it; profileSavedFeedback = false },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Advisor Contact Number") },
-                    placeholder = { Text("e.g. +91 9876543210") },
-                    singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
-                    colors = formFieldColors()
-                )
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                Text(
-                    text = "WHATSAPP RENEWAL MESSAGE TEMPLATE",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = labelSecondary,
-                    letterSpacing = 0.4.sp
-                )
-                Spacer(modifier = Modifier.height(3.dp))
-                Text(
-                    text = "Placeholders: {customer}, {vehicle}, {insurer}, {expiry}, {premium}, {signature}",
-                    fontSize = 11.sp,
-                    color = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
-                )
-
-                Spacer(modifier = Modifier.height(6.dp))
-
-                OutlinedTextField(
-                    value = if (customTemplate.isBlank()) AdvisorProfileManager.DEFAULT_TEMPLATE else customTemplate,
-                    onValueChange = { customTemplate = it; profileSavedFeedback = false },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Message Template") },
-                    minLines = 3,
-                    maxLines = 6,
-                    shape = RoundedCornerShape(12.dp),
-                    colors = formFieldColors()
-                )
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    AppleButton(
-                        text = if (profileSavedFeedback) "Saved" else "Save Profile",
-                        onClick = {
-                            viewModel.saveAdvisorProfile(
-                                AdvisorProfile(
-                                    advisorName = advisorName.trim(),
-                                    agencyName = agencyName.trim(),
-                                    advisorPhone = advisorPhone.trim(),
-                                    customWhatsappTemplate = customTemplate.trim()
-                                )
-                            )
-                            profileSavedFeedback = true
-                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            Toast.makeText(context, "Advisor Profile Saved", Toast.LENGTH_SHORT).show()
-                        },
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    AppleSecondaryButton(
-                        text = "Reset Template",
-                        onClick = {
-                            customTemplate = AdvisorProfileManager.DEFAULT_TEMPLATE
-                            profileSavedFeedback = false
-                        },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-            }
-
-            // SECTION 2: SECURITY & APP LOCK
-            LiquidGlassGroupedSection(title = "Security & Privacy") {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(30.dp)
-                                .background(AppleSystemBlue, RoundedCornerShape(8.dp)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = AppleIcons.ShieldCheck,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column {
-                            Text("App Lock (Biometrics / PIN)", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = labelPrimary)
-                            Text("Require authentication on launch", fontSize = 12.sp, color = labelSecondary)
-                        }
-                    }
-                    AppleSwitch(
-                        checked = state.isAppLockEnabled,
-                        onCheckedChange = viewModel::toggleAppLock
-                    )
-                }
-            }
-
-            // SECTION 2: BYOK AI SETTINGS
-            LiquidGlassGroupedSection(title = "AI Extraction (BYOK)") {
-                Text(
-                    text = "Bring your own key for PDF document extraction. Keys are stored only on this device inside the Android Keystore and never sent externally.",
-                    fontSize = 13.sp,
-                    lineHeight = 18.sp,
-                    color = labelSecondary
-                )
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                // Provider Choice
-                Text(
-                    text = "AI PROVIDER",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = labelSecondary,
-                    letterSpacing = 0.4.sp
-                )
-
-                Spacer(modifier = Modifier.height(6.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    AiProvider.values().forEach { provider ->
-                        val isSelected = state.aiConfig.provider == provider
-                        val pillShape = RoundedCornerShape(10.dp)
-                        val activeBlue = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(pillShape)
-                                .background(if (isSelected) activeBlue else (if (isDark) Color(0x33545458) else Color(0x14767680)), pillShape)
-                                .border(
-                                    width = 1.dp,
-                                    color = if (isSelected) activeBlue else (if (isDark) Color(0x33FFFFFF) else Color(0x2E000000)),
-                                    shape = pillShape
-                                )
-                                .clickable { viewModel.onProviderSelected(provider) }
-                                .padding(vertical = 10.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = when (provider) {
-                                    AiProvider.CLOUDFLARE_AI -> "Cloudflare"
-                                    AiProvider.GEMINI -> "Gemini"
-                                    AiProvider.OPENAI -> "OpenAI"
-                                    AiProvider.CLAUDE -> "Claude"
-                                },
-                                fontSize = 11.sp,
-                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
-                                color = if (isSelected) Color.White else labelPrimary
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                val isCloudflare = state.aiConfig.provider == AiProvider.CLOUDFLARE_AI
-
-                if (isCloudflare) {
-                    // Cloudflare Zero-Clutter Status Card
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(if (isDark) AppleSystemGreen.copy(alpha = 0.12f) else AppleSystemGreen.copy(alpha = 0.08f))
-                            .border(1.dp, AppleSystemGreen.copy(alpha = 0.25f), RoundedCornerShape(12.dp))
-                            .padding(14.dp)
-                    ) {
-                        Column {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(8.dp)
-                                        .clip(RoundedCornerShape(4.dp))
-                                        .background(AppleSystemGreen)
-                                )
-                                Text(
-                                    text = "Edge AI Active / Ready to scan",
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = AppleSystemGreen
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Text(
-                                text = "Runs directly on serverless edge (Meta Llama 3.2 11B Vision). No API key, developer account, or credit card required.",
-                                fontSize = 12.sp,
-                                lineHeight = 16.sp,
-                                color = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    // Advanced / Self-Host toggle
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .clickable { showCloudflareAdvanced = !showCloudflareAdvanced }
-                            .padding(vertical = 4.dp, horizontal = 2.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "Self-Host / Custom Endpoint",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
-                        )
-                        Icon(
-                            imageVector = if (showCloudflareAdvanced) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                            contentDescription = "Toggle Custom Endpoint",
-                            tint = if (isDark) IosDarkLabelTertiary else IosLabelTertiary,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-
-                    if (showCloudflareAdvanced) {
-                        Spacer(modifier = Modifier.height(6.dp))
-                        OutlinedTextField(
-                            value = state.aiConfig.customEndpoint,
-                            onValueChange = viewModel::onCustomEndpointChanged,
-                            modifier = Modifier.fillMaxWidth(),
-                            label = { Text("Worker URL (Self-Hosted)") },
-                            placeholder = { Text("https://policydesk-ai.satyamjain.workers.dev") },
-                            supportingText = { Text("Leave blank to use official PolicyDesk Edge.", color = if (isDark) IosDarkLabelTertiary else IosLabelTertiary) },
-                            singleLine = true,
-                            shape = RoundedCornerShape(12.dp),
-                            colors = formFieldColors()
-                        )
-                    }
+                // Advisor & Agency Profile Row
+                val advisorDisplayName = state.advisorProfile.advisorName.ifBlank { "Personalize identity" }
+                val agencySubtext = if (state.advisorProfile.agencyName.isNotBlank()) {
+                    "${state.advisorProfile.agencyName} • WhatsApp templates & branding"
                 } else {
-                    // 1. "Get API Key ↗" Helper Row for BYOK
-                    val providerInfo = when (state.aiConfig.provider) {
-                        AiProvider.GEMINI -> Triple(
-                            "Get key from Google AI Studio",
-                            "https://aistudio.google.com/apikey",
-                            "Free tier with instant setup using your Google account"
-                        )
-                        AiProvider.OPENAI -> Triple(
-                            "Get key from OpenAI platform",
-                            "https://platform.openai.com/api-keys",
-                            "Requires OpenAI account with API credits"
-                        )
-                        AiProvider.CLAUDE -> Triple(
-                            "Get key from Anthropic console",
-                            "https://console.anthropic.com/settings/keys",
-                            "Requires an Anthropic developer account"
-                        )
-                        else -> Triple("", "", "")
-                    }
+                    "Agency name, phone & WhatsApp templates"
+                }
 
-                    if (providerInfo.first.isNotBlank()) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(AppleSystemBlue.copy(alpha = 0.08f))
-                                .border(1.dp, AppleSystemBlue.copy(alpha = 0.20f), RoundedCornerShape(10.dp))
-                                .clickable { uriHandler.openUri(providerInfo.second) }
-                                .padding(horizontal = 12.dp, vertical = 9.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = providerInfo.first,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = AppleSystemBlue
-                                )
-                                Text(
-                                    text = providerInfo.third,
-                                    fontSize = 11.sp,
-                                    color = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
-                                )
-                            }
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.OpenInNew,
-                                contentDescription = null,
-                                tint = AppleSystemBlue,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(10.dp))
-                    }
-
-                    // 2. API Key Row with 1-Tap Paste Button
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        OutlinedTextField(
-                            value = state.aiConfig.apiKey,
-                            onValueChange = viewModel::onApiKeyChanged,
-                            modifier = Modifier.weight(1f),
-                            label = { Text("API Key") },
-                            placeholder = { Text("Paste your API key here") },
-                            singleLine = true,
-                            visualTransformation = if (showKey) VisualTransformation.None else PasswordVisualTransformation(),
-                            trailingIcon = {
-                                IconButton(onClick = { showKey = !showKey }) {
-                                    Icon(
-                                        imageVector = if (showKey) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                        contentDescription = "Toggle Key",
-                                        tint = if (isDark) IosDarkLabelTertiary else IosLabelTertiary
-                                    )
-                                }
-                            },
-                            shape = RoundedCornerShape(12.dp),
-                            colors = formFieldColors()
+                LiquidGlassListRow(
+                    title = "Advisor & Agency Profile",
+                    subtitle = agencySubtext,
+                    value = advisorDisplayName.takeIf { it != "Personalize identity" },
+                    icon = AppleIcons.Person2,
+                    iconBgColor = AppleSystemBlue,
+                    showDivider = false,
+                    trailingContent = {
+                        Icon(
+                            imageVector = AppleIcons.ChevronRight,
+                            contentDescription = null,
+                            tint = labelTertiary,
+                            modifier = Modifier.size(16.dp)
                         )
+                    },
+                    onClick = { showProfileSheet = true }
+                )
+            }
 
-                        AppleSecondaryButton(
-                            text = "Paste",
-                            icon = Icons.Default.ContentPaste,
-                            onClick = {
-                                val clipText = clipboardManager.getText()?.text?.trim()
-                                if (!clipText.isNullOrBlank()) {
-                                    viewModel.onApiKeyChanged(clipText)
-                                    Toast.makeText(context, "API Key pasted", Toast.LENGTH_SHORT).show()
-                                } else {
-                                    Toast.makeText(context, "Clipboard is empty", Toast.LENGTH_SHORT).show()
-                                }
-                            },
-                            modifier = Modifier.height(56.dp)
-                        )
-                    }
+            // ==========================================
+            // GROUP 2: INTELLIGENCE & EXTRACTION
+            // ==========================================
+            LiquidGlassGroupedSection(title = "Intelligence & Extraction") {
+                val isCloudflare = state.aiConfig.provider == AiProvider.CLOUDFLARE_AI
+                val hasApiKey = state.aiConfig.apiKey.isNotBlank()
+                val activeModelName = state.aiConfig.model.ifBlank { state.aiConfig.provider.defaultModel }
 
-                    // Live Model Selector Header
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 10.dp, bottom = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
+                LiquidGlassListRow(
+                    title = "AI Policy Extraction (BYOK)",
+                    subtitle = "${state.aiConfig.provider.displayName} • $activeModelName",
+                    icon = Icons.Default.Psychology,
+                    iconBgColor = if (isDark) AppleDarkSystemPurple else AppleSystemPurple,
+                    showDivider = false,
+                    trailingContent = {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            Text(
-                                text = "Active Model",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = labelPrimary
-                            )
-                            val activeModelName = state.aiConfig.model.ifBlank { state.aiConfig.provider.defaultModel }
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(6.dp))
-                                    .background(AppleSystemBlue.copy(alpha = 0.12f))
+                                    .background(
+                                        if (isCloudflare || hasApiKey) AppleSystemGreen.copy(alpha = 0.14f)
+                                        else AppleSystemOrange.copy(alpha = 0.14f)
+                                    )
+                                    .border(
+                                        1.dp,
+                                        if (isCloudflare || hasApiKey) AppleSystemGreen.copy(alpha = 0.35f)
+                                        else AppleSystemOrange.copy(alpha = 0.35f),
+                                        RoundedCornerShape(6.dp)
+                                    )
                                     .padding(horizontal = 6.dp, vertical = 2.dp)
                             ) {
                                 Text(
-                                    text = activeModelName,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
+                                    text = if (isCloudflare) "EDGE READY" else if (hasApiKey) "ACTIVE" else "SETUP",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isCloudflare || hasApiKey) AppleSystemGreen else AppleSystemOrange
                                 )
                             }
+                            Icon(
+                                imageVector = AppleIcons.ChevronRight,
+                                contentDescription = null,
+                                tint = labelTertiary,
+                                modifier = Modifier.size(16.dp)
+                            )
                         }
+                    },
+                    onClick = { showAiConfigSheet = true }
+                )
+            }
 
-                        IconButton(
-                            onClick = viewModel::refreshLiveModels,
-                            enabled = !state.isFetchingModels && state.aiConfig.apiKey.isNotBlank(),
-                            modifier = Modifier.size(24.dp)
-                        ) {
-                            if (state.isFetchingModels) {
+            // ==========================================
+            // GROUP 3: CLOUD & PORTFOLIO BACKUPS
+            // ==========================================
+            LiquidGlassGroupedSection(title = "Cloud & Data Vault") {
+                // Google Drive Sync Row
+                LiquidGlassListRow(
+                    title = "Google Drive Cloud Vault",
+                    subtitle = if (state.isDriveLinked) {
+                        "${state.googleAccountEmail} • Synced: ${state.lastSyncTime}"
+                    } else {
+                        "Sync encrypted backups to personal Google Drive"
+                    },
+                    icon = Icons.Default.CloudDone,
+                    iconBgColor = if (state.isDriveLinked) AppleSystemGreen else AppleSystemBlue,
+                    trailingContent = {
+                        if (state.isDriveLinked) {
+                            if (state.isSyncing) {
                                 CircularProgressIndicator(
-                                    modifier = Modifier.size(13.dp),
+                                    modifier = Modifier.size(16.dp),
                                     strokeWidth = 2.dp,
-                                    color = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
+                                    color = activeBlue
                                 )
                             } else {
-                                Icon(
-                                    imageVector = Icons.Default.Refresh,
-                                    contentDescription = "Refresh Models",
-                                    tint = if (state.aiConfig.apiKey.isNotBlank()) (if (isDark) AppleDarkSystemBlue else AppleSystemBlue) else (if (isDark) IosDarkLabelTertiary else IosLabelTertiary),
-                                    modifier = Modifier.size(15.dp)
-                                )
-                            }
-                        }
-                    }
-
-                    // Dynamic Horizontal Scrollable Model Quick Selector Pills
-                    val baseModelsList = state.availableModels.ifEmpty {
-                        when (state.aiConfig.provider) {
-                            AiProvider.GEMINI -> listOf("gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-2.5-flash")
-                            AiProvider.OPENAI -> listOf("gpt-4o-mini", "gpt-4o", "o1-mini")
-                            AiProvider.CLAUDE -> listOf("claude-3-5-haiku-20241022", "claude-3-5-sonnet-20241022", "claude-3-opus-20240229")
-                            else -> emptyList()
-                        }
-                    }
-                    val modelsList = if (state.aiConfig.model.isNotBlank() && !baseModelsList.any { it.equals(state.aiConfig.model, ignoreCase = true) }) {
-                        listOf(state.aiConfig.model) + baseModelsList
-                    } else {
-                        baseModelsList
-                    }
-
-                    if (modelsList.isNotEmpty()) {
-                        LazyRow(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            items(modelsList) { modelOption ->
-                                val isSelected = state.aiConfig.model.equals(modelOption, ignoreCase = true)
                                 Box(
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(8.dp))
-                                        .background(
-                                            if (isSelected) AppleSystemBlue.copy(alpha = 0.15f)
-                                             else if (isDark) IosDarkTertiaryGrouped
-                                             else IosTertiaryGrouped
-                                        )
-                                        .border(
-                                            1.dp,
-                                            if (isSelected) AppleSystemBlue else Color.Transparent,
-                                            RoundedCornerShape(8.dp)
-                                        )
-                                        .clickable {
-                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                            viewModel.onModelChanged(modelOption)
-                                        }
-                                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                                        .background(activeBlue.copy(alpha = 0.12f))
+                                        .padding(horizontal = 8.dp, vertical = 4.dp)
                                 ) {
                                     Text(
-                                        text = modelOption,
+                                        text = "Sync Now",
                                         fontSize = 11.sp,
-                                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                                        color = if (isSelected) AppleSystemBlue else if (isDark) IosDarkLabelSecondary else IosLabelSecondary
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = activeBlue
                                     )
                                 }
                             }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Test Connection & Save Action Row
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    AppleButton(
-                        text = if (state.isTestingAi) "Testing..." else "Test Connection",
-                        onClick = viewModel::testAiConnection,
-                        enabled = (state.aiConfig.provider == AiProvider.CLOUDFLARE_AI || state.aiConfig.apiKey.isNotBlank()) && !state.isTestingAi,
-                        isLoading = state.isTestingAi,
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    if (!isCloudflare && state.aiConfig.apiKey.isNotBlank()) {
-                        AppleSecondaryButton(
-                            text = "Remove",
-                            onClick = viewModel::removeAiKey,
-                            tintColor = AppleSystemRed,
-                            icon = Icons.Default.Delete,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                }
-
-                // Test Connection Feedback Banner
-                state.aiTestMessage?.let { msg ->
-                    val isSuccess = state.aiTestSuccess
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(if (isSuccess) AppleSystemGreen.copy(alpha = 0.12f) else AppleSystemRed.copy(alpha = 0.12f), RoundedCornerShape(10.dp))
-                            .border(1.dp, if (isSuccess) AppleSystemGreen.copy(alpha = 0.35f) else AppleSystemRed.copy(alpha = 0.35f), RoundedCornerShape(10.dp))
-                            .padding(10.dp)
-                    ) {
-                        Text(
-                            text = msg,
-                            color = if (isSuccess) AppleSystemGreen else AppleSystemRed,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                }
-            }
-
-            // SECTION 3: GOOGLE DRIVE & CLOUD STORAGE
-            LiquidGlassGroupedSection(title = "Google Drive Cloud Vault") {
-                if (state.isDriveLinked) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(AppleSystemGreen.copy(alpha = 0.12f), RoundedCornerShape(12.dp))
-                            .border(1.dp, AppleSystemGreen.copy(alpha = 0.35f), RoundedCornerShape(12.dp))
-                            .padding(14.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Google Drive Linked & Active",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = AppleSystemGreen
-                            )
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = state.googleAccountEmail ?: "Google Account",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = labelPrimary
-                            )
-                            Spacer(modifier = Modifier.height(3.dp))
-                            Text(
-                                text = "Vault: PolicyDesk Vault / policydesk_backup.json",
-                                fontSize = 11.sp,
-                                color = labelSecondary
-                            )
-                        }
-                        androidx.compose.material3.TextButton(onClick = viewModel::disconnectGoogleDrive) {
-                            Text("Disconnect", color = AppleSystemRed, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    DetailRow(label = "Local Active Records", value = "${state.totalRecords} vehicles")
-                    state.lastBackupCount?.let { count ->
-                        DetailRow(label = "Cloud Vault Records", value = "$count vehicles")
-                    }
-                    DetailRow(label = "Cloud Vault Folder", value = "PolicyDesk Vault")
-                    DetailRow(label = "Last Synced Time", value = state.lastSyncTime)
-
-                    state.syncMessage?.let { msg ->
-                        val isError = msg.contains("failed", ignoreCase = true) || 
-                                      msg.contains("cancelled", ignoreCase = true) || 
-                                      msg.contains("error", ignoreCase = true) ||
-                                      msg.contains("10:")
-                        val isSuccess = msg.contains("success", ignoreCase = true) || 
-                                        msg.contains("linked", ignoreCase = true) || 
-                                        msg.contains("restored", ignoreCase = true) ||
-                                        msg.contains("complete", ignoreCase = true)
-                        val tintColor = when {
-                            isError -> AppleSystemRed
-                            isSuccess -> AppleSystemGreen
-                            else -> AppleSystemBlue
-                        }
-                        val friendlyText = if (msg.contains("10:") || msg.contains("failed: 10")) {
-                            "Google Sign-In verification in progress. New OAuth fingerprints can take a few minutes to take effect in Google Play Services."
                         } else {
-                            msg
-                        }
-
-                        Spacer(modifier = Modifier.height(10.dp))
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(tintColor.copy(alpha = if (isDark) 0.14f else 0.08f))
-                                .border(
-                                    width = 0.5.dp,
-                                    color = tintColor.copy(alpha = if (isDark) 0.35f else 0.25f),
-                                    shape = RoundedCornerShape(12.dp)
-                                )
-                                .padding(horizontal = 12.dp, vertical = 10.dp)
-                        ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                Icon(
-                                    imageVector = if (isError) AppleIcons.Warning else if (isSuccess) AppleIcons.Checkmark else Icons.Default.CloudDone,
-                                    contentDescription = null,
-                                    tint = tintColor,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Text(
-                                    text = friendlyText,
-                                    fontSize = 12.sp,
-                                    lineHeight = 16.sp,
-                                    color = tintColor,
-                                    fontWeight = FontWeight.Medium,
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        AppleButton(
-                            text = if (state.isSyncing) "Syncing..." else "Backup to Cloud",
-                            onClick = viewModel::triggerSyncNow,
-                            enabled = !state.isSyncing,
-                            isLoading = state.isSyncing,
-                            modifier = Modifier.weight(1f)
-                        )
-
-                        AppleSecondaryButton(
-                            text = "Restore from Vault",
-                            onClick = viewModel::restoreFromDriveVault,
-                            enabled = !state.isSyncing,
-                            tintColor = if (isDark) AppleDarkSystemBlue else AppleSystemBlue,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                } else {
-                    Text(
-                        text = "Sign in with your Google Account to automatically sync all policies, vehicles, and customer records to a dedicated 'PolicyDesk Vault' on your Google Drive.",
-                        fontSize = 13.sp,
-                        lineHeight = 18.sp,
-                        color = labelSecondary
-                    )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    DetailRow(label = "Storage", value = "Local-First Storage")
-                    DetailRow(label = "Drive Status", value = "Not Linked")
-
-                    state.syncMessage?.let { msg ->
-                        val isError = msg.contains("failed", ignoreCase = true) || 
-                                      msg.contains("cancelled", ignoreCase = true) || 
-                                      msg.contains("error", ignoreCase = true) ||
-                                      msg.contains("10:")
-                        val isSuccess = msg.contains("success", ignoreCase = true) || 
-                                        msg.contains("linked", ignoreCase = true) || 
-                                        msg.contains("restored", ignoreCase = true) ||
-                                        msg.contains("complete", ignoreCase = true)
-                        val tintColor = when {
-                            isError -> AppleSystemRed
-                            isSuccess -> AppleSystemGreen
-                            else -> AppleSystemBlue
-                        }
-                        val friendlyText = if (msg.contains("10:") || msg.contains("failed: 10")) {
-                            "Google Sign-In verification in progress. New OAuth fingerprints can take a few minutes to take effect in Google Play Services."
-                        } else {
-                            msg
-                        }
-
-                        Spacer(modifier = Modifier.height(10.dp))
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(tintColor.copy(alpha = if (isDark) 0.14f else 0.08f))
-                                .border(
-                                    width = 0.5.dp,
-                                    color = tintColor.copy(alpha = if (isDark) 0.35f else 0.25f),
-                                    shape = RoundedCornerShape(12.dp)
-                                )
-                                .padding(horizontal = 12.dp, vertical = 10.dp)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                Icon(
-                                    imageVector = if (isError) AppleIcons.Warning else if (isSuccess) AppleIcons.Checkmark else Icons.Default.CloudDone,
-                                    contentDescription = null,
-                                    tint = tintColor,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Text(
-                                    text = friendlyText,
-                                    fontSize = 12.sp,
-                                    lineHeight = 16.sp,
-                                    color = tintColor,
-                                    fontWeight = FontWeight.Medium,
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    AppleButton(
-                        text = "Sign in with Google Drive",
-                        onClick = {
-                            googleSignInLauncher.launch(viewModel.getGoogleSignInIntent())
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            }
-
-            // SECTION 4: IMPORT & EXPORT DATA
-            LiquidGlassGroupedSection(title = "Import & Export Data") {
-                // Direct File SAF Hub
-                Text(
-                    text = "Direct File Backup & Drive SAF",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = labelSecondary
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    AppleSecondaryButton(
-                        text = "Save / Share Backup",
-                        onClick = {
-                            coroutineScope.launch {
-                                val shareUri = viewModel.getShareableBackupUri()
-                                val sendIntent = Intent(Intent.ACTION_SEND).apply {
-                                    type = "application/json"
-                                    putExtra(Intent.EXTRA_STREAM, shareUri)
-                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                }
-                                context.startActivity(Intent.createChooser(sendIntent, "Save to Google Drive / Files"))
-                            }
-                        },
-                        tintColor = if (isDark) AppleDarkSystemBlue else AppleSystemBlue,
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    AppleSecondaryButton(
-                        text = "Browse Drive / File",
-                        onClick = { restoreSnapshotLauncher.launch(arrayOf("application/json", "*/*")) },
-                        tintColor = if (isDark) AppleDarkSystemBlue else AppleSystemBlue,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-
-                // Rolling snapshots section (Deduplicated, capped, and progressively disclosed)
-                if (state.localSnapshots.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(14.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Device Protected Snapshots",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = labelSecondary
-                        )
-                        if (state.localSnapshots.size > 1) {
-                            Text(
-                                text = if (showAllSnapshots) "Hide history" else "History (${state.localSnapshots.size})",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = AppleSystemBlue,
-                                modifier = Modifier
-                                    .clickable { showAllSnapshots = !showAllSnapshots }
-                                    .padding(vertical = 2.dp, horizontal = 4.dp)
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(6.dp))
-
-                    // 1. Primary Latest Snapshot
-                    val latestSnapshot = state.localSnapshots.first()
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(
-                                if (isDark) Color(0xFF1E1E22) else Color(0xFFF2F2F7),
-                                RoundedCornerShape(10.dp)
-                            )
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
                                 Text(
-                                    text = latestSnapshot.timestampFormatted,
+                                    text = "Connect",
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.SemiBold,
-                                    color = labelPrimary
+                                    color = activeBlue
                                 )
-                                Box(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(4.dp))
-                                        .background(AppleSystemGreen.copy(alpha = 0.15f))
-                                        .padding(horizontal = 5.dp, vertical = 1.dp)
-                                ) {
-                                    Text(
-                                        text = "LATEST",
-                                        fontSize = 9.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = AppleSystemGreen
-                                    )
-                                }
-                            }
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = "${latestSnapshot.recordCount} vehicles • ${latestSnapshot.fileSizeFormatted}",
-                                fontSize = 11.sp,
-                                color = labelSecondary
-                            )
-                        }
-                        Box(
-                            modifier = Modifier
-                                .height(30.dp)
-                                .background(
-                                    if (isDark) AppleDarkSystemBlue.copy(alpha = 0.18f) else AppleSystemBlue.copy(alpha = 0.10f),
-                                    RoundedCornerShape(8.dp)
+                                Icon(
+                                    imageVector = AppleIcons.ChevronRight,
+                                    contentDescription = null,
+                                    tint = labelTertiary,
+                                    modifier = Modifier.size(14.dp)
                                 )
-                                .clickable(enabled = !state.isSyncing) {
-                                    viewModel.restoreFromLocalSnapshot(latestSnapshot.file)
-                                }
-                                .padding(horizontal = 12.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "Restore",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
-                            )
-                        }
-                    }
-
-                    // 2. Older Snapshots (Revealed only on demand)
-                    if (state.localSnapshots.size > 1) {
-                        AnimatedVisibility(visible = showAllSnapshots) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(top = 4.dp),
-                                verticalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                state.localSnapshots.drop(1).forEach { snapshot ->
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .background(
-                                                if (isDark) Color(0xFF1E1E22) else Color(0xFFF2F2F7),
-                                                RoundedCornerShape(10.dp)
-                                            )
-                                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Column(modifier = Modifier.weight(1f)) {
-                                            Text(
-                                                text = snapshot.timestampFormatted,
-                                                fontSize = 12.sp,
-                                                fontWeight = FontWeight.SemiBold,
-                                                color = labelPrimary
-                                            )
-                                            Spacer(modifier = Modifier.height(2.dp))
-                                            Text(
-                                                text = "${snapshot.recordCount} vehicles • ${snapshot.fileSizeFormatted}",
-                                                fontSize = 11.sp,
-                                                color = labelSecondary
-                                            )
-                                        }
-                                        Box(
-                                            modifier = Modifier
-                                                .height(30.dp)
-                                                .background(
-                                                    if (isDark) AppleDarkSystemBlue.copy(alpha = 0.18f) else AppleSystemBlue.copy(alpha = 0.10f),
-                                                    RoundedCornerShape(8.dp)
-                                                )
-                                                .clickable(enabled = !state.isSyncing) {
-                                                    viewModel.restoreFromLocalSnapshot(snapshot.file)
-                                                }
-                                                .padding(horizontal = 12.dp),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Text(
-                                                text = "Restore",
-                                                fontSize = 12.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
-                                            )
-                                        }
-                                    }
-                                }
                             }
                         }
+                    },
+                    onClick = {
+                        if (state.isDriveLinked) {
+                            viewModel.triggerSyncNow()
+                        } else {
+                            googleSignInLauncher.launch(viewModel.getGoogleSignInIntent())
+                        }
                     }
-                }
+                )
 
-                Spacer(modifier = Modifier.height(10.dp))
+                // Device Rolling Snapshots Row
+                LiquidGlassListRow(
+                    title = "Device Rolling Snapshots",
+                    subtitle = "${state.localSnapshots.size} offline rollback points available",
+                    icon = AppleIcons.History,
+                    iconBgColor = AppleSystemOrange,
+                    trailingContent = {
+                        Icon(
+                            imageVector = AppleIcons.ChevronRight,
+                            contentDescription = null,
+                            tint = labelTertiary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    },
+                    onClick = { showSnapshotsSheet = true }
+                )
 
-                AppleSecondaryButton(
-                    text = "Export Records to CSV",
+                // Export Portfolio to CSV
+                LiquidGlassListRow(
+                    title = "Export Portfolio to CSV",
+                    subtitle = "Export all vehicle & policy records as spreadsheet",
+                    icon = AppleIcons.TableCells,
+                    iconBgColor = AppleSystemGreen,
+                    trailingContent = {
+                        Icon(
+                            imageVector = AppleIcons.Share,
+                            contentDescription = "Export CSV",
+                            tint = activeBlue,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    },
                     onClick = {
                         coroutineScope.launch {
                             val csv = viewModel.exportDatabaseCsv()
@@ -1557,177 +746,136 @@ fun SettingsScreen(
                             }
                             context.startActivity(Intent.createChooser(shareIntent, "Export Records to CSV"))
                         }
-                    },
-                    tintColor = if (isDark) AppleDarkSystemBlue else AppleSystemBlue,
-                    modifier = Modifier.fillMaxWidth()
+                    }
                 )
 
-                Spacer(modifier = Modifier.height(10.dp))
-
-                AppleSecondaryButton(
-                    text = "Recover Deleted Records",
-                    onClick = viewModel::recoverLocalDeletedData,
-                    icon = AppleIcons.History,
-                    tintColor = if (isDark) AppleDarkSystemBlue else AppleSystemBlue,
-                    enabled = !state.isSyncing,
-                    modifier = Modifier.fillMaxWidth()
+                // Recover Deleted Records
+                LiquidGlassListRow(
+                    title = "Recover Deleted Records",
+                    subtitle = "Access deleted vehicle archive and restore",
+                    icon = AppleIcons.Trash,
+                    iconBgColor = Color(0xFF8E8E93),
+                    showDivider = false,
+                    trailingContent = {
+                        Icon(
+                            imageVector = AppleIcons.ChevronRight,
+                            contentDescription = null,
+                            tint = labelTertiary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    },
+                    onClick = viewModel::recoverLocalDeletedData
                 )
             }
 
-            // SECTION 5: REMINDERS & RENEWAL ALERTS
-            LiquidGlassGroupedSection(title = "Reminders & Renewal Alerts") {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(30.dp)
-                                .background(AppleSystemOrange, RoundedCornerShape(8.dp)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Notifications,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column {
-                            Text("Policy Expiry Notifications", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = labelPrimary)
-                            Text("Automated background reminders via WorkManager", fontSize = 12.sp, color = labelSecondary)
-                        }
+            // ==========================================
+            // GROUP 4: NOTIFICATIONS & SECURITY
+            // ==========================================
+            LiquidGlassGroupedSection(title = "Notifications & Security") {
+                // Policy Expiry Alerts Row
+                LiquidGlassListRow(
+                    title = "Policy Expiry Alerts",
+                    subtitle = "Daily background renewal checks at 9:00 AM",
+                    icon = Icons.Default.Notifications,
+                    iconBgColor = AppleSystemOrange,
+                    trailingContent = {
+                        AppleSwitch(
+                            checked = state.areNotificationsEnabled,
+                            onCheckedChange = viewModel::toggleNotifications
+                        )
                     }
-                    AppleSwitch(
-                        checked = state.areNotificationsEnabled,
-                        onCheckedChange = viewModel::toggleNotifications
-                    )
-                }
+                )
 
+                // Notification Permission Warning Banner (if denied on API 33+)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !state.hasNotificationPermission) {
-                    Spacer(modifier = Modifier.height(10.dp))
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(if (isDark) AppleSystemOrange.copy(alpha = 0.14f) else AppleSystemOrange.copy(alpha = 0.08f))
-                            .border(
-                                width = 0.5.dp,
-                                color = AppleSystemOrange.copy(alpha = if (isDark) 0.35f else 0.25f),
-                                shape = RoundedCornerShape(14.dp)
-                            )
-                            .padding(horizontal = 14.dp, vertical = 12.dp)
+                            .padding(vertical = 4.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(AppleSystemOrange.copy(alpha = if (isDark) 0.14f else 0.08f))
+                            .border(0.5.dp, AppleSystemOrange.copy(alpha = 0.35f), RoundedCornerShape(12.dp))
+                            .padding(10.dp)
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
                             modifier = Modifier.fillMaxWidth()
                         ) {
+                            Text(
+                                text = "Permission required for expiry alerts",
+                                fontSize = 12.sp,
+                                color = labelPrimary,
+                                modifier = Modifier.weight(1f)
+                            )
                             Box(
                                 modifier = Modifier
-                                    .size(32.dp)
-                                    .clip(CircleShape)
-                                    .background(AppleSystemOrange.copy(alpha = 0.20f)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Notifications,
-                                    contentDescription = null,
-                                    tint = AppleSystemOrange,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                            }
-
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "Notifications Disabled",
-                                    fontWeight = FontWeight.SemiBold,
-                                    fontSize = 12.sp,
-                                    color = labelPrimary
-                                )
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(
-                                    text = "Enable permission to receive automated renewal countdown alerts.",
-                                    fontSize = 11.sp,
-                                    lineHeight = 15.sp,
-                                    color = labelSecondary
-                                )
-                            }
-
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(AppleSystemOrange.copy(alpha = 0.18f))
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(AppleSystemOrange.copy(alpha = 0.20f))
                                     .clickable {
                                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                         notifPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                                     }
-                                    .padding(horizontal = 12.dp, vertical = 6.dp),
-                                contentAlignment = Alignment.Center
+                                    .padding(horizontal = 8.dp, vertical = 4.dp)
                             ) {
                                 Text(
                                     text = "Allow",
-                                    color = AppleSystemOrange,
+                                    fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 12.sp
+                                    color = AppleSystemOrange
                                 )
                             }
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(10.dp))
-
-                DetailRow(label = "Expiry Cadence", value = "30d, 15d, 7d, 1d & same-day")
-                DetailRow(label = "Daily Summary", value = "9:00 AM daily")
-                DetailRow(label = "Reboot Recovery", value = "Auto-reschedules on boot")
-                DetailRow(label = "Alert Engine", value = "WorkManager & NotificationManager")
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                AppleSecondaryButton(
-                    text = "Send Test Notification",
-                    onClick = {
-                        viewModel.sendTestNotification()
-                        Toast.makeText(context, "Test notification sent", Toast.LENGTH_SHORT).show()
-                    },
-                    icon = Icons.Default.Notifications,
-                    tintColor = if (isDark) AppleDarkSystemBlue else AppleSystemBlue,
-                    modifier = Modifier.fillMaxWidth()
+                // App Lock & Biometrics Row
+                LiquidGlassListRow(
+                    title = "App Lock & Biometrics",
+                    subtitle = "Require PIN or biometric authentication on app launch",
+                    icon = AppleIcons.Lock,
+                    iconBgColor = AppleSystemBlue,
+                    showDivider = false,
+                    trailingContent = {
+                        AppleSwitch(
+                            checked = state.isAppLockEnabled,
+                            onCheckedChange = viewModel::toggleAppLock
+                        )
+                    }
                 )
             }
 
-            // SECTION 6: ABOUT & COMPLIANCE
+            // ==========================================
+            // GROUP 5: ABOUT & COMPLIANCE
+            // ==========================================
+            val otaState = state.otaState
+            val otaSubtitle = when (otaState) {
+                is OtaState.Checking -> "Checking for updates..."
+                is OtaState.UpdateAvailable -> "Version ${otaState.release.tagName} available (${otaState.release.displaySizeMb})"
+                is OtaState.Downloading -> "Downloading update: ${otaState.progressPercent}%"
+                is OtaState.ReadyToInstall -> "Download complete • Tap to install ${otaState.release.tagName}"
+                is OtaState.UpToDate -> "Up to date (Build ${state.appVersionCode})"
+                is OtaState.Error -> "Check failed: ${otaState.message}"
+                OtaState.Idle -> "Tap to check for new releases"
+            }
+            val hasUpdate = otaState is OtaState.UpdateAvailable || otaState is OtaState.ReadyToInstall
+
             LiquidGlassGroupedSection(title = "About & Compliance") {
-                DetailRow(label = "Application", value = "PolicyDesk Advisor")
-                DetailRow(label = "Version", value = "v${state.appVersionName} (Build ${state.appVersionCode})")
-
-                val otaState = state.otaState
-                val otaSubtitle = when (otaState) {
-                    is OtaState.Checking -> "Checking for updates..."
-                    is OtaState.UpdateAvailable -> "Version ${otaState.release.tagName} available (${otaState.release.displaySizeMb})"
-                    is OtaState.Downloading -> "Downloading update: ${otaState.progressPercent}%"
-                    is OtaState.ReadyToInstall -> "Download complete • Tap to install ${otaState.release.tagName}"
-                    is OtaState.UpToDate -> "You are on the latest version"
-                    is OtaState.Error -> "Check failed: ${otaState.message}"
-                    OtaState.Idle -> "Check GitHub for new releases"
-                }
-                val hasUpdate = otaState is OtaState.UpdateAvailable || otaState is OtaState.ReadyToInstall
-
-                Spacer(modifier = Modifier.height(4.dp))
+                // Software Updates Row
                 LiquidGlassListRow(
                     title = if (hasUpdate) "Update Available" else "Software Updates",
                     subtitle = otaSubtitle,
+                    value = "v${state.appVersionName}",
                     icon = AppleIcons.Download,
-                    iconBgColor = if (hasUpdate) com.policydesk.app.ui.theme.AppleDarkSystemGreen else (if (isDark) AppleDarkSystemBlue else AppleSystemBlue),
+                    iconBgColor = if (hasUpdate) AppleDarkSystemGreen else (if (isDark) AppleDarkSystemBlue else AppleSystemBlue),
+                    trailingContent = {
+                        Icon(
+                            imageVector = AppleIcons.ChevronRight,
+                            contentDescription = null,
+                            tint = labelTertiary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    },
                     onClick = {
                         when (otaState) {
                             is OtaState.ReadyToInstall -> viewModel.installOtaUpdate()
@@ -1738,28 +886,40 @@ fun SettingsScreen(
                     }
                 )
 
-                DetailRow(label = "Built By", value = "The Software Labs & Satyam Jain")
-                DetailRow(label = "Architecture", value = "100% Local-First & Encrypted")
-                DetailRow(label = "Compliance", value = "Digital Personal Data Protection Act (DPDP)")
-
-                Spacer(modifier = Modifier.height(10.dp))
-
+                // The Software Labs
                 LiquidGlassListRow(
                     title = "The Software Labs",
-                    subtitle = "thesoftwarelabs.pages.dev (The Software Labs & Satyam Jain)",
+                    subtitle = "thesoftwarelabs.pages.dev",
                     icon = AppleIcons.House,
                     iconBgColor = if (isDark) AppleDarkSystemBlue else AppleSystemBlue,
+                    trailingContent = {
+                        Icon(
+                            imageVector = AppleIcons.ChevronRight,
+                            contentDescription = null,
+                            tint = labelTertiary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    },
                     onClick = {
                         val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://thesoftwarelabs.pages.dev"))
                         context.startActivity(browserIntent)
                     }
                 )
 
+                // Share PolicyDesk App
                 LiquidGlassListRow(
                     title = "Share PolicyDesk App",
                     subtitle = "Recommend PolicyDesk to insurance colleagues",
                     icon = AppleIcons.Share,
                     iconBgColor = AppleSystemBlue,
+                    trailingContent = {
+                        Icon(
+                            imageVector = AppleIcons.ChevronRight,
+                            contentDescription = null,
+                            tint = labelTertiary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    },
                     onClick = {
                         val shareIntent = Intent(Intent.ACTION_SEND).apply {
                             type = "text/plain"
@@ -1776,11 +936,20 @@ fun SettingsScreen(
                     }
                 )
 
+                // Support & Feedback
                 LiquidGlassListRow(
                     title = "Support & Feedback",
                     subtitle = "Report issues or suggest features directly to developers",
                     icon = AppleIcons.Message,
                     iconBgColor = AppleSystemGreen,
+                    trailingContent = {
+                        Icon(
+                            imageVector = AppleIcons.ChevronRight,
+                            contentDescription = null,
+                            tint = labelTertiary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    },
                     onClick = {
                         val intent = Intent(Intent.ACTION_SENDTO).apply {
                             data = Uri.parse("mailto:support@policydesk.app")
@@ -1795,44 +964,67 @@ fun SettingsScreen(
                     }
                 )
 
+                // Privacy Policy
                 LiquidGlassListRow(
                     title = "Privacy Policy",
-                    subtitle = "Local-first storage & zero data tracking commitments",
+                    subtitle = "Local-first storage & DPDP Act compliance commitments",
                     icon = AppleIcons.ShieldCheck,
                     iconBgColor = AppleSystemBlue,
+                    trailingContent = {
+                        Icon(
+                            imageVector = AppleIcons.ChevronRight,
+                            contentDescription = null,
+                            tint = labelTertiary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    },
                     onClick = { showPrivacyDialog = true }
                 )
 
+                // Terms of Service
                 LiquidGlassListRow(
                     title = "Terms of Service",
                     subtitle = "Advisor license, disclaimer & compliance standards",
                     icon = AppleIcons.DocText,
                     iconBgColor = if (isDark) AppleDarkSystemBlue else AppleSystemBlue,
                     showDivider = false,
+                    trailingContent = {
+                        Icon(
+                            imageVector = AppleIcons.ChevronRight,
+                            contentDescription = null,
+                            tint = labelTertiary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    },
                     onClick = { showTermsDialog = true }
                 )
             }
 
-            // SECTION 7: DATA MANAGEMENT & RESET
-            LiquidGlassGroupedSection(title = "Data Management & Reset") {
-                Text(
-                    text = "Erase all local vehicle entries, policy records, and cached files from this device.",
-                    fontSize = 13.sp,
-                    lineHeight = 18.sp,
-                    color = labelSecondary
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-
-                AppleSecondaryButton(
-                    text = "Reset All Records",
-                    onClick = { showResetConfirmDialog = true },
+            // ==========================================
+            // GROUP 6: DANGER ZONE
+            // ==========================================
+            LiquidGlassGroupedSection(title = "Danger Zone") {
+                LiquidGlassListRow(
+                    title = "Reset All Records",
+                    subtitle = "Permanently erase local portfolio database and cached keys",
                     icon = AppleIcons.Trash,
-                    tintColor = AppleSystemRed,
-                    modifier = Modifier.fillMaxWidth()
+                    iconBgColor = AppleSystemRed,
+                    showDivider = false,
+                    trailingContent = {
+                        Icon(
+                            imageVector = AppleIcons.ChevronRight,
+                            contentDescription = null,
+                            tint = AppleSystemRed,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    },
+                    onClick = { showResetConfirmDialog = true }
                 )
             }
 
+            // ==========================================
             // BRANDING FOOTER
+            // ==========================================
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1850,7 +1042,7 @@ fun SettingsScreen(
                     text = "thesoftwarelabs.pages.dev",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = if (isDark) AppleDarkSystemBlue else AppleSystemBlue,
+                    color = activeBlue,
                     modifier = Modifier.clickable {
                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://thesoftwarelabs.pages.dev"))
@@ -1862,4 +1054,48 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(24.dp))
         }
     }
+
+    // ==========================================
+    // MODAL BOTTOM SHEETS
+    // ==========================================
+    SettingsAdvisorProfileSheet(
+        isOpen = showProfileSheet,
+        onDismiss = { showProfileSheet = false },
+        initialProfile = state.advisorProfile,
+        onSaveProfile = { newProfile ->
+            viewModel.saveAdvisorProfile(newProfile)
+        }
+    )
+
+    SettingsAiConfigSheet(
+        isOpen = showAiConfigSheet,
+        onDismiss = { showAiConfigSheet = false },
+        state = state,
+        viewModel = viewModel
+    )
+
+    SettingsVaultSnapshotsSheet(
+        isOpen = showSnapshotsSheet,
+        onDismiss = { showSnapshotsSheet = false },
+        snapshots = state.localSnapshots,
+        isSyncing = state.isSyncing,
+        onRestoreSnapshot = { file ->
+            viewModel.restoreFromLocalSnapshot(file)
+            showSnapshotsSheet = false
+        },
+        onSaveShareBackup = {
+            coroutineScope.launch {
+                val shareUri = viewModel.getShareableBackupUri()
+                val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                    type = "application/json"
+                    putExtra(Intent.EXTRA_STREAM, shareUri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                context.startActivity(Intent.createChooser(sendIntent, "Save to Google Drive / Files"))
+            }
+        },
+        onBrowseFile = {
+            restoreSnapshotLauncher.launch(arrayOf("application/json", "*/*"))
+        }
+    )
 }

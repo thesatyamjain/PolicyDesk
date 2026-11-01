@@ -77,6 +77,9 @@ val GlassDarkBorderTop = Color(0x38FFFFFF)    // Moonlight specular highlight ri
 val GlassDarkBorderBottom = Color(0x0FFFFFFF) // Ambient bottom rim (6% white)
 val GlassDarkShadow = Color(0x59000000)       // Deep ambient shadow
 
+val AppleSystemPurple = Color(0xFF5856D6)
+val AppleDarkSystemPurple = Color(0xFF5E5CE6)
+
 // Backward-compatible mappings
 val Navy900 = IosLabelPrimary
 val Navy800 = Color(0xFF2C2C2E)
