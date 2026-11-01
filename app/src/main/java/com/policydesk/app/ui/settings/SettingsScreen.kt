@@ -920,7 +920,7 @@ fun SettingsScreen(
             }
 
             // SECTION 3: GOOGLE DRIVE & CLOUD STORAGE
-            LiquidGlassGroupedSection(title = "Cloud Sync & Data Protection") {
+            LiquidGlassGroupedSection(title = "Google Drive Cloud Vault") {
                 if (state.isDriveLinked) {
                     Row(
                         modifier = Modifier
@@ -1121,9 +1121,10 @@ fun SettingsScreen(
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
+            }
 
-                Spacer(modifier = Modifier.height(14.dp))
-
+            // SECTION 4: IMPORT & EXPORT DATA
+            LiquidGlassGroupedSection(title = "Import & Export Data") {
                 // Direct File SAF Hub
                 Text(
                     text = "Direct File Backup & Drive SAF",
