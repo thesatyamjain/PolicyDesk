@@ -467,7 +467,7 @@ fun SettingsScreen(
                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             Toast.makeText(context, "Advisor Profile Saved", Toast.LENGTH_SHORT).show()
                         },
-                        modifier = Modifier.weight(1.2f)
+                        modifier = Modifier.weight(1f)
                     )
 
                     AppleSecondaryButton(
@@ -877,14 +877,14 @@ fun SettingsScreen(
                 // Test Connection & Save Action Row
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     AppleButton(
                         text = if (state.isTestingAi) "Testing..." else "Test Connection",
                         onClick = viewModel::testAiConnection,
                         enabled = (state.aiConfig.provider == AiProvider.CLOUDFLARE_AI || state.aiConfig.apiKey.isNotBlank()) && !state.isTestingAi,
                         isLoading = state.isTestingAi,
-                        modifier = Modifier.weight(1.3f)
+                        modifier = Modifier.weight(1f)
                     )
 
                     if (!isCloudflare && state.aiConfig.apiKey.isNotBlank()) {
@@ -1025,7 +1025,7 @@ fun SettingsScreen(
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         AppleButton(
                             text = if (state.isSyncing) "Syncing..." else "Backup to Cloud",
@@ -1039,7 +1039,7 @@ fun SettingsScreen(
                             text = "Restore from Vault",
                             onClick = viewModel::restoreFromDriveVault,
                             enabled = !state.isSyncing,
-                            tintColor = labelPrimary,
+                            tintColor = if (isDark) AppleDarkSystemBlue else AppleSystemBlue,
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -1135,7 +1135,7 @@ fun SettingsScreen(
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     AppleSecondaryButton(
                         text = "Save / Share Backup",
@@ -1150,14 +1150,14 @@ fun SettingsScreen(
                                 context.startActivity(Intent.createChooser(sendIntent, "Save to Google Drive / Files"))
                             }
                         },
-                        tintColor = AppleSystemBlue,
-                        modifier = Modifier.weight(1.1f)
+                        tintColor = if (isDark) AppleDarkSystemBlue else AppleSystemBlue,
+                        modifier = Modifier.weight(1f)
                     )
 
                     AppleSecondaryButton(
                         text = "Browse Drive / File",
                         onClick = { restoreSnapshotLauncher.launch(arrayOf("application/json", "*/*")) },
-                        tintColor = labelPrimary,
+                        tintColor = if (isDark) AppleDarkSystemBlue else AppleSystemBlue,
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -1235,15 +1235,24 @@ fun SettingsScreen(
                                 color = labelSecondary
                             )
                         }
-                        androidx.compose.material3.TextButton(
-                            onClick = { viewModel.restoreFromLocalSnapshot(latestSnapshot.file) },
-                            enabled = !state.isSyncing
+                        Box(
+                            modifier = Modifier
+                                .height(30.dp)
+                                .background(
+                                    if (isDark) AppleDarkSystemBlue.copy(alpha = 0.18f) else AppleSystemBlue.copy(alpha = 0.10f),
+                                    RoundedCornerShape(8.dp)
+                                )
+                                .clickable(enabled = !state.isSyncing) {
+                                    viewModel.restoreFromLocalSnapshot(latestSnapshot.file)
+                                }
+                                .padding(horizontal = 12.dp),
+                            contentAlignment = Alignment.Center
                         ) {
                             Text(
                                 text = "Restore",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = AppleSystemBlue
+                                color = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
                             )
                         }
                     }
@@ -1283,15 +1292,24 @@ fun SettingsScreen(
                                                 color = labelSecondary
                                             )
                                         }
-                                        androidx.compose.material3.TextButton(
-                                            onClick = { viewModel.restoreFromLocalSnapshot(snapshot.file) },
-                                            enabled = !state.isSyncing
+                                        Box(
+                                            modifier = Modifier
+                                                .height(30.dp)
+                                                .background(
+                                                    if (isDark) AppleDarkSystemBlue.copy(alpha = 0.18f) else AppleSystemBlue.copy(alpha = 0.10f),
+                                                    RoundedCornerShape(8.dp)
+                                                )
+                                                .clickable(enabled = !state.isSyncing) {
+                                                    viewModel.restoreFromLocalSnapshot(snapshot.file)
+                                                }
+                                                .padding(horizontal = 12.dp),
+                                            contentAlignment = Alignment.Center
                                         ) {
                                             Text(
                                                 text = "Restore",
                                                 fontSize = 12.sp,
                                                 fontWeight = FontWeight.Bold,
-                                                color = AppleSystemBlue
+                                                color = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
                                             )
                                         }
                                     }
@@ -1316,7 +1334,7 @@ fun SettingsScreen(
                             context.startActivity(Intent.createChooser(shareIntent, "Export Records to CSV"))
                         }
                     },
-                    tintColor = AppleSystemBlue,
+                    tintColor = if (isDark) AppleDarkSystemBlue else AppleSystemBlue,
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -1326,6 +1344,7 @@ fun SettingsScreen(
                     text = "Recover Deleted Records",
                     onClick = viewModel::recoverLocalDeletedData,
                     icon = AppleIcons.History,
+                    tintColor = if (isDark) AppleDarkSystemBlue else AppleSystemBlue,
                     enabled = !state.isSyncing,
                     modifier = Modifier.fillMaxWidth()
                 )

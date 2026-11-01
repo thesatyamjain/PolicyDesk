@@ -846,8 +846,8 @@ fun AppleButton(
     contentColor: Color = Color.White,
     icon: ImageVector? = null,
     isLoading: Boolean = false,
-    height: Dp = 50.dp,
-    shape: Shape = RoundedCornerShape(14.dp)
+    height: Dp = 48.dp,
+    shape: Shape = RoundedCornerShape(12.dp)
 ) {
     val isDark = isSystemInDarkTheme()
     val haptic = LocalHapticFeedback.current
@@ -983,7 +983,7 @@ fun AppleSecondaryButton(
     enabled: Boolean = true,
     tintColor: Color = AppleSystemBlue,
     icon: ImageVector? = null,
-    height: Dp = 44.dp,
+    height: Dp = 48.dp,
     shape: Shape = RoundedCornerShape(12.dp)
 ) {
     val isDark = isSystemInDarkTheme()
