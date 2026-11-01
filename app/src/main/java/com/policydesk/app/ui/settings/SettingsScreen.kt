@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import com.policydesk.app.data.profile.AdvisorProfile
@@ -144,6 +145,7 @@ fun SettingsScreen(
     var showPrivacyDialog by remember { mutableStateOf(false) }
     var showTermsDialog by remember { mutableStateOf(false) }
     var showResetConfirmDialog by remember { mutableStateOf(false) }
+    var showAllSnapshots by remember { mutableStateOf(false) }
 
     var advisorName by remember(state.advisorProfile.advisorName) { mutableStateOf(state.advisorProfile.advisorName) }
     var agencyName by remember(state.advisorProfile.agencyName) { mutableStateOf(state.advisorProfile.agencyName) }
@@ -1160,55 +1162,142 @@ fun SettingsScreen(
                     )
                 }
 
-                // Rolling snapshots section
+                // Rolling snapshots section (Deduplicated, capped, and progressively disclosed)
                 if (state.localSnapshots.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(14.dp))
-                    Text(
-                        text = "Device Rolling Snapshots (Offline Protection)",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = labelSecondary
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Device Protected Snapshots",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = labelSecondary
+                        )
+                        if (state.localSnapshots.size > 1) {
+                            Text(
+                                text = if (showAllSnapshots) "Hide history" else "History (${state.localSnapshots.size})",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = AppleSystemBlue,
+                                modifier = Modifier
+                                    .clickable { showAllSnapshots = !showAllSnapshots }
+                                    .padding(vertical = 2.dp, horizontal = 4.dp)
+                            )
+                        }
+                    }
                     Spacer(modifier = Modifier.height(6.dp))
 
-                    state.localSnapshots.forEach { snapshot ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(
-                                    if (isDark) Color(0xFF1E1E22) else Color(0xFFF2F2F7),
-                                    RoundedCornerShape(10.dp)
-                                )
-                                .padding(horizontal = 12.dp, vertical = 8.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
+                    // 1. Primary Latest Snapshot
+                    val latestSnapshot = state.localSnapshots.first()
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                if (isDark) Color(0xFF1E1E22) else Color(0xFFF2F2F7),
+                                RoundedCornerShape(10.dp)
+                            )
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
                                 Text(
-                                    text = snapshot.timestampFormatted,
+                                    text = latestSnapshot.timestampFormatted,
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     color = labelPrimary
                                 )
-                                Text(
-                                    text = "${snapshot.recordCount} vehicles, ${snapshot.fileSizeFormatted}",
-                                    fontSize = 11.sp,
-                                    color = labelSecondary
-                                )
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(4.dp))
+                                        .background(AppleSystemGreen.copy(alpha = 0.15f))
+                                        .padding(horizontal = 5.dp, vertical = 1.dp)
+                                ) {
+                                    Text(
+                                        text = "LATEST",
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = AppleSystemGreen
+                                    )
+                                }
                             }
-                            androidx.compose.material3.TextButton(
-                                onClick = { viewModel.restoreFromLocalSnapshot(snapshot.file) },
-                                enabled = !state.isSyncing
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "${latestSnapshot.recordCount} vehicles • ${latestSnapshot.fileSizeFormatted}",
+                                fontSize = 11.sp,
+                                color = labelSecondary
+                            )
+                        }
+                        androidx.compose.material3.TextButton(
+                            onClick = { viewModel.restoreFromLocalSnapshot(latestSnapshot.file) },
+                            enabled = !state.isSyncing
+                        ) {
+                            Text(
+                                text = "Restore",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = AppleSystemBlue
+                            )
+                        }
+                    }
+
+                    // 2. Older Snapshots (Revealed only on demand)
+                    if (state.localSnapshots.size > 1) {
+                        AnimatedVisibility(visible = showAllSnapshots) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 4.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
-                                Text(
-                                    text = "Restore",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = AppleSystemBlue
-                                )
+                                state.localSnapshots.drop(1).forEach { snapshot ->
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .background(
+                                                if (isDark) Color(0xFF1E1E22) else Color(0xFFF2F2F7),
+                                                RoundedCornerShape(10.dp)
+                                            )
+                                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = snapshot.timestampFormatted,
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = labelPrimary
+                                            )
+                                            Spacer(modifier = Modifier.height(2.dp))
+                                            Text(
+                                                text = "${snapshot.recordCount} vehicles • ${snapshot.fileSizeFormatted}",
+                                                fontSize = 11.sp,
+                                                color = labelSecondary
+                                            )
+                                        }
+                                        androidx.compose.material3.TextButton(
+                                            onClick = { viewModel.restoreFromLocalSnapshot(snapshot.file) },
+                                            enabled = !state.isSyncing
+                                        ) {
+                                            Text(
+                                                text = "Restore",
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = AppleSystemBlue
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         }
-                        Spacer(modifier = Modifier.height(4.dp))
                     }
                 }
 

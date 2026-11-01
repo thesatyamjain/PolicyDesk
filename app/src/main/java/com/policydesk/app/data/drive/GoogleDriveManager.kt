@@ -511,31 +511,61 @@ object GoogleDriveManager {
     fun saveLocalRollingSnapshot(context: Context, snapshotJson: String) {
         try {
             val dir = getBackupsDirectory(context)
-            // 1. Always update policydesk_backup_latest.json
             val latestFile = File(dir, "policydesk_backup_latest.json")
+
+            // 1. Content deduplication: If data is identical to the latest backup, skip creating another duplicate snapshot
+            if (latestFile.exists() && latestFile.readText(Charsets.UTF_8) == snapshotJson) {
+                return
+            }
+
+            // 2. Throttling: If the newest dated backup was created within the last 15 minutes, update it instead of creating another file
+            val existingDated = dir.listFiles { file -> file.name.startsWith("policydesk_backup_2") && file.name.endsWith(".json") }
+                ?.maxByOrNull { it.lastModified() }
+            if (existingDated != null && (System.currentTimeMillis() - existingDated.lastModified() < 15 * 60 * 1000L)) {
+                latestFile.writeText(snapshotJson, Charsets.UTF_8)
+                existingDated.writeText(snapshotJson, Charsets.UTF_8)
+                pruneOldSnapshots(dir)
+                return
+            }
+
+            // 3. Update policydesk_backup_latest.json
             latestFile.writeText(snapshotJson, Charsets.UTF_8)
 
-            // 2. Also keep a dated snapshot
+            // 4. Save a new dated snapshot
             val dateStr = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
             val datedFile = File(dir, "policydesk_backup_$dateStr.json")
             datedFile.writeText(snapshotJson, Charsets.UTF_8)
 
-            // 3. Prune old snapshots, retaining the last 5
-            val allBackups = dir.listFiles { file -> file.name.startsWith("policydesk_backup_2") && file.name.endsWith(".json") }
-            if (allBackups != null && allBackups.size > 5) {
-                allBackups.sortedBy { it.lastModified() }
-                    .take(allBackups.size - 5)
-                    .forEach { it.delete() }
-            }
+            // 5. Prune old snapshots, retaining the last 3 distinct backups
+            pruneOldSnapshots(dir)
         } catch (_: Exception) {}
+    }
+
+    private fun pruneOldSnapshots(dir: File) {
+        val allBackups = dir.listFiles { file -> file.name.startsWith("policydesk_backup_2") && file.name.endsWith(".json") }
+        if (allBackups != null && allBackups.size > 3) {
+            allBackups.sortedBy { it.lastModified() }
+                .take(allBackups.size - 3)
+                .forEach { it.delete() }
+        }
     }
 
     fun getLocalSnapshots(context: Context): List<LocalSnapshotInfo> {
         val dir = getBackupsDirectory(context)
-        val files = dir.listFiles { file -> file.name.endsWith(".json") } ?: return emptyList()
+        pruneOldSnapshots(dir)
+
+        // Only include dated backups; never duplicate latest.json with the newest dated backup
+        val files = dir.listFiles { file -> file.name.startsWith("policydesk_backup_2") && file.name.endsWith(".json") }
+        val candidateFiles = if (!files.isNullOrEmpty()) {
+            files.toList()
+        } else {
+            val latest = File(dir, "policydesk_backup_latest.json")
+            if (latest.exists()) listOf(latest) else emptyList()
+        }
+
         val dateFormat = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault())
 
-        return files.mapNotNull { file ->
+        val snapshots = candidateFiles.mapNotNull { file ->
             try {
                 val text = file.readText(Charsets.UTF_8)
                 val count = countVehiclesInSnapshot(text)
@@ -553,6 +583,18 @@ object GoogleDriveManager {
                 null
             }
         }.sortedByDescending { it.exportedAt }
+
+        // Deduplicate: Keep only the latest file per formatted timestamp, cleaning up duplicate files from disk
+        val seenDates = mutableSetOf<String>()
+        val result = mutableListOf<LocalSnapshotInfo>()
+        for (snap in snapshots) {
+            if (seenDates.add(snap.formattedDate)) {
+                result.add(snap)
+            } else {
+                try { snap.file.delete() } catch (_: Exception) {}
+            }
+        }
+        return result.take(3)
     }
 
     // ─── UNIVERSAL AUTO-SYNC & SHARE HOOKS ────────────────────────────────────
