@@ -41,6 +41,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.CalendarMonth
@@ -211,56 +212,254 @@ fun DashboardScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text(
-                    text = "Add Customer Policy",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = labelPrimary,
-                    letterSpacing = (-0.3).sp
-                )
-                Text(
-                    text = "Three ways in, one verified record out:",
-                    fontSize = 13.sp,
-                    color = labelSecondary
-                )
+                // Header
+                Column {
+                    Text(
+                        text = "Add Customer Policy",
+                        fontSize = 19.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = labelPrimary,
+                        letterSpacing = (-0.4).sp
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "Choose your preferred policy intake method:",
+                        fontSize = 13.sp,
+                        color = labelSecondary
+                    )
+                }
 
-                AddOptionCard(
-                    icon = AppleIcons.SquareAndPencil,
-                    iconBg = AppleSystemBlue.copy(alpha = 0.12f),
-                    iconTint = AppleSystemBlue,
-                    title = "Fill Form (Manual Entry)",
-                    subtitle = "Fill vehicle, policy & customer details manually",
+                Spacer(modifier = Modifier.height(2.dp))
+
+                // ─── BENTO HERO (1): FILL FORM (MANUAL ENTRY) ────────────────────────
+                LiquidGlassCard(
+                    shape = RoundedCornerShape(20.dp),
+                    elevation = 3.dp,
                     onClick = {
                         showAddChooserSheet = false
                         onNavigateToAddPolicy()
                     }
-                )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .background(AppleSystemBlue.copy(alpha = 0.12f), RoundedCornerShape(14.dp))
+                                .border(
+                                    0.5.dp,
+                                    if (isDark) Color(0x33007AFF) else AppleSystemBlue.copy(alpha = 0.25f),
+                                    RoundedCornerShape(14.dp)
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = AppleIcons.SquareAndPencil,
+                                contentDescription = null,
+                                tint = AppleSystemBlue,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
 
-                AddOptionCard(
-                    icon = AppleIcons.TableCells,
-                    iconBg = AppleSystemGreen.copy(alpha = 0.12f),
-                    iconTint = AppleSystemGreen,
-                    title = "Spreadsheet Import (.xlsx / .csv)",
-                    subtitle = "Migrate your existing Excel spreadsheet in bulk",
-                    onClick = {
-                        showAddChooserSheet = false
-                        onNavigateToImport()
-                    }
-                )
+                        Spacer(modifier = Modifier.width(14.dp))
 
-                AddOptionCard(
-                    icon = AppleIcons.DocText,
-                    iconBg = AppleSystemRed.copy(alpha = 0.12f),
-                    iconTint = AppleSystemRed,
-                    title = "Import from PDF (AI Extraction)",
-                    subtitle = "Auto-extract vehicle & policy details from PDF schedule",
-                    onClick = {
-                        showAddChooserSheet = false
-                        onNavigateToPdf()
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Fill Form (Manual Entry)",
+                                fontSize = 15.5.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = labelPrimary,
+                                letterSpacing = (-0.2).sp
+                            )
+                            Spacer(modifier = Modifier.height(3.dp))
+                            Text(
+                                text = "Nayi policy/customer details manually bharne ke liye",
+                                fontSize = 12.sp,
+                                color = labelSecondary,
+                                lineHeight = 16.sp
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(10.dp))
+
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .background(
+                                    if (isDark) Color(0x22FFFFFF) else Color(0x0D000000),
+                                    CircleShape
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                                contentDescription = null,
+                                tint = labelSecondary,
+                                modifier = Modifier.size(13.dp)
+                            )
+                        }
                     }
-                )
+                }
+
+                // ─── BENTO SPLIT (2): SPREADSHEET & PDF IMPORT ────────────────────────
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // Left Bento: Spreadsheet Import (.xlsx / .csv)
+                    LiquidGlassCard(
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(18.dp),
+                        elevation = 2.dp,
+                        onClick = {
+                            showAddChooserSheet = false
+                            onNavigateToImport()
+                        }
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(14.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.Top
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(38.dp)
+                                        .background(AppleSystemGreen.copy(alpha = 0.12f), RoundedCornerShape(12.dp))
+                                        .border(
+                                            0.5.dp,
+                                            if (isDark) Color(0x3334C759) else AppleSystemGreen.copy(alpha = 0.25f),
+                                            RoundedCornerShape(12.dp)
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = AppleIcons.TableCells,
+                                        contentDescription = null,
+                                        tint = AppleSystemGreen,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+
+                                Box(
+                                    modifier = Modifier
+                                        .background(AppleSystemGreen.copy(alpha = 0.12f), RoundedCornerShape(6.dp))
+                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                                ) {
+                                    Text(
+                                        text = ".xlsx / .csv",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = AppleSystemGreen
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(14.dp))
+
+                            Text(
+                                text = "Spreadsheet Import",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = labelPrimary,
+                                letterSpacing = (-0.2).sp
+                            )
+                            Spacer(modifier = Modifier.height(3.dp))
+                            Text(
+                                text = "Excel/CSV file se bulk migration ke liye",
+                                fontSize = 11.5.sp,
+                                color = labelSecondary,
+                                lineHeight = 15.sp,
+                                minLines = 2,
+                                maxLines = 2
+                            )
+                        }
+                    }
+
+                    // Right Bento: Import from PDF (AI Extraction)
+                    LiquidGlassCard(
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(18.dp),
+                        elevation = 2.dp,
+                        onClick = {
+                            showAddChooserSheet = false
+                            onNavigateToPdf()
+                        }
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(14.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.Top
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(38.dp)
+                                        .background(AppleSystemRed.copy(alpha = 0.12f), RoundedCornerShape(12.dp))
+                                        .border(
+                                            0.5.dp,
+                                            if (isDark) Color(0x33FF3B30) else AppleSystemRed.copy(alpha = 0.25f),
+                                            RoundedCornerShape(12.dp)
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = AppleIcons.DocText,
+                                        contentDescription = null,
+                                        tint = AppleSystemRed,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+
+                                Box(
+                                    modifier = Modifier
+                                        .background(AppleSystemRed.copy(alpha = 0.12f), RoundedCornerShape(6.dp))
+                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                                ) {
+                                    Text(
+                                        text = "AI SCAN",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = AppleSystemRed
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(14.dp))
+
+                            Text(
+                                text = "Import from PDF",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = labelPrimary,
+                                letterSpacing = (-0.2).sp
+                            )
+                            Spacer(modifier = Modifier.height(3.dp))
+                            Text(
+                                text = "Policy PDF se automated scan ke liye",
+                                fontSize = 11.5.sp,
+                                color = labelSecondary,
+                                lineHeight = 15.sp,
+                                minLines = 2,
+                                maxLines = 2
+                            )
+                        }
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(20.dp))
             }
@@ -816,45 +1015,6 @@ fun DashboardScreen(
     }
 }
 
-@Composable
-fun AddOptionCard(
-    icon: ImageVector,
-    iconBg: Color,
-    iconTint: Color,
-    title: String,
-    subtitle: String,
-    onClick: () -> Unit
-) {
-    val isDark = isSystemInDarkTheme()
-    val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
-    val labelSecondary = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
-
-    LiquidGlassCard(
-        shape = RoundedCornerShape(16.dp),
-        elevation = 2.dp,
-        onClick = onClick
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(42.dp)
-                    .background(iconBg, RoundedCornerShape(12.dp))
-                    .border(0.5.dp, if (isDark) Color(0x33FFFFFF) else Color.White.copy(alpha = 0.4f), RoundedCornerShape(12.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(imageVector = icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(22.dp))
-            }
-            Spacer(modifier = Modifier.width(14.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(text = title, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = labelPrimary)
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(text = subtitle, fontSize = 12.sp, color = labelSecondary)
-            }
-        }
-    }
-}
 
 @Composable
 fun LiquidGlassMetricCard(
