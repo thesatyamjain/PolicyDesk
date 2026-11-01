@@ -627,12 +627,12 @@ fun LiquidGlassGroupedSection(
     Column(modifier = modifier.fillMaxWidth()) {
         if (title != null) {
             Text(
-                text = title.uppercase(),
-                fontSize = 12.sp,
+                text = title,
+                fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = captionColor,
-                letterSpacing = 0.5.sp,
-                modifier = Modifier.padding(start = 16.dp, bottom = 6.dp, top = 10.dp)
+                letterSpacing = (-0.1).sp,
+                modifier = Modifier.padding(start = 16.dp, bottom = 6.dp, top = 12.dp)
             )
         }
         LiquidGlassCard(

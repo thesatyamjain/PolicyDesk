@@ -59,7 +59,7 @@ object NotificationHelper {
             else -> "Reminder: $regNo expires in $daysRemaining days"
         }
 
-        val content = "$customerName • $insurer (Tap to open policy)"
+        val content = "$customerName / $insurer (Tap to open policy)"
 
         // Main Tap Intent -> Open app to Vehicle Detail
         val openIntent = Intent(context, MainActivity::class.java).apply {

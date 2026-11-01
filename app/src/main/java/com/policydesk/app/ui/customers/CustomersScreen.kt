@@ -482,7 +482,7 @@ fun CustomerCard(
                                 regNo = vehicle.regNo
                             )
                             Text(
-                                text = "${vehicle.makeModel ?: "Vehicle"} • ${policy?.insurer ?: "No Policy"}",
+                                text = "${vehicle.makeModel ?: "Vehicle"} / ${policy?.insurer ?: "No Policy"}",
                                 fontSize = 11.sp,
                                 color = labelSecondary
                             )

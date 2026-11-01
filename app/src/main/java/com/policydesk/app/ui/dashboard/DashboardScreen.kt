@@ -433,11 +433,11 @@ fun DashboardScreen(
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
-                                    text = "PORTFOLIO IN FORCE",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
+                                    text = "Portfolio in force",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
                                     color = if (isDark) AppleDarkSystemGreen else AppleSystemGreen,
-                                    letterSpacing = 0.8.sp
+                                    letterSpacing = (-0.1).sp
                                 )
                             }
                             Spacer(modifier = Modifier.height(4.dp))
@@ -510,11 +510,11 @@ fun DashboardScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "OVERDUE",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
+                                text = "Overdue",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
                                 color = AppleSystemRed,
-                                letterSpacing = 0.5.sp
+                                letterSpacing = (-0.1).sp
                             )
                             Box(
                                 modifier = Modifier
@@ -552,11 +552,11 @@ fun DashboardScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "THIS WEEK",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
+                                text = "This week",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
                                 color = AppleSystemDeepOrange,
-                                letterSpacing = 0.5.sp
+                                letterSpacing = (-0.1).sp
                             )
                             Box(
                                 modifier = Modifier
@@ -619,7 +619,7 @@ fun DashboardScreen(
                             )
                         }
                         Text(
-                            text = "${uiState.summary.next30DaysCount} policies →",
+                            text = "${uiState.summary.next30DaysCount} policies",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             color = AppleSystemOrange
@@ -1049,7 +1049,7 @@ fun VehicleExpiryCard(
                 )
                 if (policy != null) {
                     Text(
-                        text = "• Exp: ${UiFormatters.formatDate(policy.expiryDate)}",
+                        text = "Exp ${UiFormatters.formatDate(policy.expiryDate)}",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
                         color = if (daysRemaining <= 7) AppleSystemRed else labelSecondary,

@@ -525,7 +525,7 @@ fun MissedRenewalCard(
 
             Spacer(modifier = Modifier.height(4.dp))
             Text(text = item.vehicle.customer.name, fontSize = 13.sp, color = labelPrimary)
-            Text(text = "${policy?.insurer} • Expired ${policy?.expiryDate?.let { UiFormatters.formatDate(it) }}", fontSize = 11.sp, color = labelSecondary)
+            Text(text = "${policy?.insurer} / Expired ${policy?.expiryDate?.let { UiFormatters.formatDate(it) }}", fontSize = 11.sp, color = labelSecondary)
             if (policy != null) {
                 Text(text = "Premium at risk: ${UiFormatters.formatCurrency(policy.totalPremium)}", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = StatusOverdueRed)
             }

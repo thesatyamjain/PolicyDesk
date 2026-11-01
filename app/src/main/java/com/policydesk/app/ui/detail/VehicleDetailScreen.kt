@@ -717,15 +717,16 @@ fun PolicyHistoryItem(policy: Policy) {
         Spacer(modifier = Modifier.width(8.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = "${policy.insurer} • ${policy.policyNumber}",
+                text = "${policy.insurer} / ${policy.policyNumber}",
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
             )
             Text(
-                text = "Expired: ${UiFormatters.formatDate(policy.expiryDate)} • Premium: ${UiFormatters.formatCurrency(policy.totalPremium)}",
+                text = "Expired ${UiFormatters.formatDate(policy.expiryDate)}, Premium ${UiFormatters.formatCurrency(policy.totalPremium)}",
                 fontSize = 12.sp,
-                color = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
+                color = if (isDark) IosDarkLabelSecondary else IosLabelSecondary,
+                style = TextStyle(fontFeatureSettings = "tnum")
             )
         }
     }

@@ -603,7 +603,7 @@ fun SettingsScreen(
                                         .background(AppleSystemGreen)
                                 )
                                 Text(
-                                    text = "Free Edge AI • Ready to Scan",
+                                    text = "Edge AI Active / Ready to scan",
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     color = AppleSystemGreen
@@ -663,17 +663,17 @@ fun SettingsScreen(
                     // 1. "Get API Key ↗" Helper Row for BYOK
                     val providerInfo = when (state.aiConfig.provider) {
                         AiProvider.GEMINI -> Triple(
-                            "Get Free Key from Google AI Studio ↗",
+                            "Get key from Google AI Studio",
                             "https://aistudio.google.com/apikey",
-                            "100% Free • Instant setup with your Google account"
+                            "Free tier with instant setup using your Google account"
                         )
                         AiProvider.OPENAI -> Triple(
-                            "Get Key from OpenAI Platform ↗",
+                            "Get key from OpenAI platform",
                             "https://platform.openai.com/api-keys",
                             "Requires OpenAI account with API credits"
                         )
                         AiProvider.CLAUDE -> Triple(
-                            "Get Key from Anthropic Console ↗",
+                            "Get key from Anthropic console",
                             "https://console.anthropic.com/settings/keys",
                             "Requires an Anthropic developer account"
                         )
@@ -1197,8 +1197,8 @@ fun SettingsScreen(
                                     color = labelPrimary
                                 )
                                 Text(
-                                    text = "${snapshot.recordCount} vehicles • ${snapshot.fileSizeFormatted}",
-                                    fontSize = 10.sp,
+                                    text = "${snapshot.recordCount} vehicles, ${snapshot.fileSizeFormatted}",
+                                    fontSize = 11.sp,
                                     color = labelSecondary
                                 )
                             }
@@ -1420,7 +1420,7 @@ fun SettingsScreen(
 
                 LiquidGlassListRow(
                     title = "The Software Labs",
-                    subtitle = "thesoftwarelabs.pages.dev • Built by The Software Labs & Satyam Jain",
+                    subtitle = "thesoftwarelabs.pages.dev (The Software Labs & Satyam Jain)",
                     icon = AppleIcons.House,
                     iconBgColor = if (isDark) AppleDarkSystemBlue else AppleSystemBlue,
                     onClick = {
