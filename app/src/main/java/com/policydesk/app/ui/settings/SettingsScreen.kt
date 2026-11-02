@@ -3,6 +3,8 @@ package com.policydesk.app.ui.settings
 import android.Manifest
 import android.content.Intent
 import android.graphics.BitmapFactory
+import android.graphics.ImageDecoder
+import android.graphics.drawable.AnimatedImageDrawable
 import android.net.Uri
 import android.os.Build
 import android.widget.Toast
@@ -59,6 +61,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.policydesk.app.data.ota.OtaState
@@ -276,16 +279,10 @@ fun SettingsScreen(
         val labelTertiary = if (isDark) IosDarkLabelTertiary else IosLabelTertiary
         val activeBlue = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
 
-        val avatarBitmap = remember(state.avatarUpdateTimestamp, state.googleAccountPhotoUrl, state.isDriveLinked) {
+        val avatarFile = remember(state.avatarUpdateTimestamp, state.googleAccountPhotoUrl, state.isDriveLinked) {
             if (state.isDriveLinked) {
                 val file = File(context.filesDir, "google_avatar.png")
-                if (file.exists() && file.length() > 0) {
-                    try {
-                        BitmapFactory.decodeFile(file.absolutePath)?.asImageBitmap()
-                    } catch (_: Exception) {
-                        null
-                    }
-                } else null
+                if (file.exists() && file.length() > 0) file else null
             } else null
         }
 
@@ -445,16 +442,15 @@ fun SettingsScreen(
                             )
                         }
 
-                        // Avatar container with live photo or monogram fallback
+                        // Avatar container with live photo (supporting animated GIFs) or monogram fallback
                         Box(
                             modifier = Modifier.size(54.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            if (avatarBitmap != null) {
-                                Image(
-                                    bitmap = avatarBitmap,
-                                    contentDescription = "Google Profile Picture",
-                                    contentScale = ContentScale.Crop,
+                            if (avatarFile != null) {
+                                GoogleAvatarView(
+                                    avatarFile = avatarFile,
+                                    avatarTimestamp = state.avatarUpdateTimestamp,
                                     modifier = Modifier
                                         .size(54.dp)
                                         .clip(CircleShape)
@@ -1096,6 +1092,47 @@ fun SettingsScreen(
         },
         onBrowseFile = {
             restoreSnapshotLauncher.launch(arrayOf("application/json", "*/*"))
+        }
+    )
+}
+
+/**
+ * Renders the Google profile avatar with full support for animated GIFs, animated WebP, and static photos.
+ * Uses Android 9+ native ImageDecoder & AnimatedImageDrawable with infinite loop and 0 third-party dependencies.
+ */
+@Composable
+fun GoogleAvatarView(
+    avatarFile: java.io.File,
+    avatarTimestamp: Long,
+    modifier: Modifier = Modifier
+) {
+    AndroidView(
+        modifier = modifier,
+        factory = { ctx ->
+            android.widget.ImageView(ctx).apply {
+                scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
+            }
+        },
+        update = { imageView ->
+            val currentTag = imageView.tag as? Long
+            if (currentTag != avatarTimestamp) {
+                imageView.tag = avatarTimestamp
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    try {
+                        val source = ImageDecoder.createSource(avatarFile)
+                        val drawable = ImageDecoder.decodeDrawable(source)
+                        imageView.setImageDrawable(drawable)
+                        if (drawable is AnimatedImageDrawable) {
+                            drawable.repeatCount = AnimatedImageDrawable.REPEAT_INFINITE
+                            drawable.start()
+                        }
+                    } catch (_: Throwable) {
+                        imageView.setImageBitmap(BitmapFactory.decodeFile(avatarFile.absolutePath))
+                    }
+                } else {
+                    imageView.setImageBitmap(BitmapFactory.decodeFile(avatarFile.absolutePath))
+                }
+            }
         }
     )
 }

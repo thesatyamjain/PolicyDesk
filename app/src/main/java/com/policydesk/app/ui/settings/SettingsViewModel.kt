@@ -512,15 +512,35 @@ class SettingsViewModel @Inject constructor(
     private fun fetchAndCacheAvatar(photoUrl: String) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val conn = java.net.URL(photoUrl).openConnection() as java.net.HttpURLConnection
-                conn.connectTimeout = 10000
-                conn.readTimeout = 10000
-                if (conn.responseCode in 200..299) {
-                    val bytes = conn.inputStream.use { it.readBytes() }
+                // Request 192px square crop while preserving animated GIF/WebP frames
+                val candidateUrl = if (photoUrl.contains("googleusercontent.com")) {
+                    if (photoUrl.contains("=")) {
+                        photoUrl.replace(Regex("=s\\d+.*$"), "=s192-c")
+                    } else {
+                        "$photoUrl=s192-c"
+                    }
+                } else photoUrl
+
+                val bytes = tryDownload(candidateUrl) ?: tryDownload(photoUrl)
+                if (bytes != null && bytes.isNotEmpty()) {
                     File(context.filesDir, "google_avatar.png").writeBytes(bytes)
                     _uiState.update { it.copy(avatarUpdateTimestamp = System.currentTimeMillis()) }
                 }
             } catch (_: Exception) {}
+        }
+    }
+
+    private fun tryDownload(urlStr: String): ByteArray? {
+        return try {
+            val conn = java.net.URL(urlStr).openConnection() as java.net.HttpURLConnection
+            conn.connectTimeout = 10000
+            conn.readTimeout = 10000
+            conn.instanceFollowRedirects = true
+            if (conn.responseCode in 200..299) {
+                conn.inputStream.use { it.readBytes() }
+            } else null
+        } catch (_: Exception) {
+            null
         }
     }
 
