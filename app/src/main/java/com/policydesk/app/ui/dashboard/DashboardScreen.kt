@@ -431,7 +431,7 @@ fun DashboardScreen(
                                         .padding(horizontal = 6.dp, vertical = 2.dp)
                                 ) {
                                     Text(
-                                        text = "AI SCAN",
+                                        text = "CAM / PDF",
                                         fontSize = 10.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = AppleSystemRed
@@ -442,7 +442,7 @@ fun DashboardScreen(
                             Spacer(modifier = Modifier.height(14.dp))
 
                             Text(
-                                text = "Import from PDF",
+                                text = "Smart AI Scanner",
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = labelPrimary,
@@ -450,7 +450,7 @@ fun DashboardScreen(
                             )
                             Spacer(modifier = Modifier.height(3.dp))
                             Text(
-                                text = "Policy PDF se automated scan ke liye",
+                                text = "Camera photo, screenshot, ya PDF schedule se auto-fill",
                                 fontSize = 11.5.sp,
                                 color = labelSecondary,
                                 lineHeight = 15.sp,

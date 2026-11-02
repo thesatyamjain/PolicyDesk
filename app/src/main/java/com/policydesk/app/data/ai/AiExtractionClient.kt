@@ -231,16 +231,29 @@ CONTENT AWARENESS RULES & ABBREVIATIONS FOR ALL FIELDS:
         }
 
         try {
-            val pdfBytes = context.contentResolver.openInputStream(pdfUri)?.use { it.readBytes() }
-                ?: return@withContext ExtractionResult.Error("Could not read PDF file.")
+            val resolvedType = context.contentResolver.getType(pdfUri)
+            val path = pdfUri.path?.lowercase() ?: ""
+            val mimeType = when {
+                !resolvedType.isNullOrBlank() -> resolvedType
+                path.endsWith(".jpg") || path.endsWith(".jpeg") -> "image/jpeg"
+                path.endsWith(".png") -> "image/png"
+                path.endsWith(".webp") -> "image/webp"
+                else -> "application/pdf"
+            }
+            val isImage = mimeType.startsWith("image/")
 
-            // Check if document is password protected / encrypted
-            val isEncrypted = isPdfEncrypted(pdfBytes)
-            if (isEncrypted && password.isNullOrBlank()) {
-                return@withContext ExtractionResult.PasswordRequired("This PDF is password-protected. Please enter the password to decrypt.")
+            val rawBytes = context.contentResolver.openInputStream(pdfUri)?.use { it.readBytes() }
+                ?: return@withContext ExtractionResult.Error("Could not read ${if (isImage) "image" else "PDF"} file.")
+
+            // Check if document is password protected / encrypted (only relevant for PDFs)
+            if (!isImage) {
+                val isEncrypted = isPdfEncrypted(rawBytes)
+                if (isEncrypted && password.isNullOrBlank()) {
+                    return@withContext ExtractionResult.PasswordRequired("This PDF is password-protected. Please enter the password to decrypt.")
+                }
             }
 
-            val base64Pdf = Base64.encodeToString(pdfBytes, Base64.NO_WRAP)
+            val base64Data = Base64.encodeToString(rawBytes, Base64.NO_WRAP)
 
             when (config.provider) {
                 AiProvider.CLOUDFLARE_AI -> {
@@ -250,14 +263,14 @@ CONTENT AWARENESS RULES & ABBREVIATIONS FOR ALL FIELDS:
                     } else {
                         val geminiKey = com.policydesk.app.data.security.SecureKeyStorage(context).getApiKeyForProvider(AiProvider.GEMINI)
                         if (geminiKey.isNotBlank()) {
-                            extractWithGemini(base64Pdf, config.copy(apiKey = geminiKey), password)
+                            extractWithGemini(base64Data, config.copy(apiKey = geminiKey), password, mimeType)
                         } else {
                             cfResult
                         }
                     }
                 }
-                AiProvider.GEMINI -> extractWithGemini(base64Pdf, config, password)
-                AiProvider.CLAUDE -> extractWithClaude(context, pdfUri, base64Pdf, config, password)
+                AiProvider.GEMINI -> extractWithGemini(base64Data, config, password, mimeType)
+                AiProvider.CLAUDE -> extractWithClaude(context, pdfUri, base64Data, config, password, mimeType)
                 AiProvider.OPENAI -> extractWithOpenAI(context, pdfUri, config, password)
             }
         } catch (e: Exception) {
@@ -433,7 +446,12 @@ CONTENT AWARENESS RULES & ABBREVIATIONS FOR ALL FIELDS:
         return fetchLiveModels(AiProvider.GEMINI, cleanKey).getOrNull()?.firstOrNull()
     }
 
-    private suspend fun extractWithGemini(base64Pdf: String, config: AiConfig, password: String? = null): ExtractionResult {
+    private suspend fun extractWithGemini(
+        base64Pdf: String,
+        config: AiConfig,
+        password: String? = null,
+        mimeType: String = "application/pdf"
+    ): ExtractionResult {
         val cleanKey = config.apiKey.trim()
         val configuredModel = config.model.trim().removePrefix("models/").ifBlank { "gemini-3.5-flash-lite" }
         val liveModels = fetchLiveModels(AiProvider.GEMINI, cleanKey).getOrNull() ?: emptyList()
@@ -460,7 +478,7 @@ CONTENT AWARENESS RULES & ABBREVIATIONS FOR ALL FIELDS:
                     put(JSONObject().put("text", promptText))
                     put(JSONObject().apply {
                         put("inlineData", JSONObject().apply {
-                            put("mimeType", "application/pdf")
+                            put("mimeType", if (mimeType.startsWith("image/")) mimeType else "application/pdf")
                             put("data", base64Pdf)
                         })
                     })
@@ -527,7 +545,8 @@ CONTENT AWARENESS RULES & ABBREVIATIONS FOR ALL FIELDS:
         pdfUri: Uri,
         base64Pdf: String,
         config: AiConfig,
-        password: String? = null
+        password: String? = null,
+        mimeType: String = "application/pdf"
     ): ExtractionResult = withContext(Dispatchers.IO) {
         val cleanKey = config.apiKey.trim()
         val configuredModel = config.model.trim().ifBlank { "claude-3-5-sonnet-20241022" }
@@ -537,6 +556,9 @@ CONTENT AWARENESS RULES & ABBREVIATIONS FOR ALL FIELDS:
         } else {
             "Extract all vehicle policy fields from this document into valid JSON according to system instructions. Document password: $password"
         }
+
+        val isImage = mimeType.startsWith("image/")
+        val blockType = if (isImage) "image" else "document"
 
         // Method 1: Try Anthropic native document payload (supported by Claude 3.5 Sonnet / 3.7 Sonnet)
         val documentPayload = JSONObject().apply {
@@ -548,10 +570,10 @@ CONTENT AWARENESS RULES & ABBREVIATIONS FOR ALL FIELDS:
                     put("role", "user")
                     put("content", org.json.JSONArray().apply {
                         put(JSONObject().apply {
-                            put("type", "document")
+                            put("type", blockType)
                             put("source", JSONObject().apply {
                                 put("type", "base64")
-                                put("media_type", "application/pdf")
+                                put("media_type", if (isImage) mimeType else "application/pdf")
                                 put("data", base64Pdf)
                             })
                         })
@@ -841,6 +863,12 @@ CONTENT AWARENESS RULES & ABBREVIATIONS FOR ALL FIELDS:
 
     private fun extractWithCloudflare(context: Context, pdfUri: Uri, config: AiConfig): ExtractionResult {
         val endpoint = config.customEndpoint.ifBlank { DEFAULT_CLOUDFLARE_AI_ENDPOINT }.trimEnd('/')
+        val mimeType = context.contentResolver.getType(pdfUri) ?: ""
+        if (mimeType.startsWith("image/")) {
+            val base64Img = renderPdfOrImageToBase64(context, pdfUri)
+                ?: return ExtractionResult.Error("Could not load image for Cloudflare AI scanning.")
+            return executeCloudflareExtraction(endpoint, base64Img, isRetry = false)
+        }
         val pageCount = getPdfPageCount(context, pdfUri)
 
         // Pass 1: Crisp single-page schedule scan calibrated to Llama 3.2 Vision's native window

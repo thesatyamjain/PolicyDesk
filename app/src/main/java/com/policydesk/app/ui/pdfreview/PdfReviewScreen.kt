@@ -42,12 +42,17 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.core.content.FileProvider
+import java.io.File
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -101,6 +106,31 @@ fun PdfReviewScreen(
         }
     }
 
+    var cameraPhotoUri by remember { mutableStateOf<Uri?>(null) }
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success && cameraPhotoUri != null) {
+            viewModel.onPdfsSelected(listOf(cameraPhotoUri!!))
+        }
+    }
+
+    fun launchCamera() {
+        try {
+            val photosDir = File(context.cacheDir, "photos").apply { mkdirs() }
+            val photoFile = File(photosDir, "policy_${System.currentTimeMillis()}.jpg")
+            val uri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                photoFile
+            )
+            cameraPhotoUri = uri
+            cameraLauncher.launch(uri)
+        } catch (e: Exception) {
+            Toast.makeText(context, "Could not open camera: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     LaunchedEffect(Unit) {
         viewModel.uiEvent.collect { event ->
             when (event) {
@@ -148,10 +178,26 @@ fun PdfReviewScreen(
         Scaffold(
         topBar = {
             com.policydesk.app.ui.components.LiquidGlassTopBar(
-                title = "PDF Policy Review",
-                subtitle = if (state.queue.size > 1) "Document ${state.queueIndex + 1} of ${state.queue.size}" else null,
+                title = "AI Policy Scanner",
+                subtitle = if (state.queue.size > 1) "Document ${state.queueIndex + 1} of ${state.queue.size}" else "Camera • PDF • Photo",
                 onNavigateBack = onNavigateBack,
                 actions = {
+                    IconButton(onClick = ::launchCamera) {
+                        Icon(
+                            imageVector = AppleIcons.Camera,
+                            contentDescription = "Take Photo",
+                            tint = com.policydesk.app.ui.theme.AppleSystemBlue,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    IconButton(onClick = { pdfPickerLauncher.launch(arrayOf("application/pdf", "image/*")) }) {
+                        Icon(
+                            imageVector = AppleIcons.Upload,
+                            contentDescription = "Upload Document or Photo",
+                            tint = com.policydesk.app.ui.theme.AppleSystemBlue,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                     if (state.queue.size > 1 && state.pdfUri != null) {
                         androidx.compose.material3.TextButton(onClick = viewModel::skipCurrentPdf) {
                             Text(
@@ -219,7 +265,7 @@ fun PdfReviewScreen(
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Text(
-                            text = "Select insurer PDF documents to automatically extract vehicle schedule, customer info, and policy dates.",
+                            text = "Select insurer PDF documents, photos, or WhatsApp screenshots to automatically extract vehicle schedule, customer info, and policy dates.",
                             fontSize = 13.sp,
                             lineHeight = 18.sp,
                             color = labelSecondary,
@@ -229,9 +275,18 @@ fun PdfReviewScreen(
                         Spacer(modifier = Modifier.height(24.dp))
 
                         AppleButton(
-                            text = "Select Policy PDF(s)",
-                            onClick = { pdfPickerLauncher.launch(arrayOf("application/pdf")) },
+                            text = "Choose PDF or Image",
+                            onClick = { pdfPickerLauncher.launch(arrayOf("application/pdf", "image/*")) },
                             icon = AppleIcons.Upload,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        AppleSecondaryButton(
+                            text = "Take Photo with Camera",
+                            onClick = ::launchCamera,
+                            icon = AppleIcons.Camera,
                             modifier = Modifier.fillMaxWidth()
                         )
 
@@ -396,12 +451,19 @@ fun PdfReviewScreen(
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             AppleSecondaryButton(
-                                text = "Another PDF",
-                                onClick = { pdfPickerLauncher.launch(arrayOf("application/pdf")) },
+                                text = "Camera",
+                                onClick = ::launchCamera,
+                                icon = AppleIcons.Camera,
                                 modifier = Modifier.weight(1f)
                             )
                             AppleSecondaryButton(
-                                text = "AI Settings",
+                                text = "Pick File",
+                                onClick = { pdfPickerLauncher.launch(arrayOf("application/pdf", "image/*")) },
+                                icon = AppleIcons.Upload,
+                                modifier = Modifier.weight(1f)
+                            )
+                            AppleSecondaryButton(
+                                text = "Settings",
                                 onClick = onNavigateToSettings,
                                 icon = AppleIcons.GearShape,
                                 modifier = Modifier.weight(1f)

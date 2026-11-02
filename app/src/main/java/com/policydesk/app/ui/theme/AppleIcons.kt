@@ -907,5 +907,37 @@ object AppleIcons {
             close()
         }
     }
+
+    /** SF Symbol: camera.fill (Cupertino camera) */
+    val Camera: ImageVector by lazy {
+        buildIcon("AppleCamera") {
+            moveTo(9f, 4f)
+            lineTo(8.2f, 5.5f)
+            lineTo(5f, 5.5f)
+            curveTo(3.9f, 5.5f, 3f, 6.4f, 3f, 7.5f)
+            lineTo(3f, 18f)
+            curveTo(3f, 19.1f, 3.9f, 20f, 5f, 20f)
+            lineTo(19f, 20f)
+            curveTo(20.1f, 20f, 21f, 19.1f, 21f, 18f)
+            lineTo(21f, 7.5f)
+            curveTo(21f, 6.4f, 20.1f, 5.5f, 19f, 5.5f)
+            lineTo(15.8f, 5.5f)
+            lineTo(15f, 4f)
+            lineTo(9f, 4f)
+            close()
+            moveTo(12f, 17f)
+            curveTo(9.8f, 17f, 8f, 15.2f, 8f, 13f)
+            curveTo(8f, 10.8f, 9.8f, 9f, 12f, 9f)
+            curveTo(14.2f, 9f, 16f, 10.8f, 16f, 13f)
+            curveTo(16f, 15.2f, 14.2f, 17f, 12f, 17f)
+            close()
+            moveTo(12f, 10.5f)
+            curveTo(10.6f, 10.5f, 9.5f, 11.6f, 9.5f, 13f)
+            curveTo(9.5f, 14.4f, 10.6f, 15.5f, 12f, 15.5f)
+            curveTo(13.4f, 15.5f, 14.5f, 14.4f, 14.5f, 13f)
+            curveTo(14.5f, 11.6f, 13.4f, 10.5f, 12f, 10.5f)
+            close()
+        }
+    }
 }
 

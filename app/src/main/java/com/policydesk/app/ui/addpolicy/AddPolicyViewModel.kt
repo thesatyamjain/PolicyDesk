@@ -157,6 +157,80 @@ class AddPolicyViewModel @Inject constructor(
         _formState.update { it.copy(address = address) }
     }
 
+    fun onContactPicked(context: android.content.Context, contactUri: android.net.Uri) {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                val cr = context.contentResolver
+                var contactId: String? = null
+                var contactName: String? = null
+
+                // 1. Query contact display name and ID
+                cr.query(
+                    contactUri,
+                    arrayOf(android.provider.ContactsContract.Contacts._ID, android.provider.ContactsContract.Contacts.DISPLAY_NAME),
+                    null,
+                    null,
+                    null
+                )?.use { cursor ->
+                    if (cursor.moveToFirst()) {
+                        val idIdx = cursor.getColumnIndex(android.provider.ContactsContract.Contacts._ID)
+                        val nameIdx = cursor.getColumnIndex(android.provider.ContactsContract.Contacts.DISPLAY_NAME)
+                        if (idIdx != -1) contactId = cursor.getString(idIdx)
+                        if (nameIdx != -1) contactName = cursor.getString(nameIdx)
+                    }
+                }
+
+                // 2. Query phone numbers
+                var contactPhone: String? = null
+                try {
+                    cr.query(
+                        contactUri,
+                        arrayOf(android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER),
+                        null,
+                        null,
+                        null
+                    )?.use { phoneCursor ->
+                        if (phoneCursor.moveToFirst()) {
+                            val numIdx = phoneCursor.getColumnIndex(android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER)
+                            if (numIdx != -1) contactPhone = phoneCursor.getString(numIdx)
+                        }
+                    }
+                } catch (_: Exception) {}
+
+                if (contactPhone.isNullOrBlank() && contactId != null) {
+                    cr.query(
+                        android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                        arrayOf(android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER),
+                        "${android.provider.ContactsContract.CommonDataKinds.Phone.CONTACT_ID} = ?",
+                        arrayOf(contactId),
+                        null
+                    )?.use { phoneCursor ->
+                        if (phoneCursor.moveToFirst()) {
+                            val numIdx = phoneCursor.getColumnIndex(android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER)
+                            if (numIdx != -1) contactPhone = phoneCursor.getString(numIdx)
+                        }
+                    }
+                }
+
+                val name = contactName
+                val phone = contactPhone
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (!name.isNullOrBlank()) {
+                        val (cleanName, detectedTitle) = FieldValidators.extractCustomerNameAndTitle(name, "")
+                        onNameChanged(cleanName)
+                        if (!detectedTitle.isNullOrBlank()) {
+                            onTitleChanged(detectedTitle)
+                        }
+                    }
+                    if (!phone.isNullOrBlank()) {
+                        val cleanMobile = FieldValidators.normalizeMobile(phone)
+                        onMobileChanged(cleanMobile)
+                    }
+                }
+            } catch (_: Exception) {}
+        }
+    }
+
     fun onSectorSelected(newSector: Sector) {
         val current = _formState.value
         if (current.sector != null && current.sector != newSector && current.insurer.isNotEmpty()) {

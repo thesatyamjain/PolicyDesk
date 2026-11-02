@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.Warning
 import com.policydesk.app.ui.components.AppleAlertDialog
 import com.policydesk.app.ui.components.AppleButton
 import com.policydesk.app.ui.components.AppleSecondaryButton
+import com.policydesk.app.ui.components.LiquidGlassCard
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DatePicker
@@ -97,6 +98,11 @@ import com.policydesk.app.ui.theme.StatusActiveGreen
 import com.policydesk.app.ui.theme.StatusExpiringAmber
 import com.policydesk.app.ui.theme.StatusExpiringAmberBg
 import com.policydesk.app.ui.theme.StatusOverdueRed
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.ui.platform.LocalFocusManager
 import com.policydesk.app.ui.theme.StatusOverdueRedBg
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -105,6 +111,7 @@ fun AddPolicyScreen(
     editRegNo: String? = null,
     onNavigateBack: () -> Unit,
     onNavigateToVehicleDetail: (String) -> Unit,
+    onNavigateToScan: (() -> Unit)? = null,
     viewModel: AddPolicyViewModel = hiltViewModel()
 ) {
     val state by viewModel.formState.collectAsStateWithLifecycle()
@@ -113,6 +120,15 @@ fun AddPolicyScreen(
     val context = LocalContext.current
 
     var showDatePicker by remember { mutableStateOf(false) }
+    val focusManager = LocalFocusManager.current
+
+    val contactPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickContact()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            viewModel.onContactPicked(context, uri)
+        }
+    }
 
     LaunchedEffect(editRegNo) {
         if (!editRegNo.isNullOrBlank()) {
@@ -214,6 +230,76 @@ fun AddPolicyScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // Quick Scan Banner: Auto-Fill with AI Scanner
+            if (!state.isEditMode && onNavigateToScan != null) {
+                LiquidGlassCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    elevation = 2.dp,
+                    onClick = onNavigateToScan
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .background(SapphireBlue.copy(alpha = 0.12f), RoundedCornerShape(12.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = AppleIcons.Camera,
+                                contentDescription = null,
+                                tint = SapphireBlue,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Text(
+                                    text = "Auto-Fill with AI Scanner",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isSystemInDarkTheme()) Color.White else Color(0xFF1D1D1F)
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .background(SapphireBlue.copy(alpha = 0.15f), RoundedCornerShape(6.dp))
+                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                                ) {
+                                    Text(
+                                        text = "NEW",
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = SapphireBlue
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "Snap paper schedule, pick WhatsApp photo, or upload PDF",
+                                fontSize = 11.5.sp,
+                                color = if (isSystemInDarkTheme()) Color(0xFF98989D) else Color(0xFF86868B),
+                                lineHeight = 15.sp
+                            )
+                        }
+                        Icon(
+                            imageVector = AppleIcons.ChevronRight,
+                            contentDescription = null,
+                            tint = if (isSystemInDarkTheme()) Color(0xFF98989D) else Color(0xFF86868B),
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
+                }
+            }
+
             // SECTION 1: VEHICLE SPECIFICATIONS
             FormSectionCard(title = "Vehicle Specifications") {
                 // Registration Number
@@ -458,6 +544,16 @@ fun AddPolicyScreen(
                         modifier = Modifier.weight(1f),
                         label = { Text("Customer Name *") },
                         placeholder = { Text("Full Name") },
+                        trailingIcon = {
+                            IconButton(onClick = { contactPickerLauncher.launch(null) }) {
+                                Icon(
+                                    imageVector = AppleIcons.Person,
+                                    contentDescription = "Pick Contact",
+                                    tint = SapphireBlue,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        },
                         singleLine = true,
                         isError = state.hasAttemptedSave && !FieldValidators.isValidName(state.name),
                         supportingText = if (state.hasAttemptedSave && !FieldValidators.isValidName(state.name)) {
@@ -483,6 +579,16 @@ fun AddPolicyScreen(
                             tint = SapphireBlue,
                             modifier = Modifier.size(18.dp)
                         )
+                    },
+                    trailingIcon = {
+                        IconButton(onClick = { contactPickerLauncher.launch(null) }) {
+                            Icon(
+                                imageVector = AppleIcons.Person,
+                                contentDescription = "Pick Contact",
+                                tint = SapphireBlue,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                     },
                     singleLine = true,
                     isError = state.hasAttemptedSave && !FieldValidators.isValidMobile(state.mobile),
@@ -537,6 +643,7 @@ fun AddPolicyScreen(
                     minLines = 2,
                     maxLines = 4,
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
                     shape = RoundedCornerShape(10.dp),
                     colors = formFieldColors()
                 )

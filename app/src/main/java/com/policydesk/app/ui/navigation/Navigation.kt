@@ -246,6 +246,11 @@ fun PolicyDeskNavHost(
                 AddPolicyScreen(
                     editRegNo = editRegNo,
                     onNavigateBack = { navController.popBackStack() },
+                    onNavigateToScan = {
+                        navController.navigate(Screen.PdfReview.route) {
+                            popUpTo(Screen.AddPolicy.route) { inclusive = true }
+                        }
+                    },
                     onNavigateToVehicleDetail = { regNo ->
                         navController.navigate(Screen.VehicleDetail.createRoute(regNo)) {
                             popUpTo(Screen.Dashboard.route)
