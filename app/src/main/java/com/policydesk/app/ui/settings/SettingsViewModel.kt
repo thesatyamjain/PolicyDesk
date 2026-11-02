@@ -452,6 +452,7 @@ class SettingsViewModel @Inject constructor(
                 if (!photoUrl.isNullOrBlank()) {
                     fetchAndCacheAvatar(photoUrl)
                 }
+                com.policydesk.app.data.drive.DriveAutoSyncScheduler.scheduleAutoSync(context)
                 val localRecords = _uiState.value.totalRecords
                 if (localRecords == 0) {
                     // Fresh installation detected: automatically restore data from Drive vault instead of uploading 0 records
@@ -482,6 +483,7 @@ class SettingsViewModel @Inject constructor(
 
     fun connectGoogleAccount(email: String) {
         com.policydesk.app.data.drive.GoogleDriveManager.setConnectedAccount(context, email)
+        com.policydesk.app.data.drive.DriveAutoSyncScheduler.scheduleAutoSync(context)
         _uiState.update {
             it.copy(
                 googleAccountEmail = email,
@@ -494,6 +496,7 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun disconnectGoogleDrive() {
+        com.policydesk.app.data.drive.DriveAutoSyncScheduler.cancelAutoSync(context)
         com.policydesk.app.data.drive.GoogleDriveManager.disconnect(context)
         _uiState.update {
             it.copy(

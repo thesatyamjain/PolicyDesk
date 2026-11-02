@@ -620,7 +620,7 @@ object GoogleDriveManager {
 
             // If user has linked Google Drive, sync to PolicyDesk Vault
             if (isDriveLinked(context)) {
-                uploadToDriveVault(context, snapshotJson).getOrNull()
+                uploadToDriveVault(context, snapshotJson).getOrThrow()
             }
 
             // Also sync to SAF storage URI if previously configured

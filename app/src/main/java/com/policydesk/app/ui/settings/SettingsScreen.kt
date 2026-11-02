@@ -129,8 +129,26 @@ fun SettingsScreen(
     var showPrivacyDialog by remember { mutableStateOf(false) }
     var showTermsDialog by remember { mutableStateOf(false) }
     var showResetConfirmDialog by remember { mutableStateOf(false) }
+    var showDisconnectConfirmDialog by remember { mutableStateOf(false) }
 
     // Dialogs
+    if (showDisconnectConfirmDialog) {
+        AppleAlertDialog(
+            onDismissRequest = { showDisconnectConfirmDialog = false },
+            title = "Disconnect Google Drive?",
+            message = "Automatic background backups to your Google Drive will be paused. Your existing offline policy data and previously uploaded backups will remain safe.",
+            confirmText = "Disconnect",
+            isDestructive = true,
+            onConfirm = {
+                showDisconnectConfirmDialog = false
+                viewModel.disconnectGoogleDrive()
+                Toast.makeText(context, "Google Drive disconnected", Toast.LENGTH_SHORT).show()
+            },
+            dismissText = "Cancel",
+            onDismiss = { showDisconnectConfirmDialog = false }
+        )
+    }
+
     if (showPrivacyDialog) {
         AppleAlertDialog(
             onDismissRequest = { showPrivacyDialog = false },
@@ -435,7 +453,7 @@ fun SettingsScreen(
                             Spacer(modifier = Modifier.height(4.dp))
 
                             Text(
-                                text = if (state.isSyncing) "Syncing with Google Drive..." else "${state.totalRecords} vehicles synced • Tap to sync now",
+                                text = if (state.isSyncing) "Syncing with Google Drive..." else "${state.totalRecords} vehicles synced • Auto-Sync: Active",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Medium,
                                 color = if (state.isSyncing) AppleSystemOrange else activeBlue
@@ -643,7 +661,7 @@ fun SettingsScreen(
                 LiquidGlassListRow(
                     title = "Google Drive Cloud Vault",
                     subtitle = if (state.isDriveLinked) {
-                        "${state.googleAccountEmail} • Synced: ${state.lastSyncTime}"
+                        "${state.googleAccountEmail} • Auto-Sync: Active (12h) • Synced: ${state.lastSyncTime}"
                     } else {
                         "Sync encrypted backups to personal Google Drive"
                     },
@@ -700,6 +718,25 @@ fun SettingsScreen(
                         }
                     }
                 )
+
+                // Disconnect Google Drive (Shown only when linked)
+                if (state.isDriveLinked) {
+                    LiquidGlassListRow(
+                        title = "Disconnect Google Drive",
+                        subtitle = "Pause automatic cloud backup to ${state.googleAccountEmail}",
+                        icon = AppleIcons.Trash,
+                        iconBgColor = AppleSystemRed,
+                        trailingContent = {
+                            Text(
+                                text = "Disconnect",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = AppleSystemRed
+                            )
+                        },
+                        onClick = { showDisconnectConfirmDialog = true }
+                    )
+                }
 
                 // Device Rolling Snapshots Row
                 LiquidGlassListRow(
