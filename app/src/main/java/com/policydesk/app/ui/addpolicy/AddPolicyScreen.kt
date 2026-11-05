@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -46,6 +47,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldColors
@@ -55,6 +57,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.style.TextOverflow
 import com.policydesk.app.ui.theme.AppleDarkSystemBlue
 import com.policydesk.app.ui.theme.AppleIcons
 import com.policydesk.app.ui.theme.AppleSystemBlue
@@ -118,6 +121,7 @@ fun AddPolicyScreen(
     val suggestions by viewModel.makeModelSuggestions.collectAsStateWithLifecycle()
     val customInsurers by viewModel.customInsurers.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
 
     var showDatePicker by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
@@ -218,6 +222,26 @@ fun AddPolicyScreen(
                 onNavigateBack = onNavigateBack
             )
         },
+        bottomBar = {
+            FormBottomBar(
+                isEditMode = state.isEditMode,
+                isSaving = state.isSaving,
+                hasAttemptedSave = state.hasAttemptedSave,
+                isFormValid = state.isFormValid,
+                missingFields = if (state.hasAttemptedSave && !state.isFormValid) {
+                    buildList {
+                        if (RegistrationNormalizer.normalize(state.regNo).isEmpty()) add("Registration No.")
+                        if (!FieldValidators.isValidPolicyNumber(state.policyNumber)) add("Policy No.")
+                        if (state.expiryDateEpochMs == null) add("Expiry Date")
+                        if ((state.totalPremium.toDoubleOrNull() ?: 0.0) <= 0.0) add("Premium")
+                        if (!FieldValidators.isValidName(state.name)) add("Customer Name")
+                        if (!FieldValidators.isValidMobile(state.mobile)) add("Mobile No.")
+                    }
+                } else emptyList(),
+                onSave = { viewModel.savePolicy(addAnother = false) },
+                onSaveAndAddAnother = { viewModel.savePolicy(addAnother = true) }
+            )
+        },
         containerColor = Color.Transparent
     ) { paddingValues ->
         Column(
@@ -230,7 +254,7 @@ fun AddPolicyScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Quick Scan Banner: Auto-Fill with AI Scanner
+            // Quick Scan Banner: Auto-Fill with AI Scanner (Quiet chrome, unslop)
             if (!state.isEditMode && onNavigateToScan != null) {
                 LiquidGlassCard(
                     modifier = Modifier.fillMaxWidth(),
@@ -241,7 +265,7 @@ fun AddPolicyScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(14.dp),
+                            .padding(horizontal = 2.dp, vertical = 2.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
@@ -259,42 +283,25 @@ fun AddPolicyScreen(
                             )
                         }
                         Column(modifier = Modifier.weight(1f)) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                Text(
-                                    text = "Auto-Fill with AI Scanner",
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (isSystemInDarkTheme()) Color.White else Color(0xFF1D1D1F)
-                                )
-                                Box(
-                                    modifier = Modifier
-                                        .background(SapphireBlue.copy(alpha = 0.15f), RoundedCornerShape(6.dp))
-                                        .padding(horizontal = 6.dp, vertical = 2.dp)
-                                ) {
-                                    Text(
-                                        text = "NEW",
-                                        fontSize = 9.sp,
-                                        fontWeight = FontWeight.ExtraBold,
-                                        color = SapphireBlue
-                                    )
-                                }
-                            }
+                            Text(
+                                text = "Auto-Fill with AI Scanner",
+                                fontSize = 14.5.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (isSystemInDarkTheme()) IosDarkLabelPrimary else IosLabelPrimary
+                            )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = "Snap paper schedule, pick WhatsApp photo, or upload PDF",
-                                fontSize = 11.5.sp,
-                                color = if (isSystemInDarkTheme()) Color(0xFF98989D) else Color(0xFF86868B),
-                                lineHeight = 15.sp
+                                text = "Snap policy schedule, pick photo, or upload PDF",
+                                fontSize = 12.sp,
+                                color = if (isSystemInDarkTheme()) IosDarkLabelSecondary else IosLabelSecondary,
+                                lineHeight = 16.sp
                             )
                         }
                         Icon(
                             imageVector = AppleIcons.ChevronRight,
                             contentDescription = null,
-                            tint = if (isSystemInDarkTheme()) Color(0xFF98989D) else Color(0xFF86868B),
-                            modifier = Modifier.size(14.dp)
+                            tint = if (isSystemInDarkTheme()) IosDarkLabelTertiary else IosLabelTertiary,
+                            modifier = Modifier.size(16.dp)
                         )
                     }
                 }
@@ -363,35 +370,31 @@ fun AddPolicyScreen(
                     suggestions = suggestions
                 )
 
-                Row(
+                // VIN / Chassis Number (Full width for clear 17-character RC verification)
+                OutlinedTextField(
+                    value = state.vin,
+                    onValueChange = viewModel::onVinChanged,
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    // VIN / Chassis Number
-                    OutlinedTextField(
-                        value = state.vin,
-                        onValueChange = viewModel::onVinChanged,
-                        modifier = Modifier.weight(1f),
-                        label = { Text("Chassis No (VIN)") },
-                        placeholder = { Text("17 characters") },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, imeAction = ImeAction.Next),
-                        shape = RoundedCornerShape(10.dp),
-                        colors = formFieldColors()
-                    )
+                    label = { Text("Chassis No (VIN)") },
+                    placeholder = { Text("17 characters (e.g. MA3FBA41SE0123456)") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, imeAction = ImeAction.Next),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = formFieldColors()
+                )
 
-                    // Engine Number
-                    OutlinedTextField(
-                        value = state.engineNo,
-                        onValueChange = viewModel::onEngineNoChanged,
-                        modifier = Modifier.weight(1f),
-                        label = { Text("Engine Number") },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, imeAction = ImeAction.Next),
-                        shape = RoundedCornerShape(10.dp),
-                        colors = formFieldColors()
-                    )
-                }
+                // Engine Number (Full width for clear serial readability)
+                OutlinedTextField(
+                    value = state.engineNo,
+                    onValueChange = viewModel::onEngineNoChanged,
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Engine Number") },
+                    placeholder = { Text("e.g. K12MN1234567") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, imeAction = ImeAction.Next),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = formFieldColors()
+                )
 
                 if (state.vinWarning) {
                     WarningBanner(text = "Chassis number is typically 17 characters.")
@@ -479,7 +482,10 @@ fun AddPolicyScreen(
                         label = { Text("Policy Expiry Date *") },
                         placeholder = { Text("Tap to pick policy expiration date") },
                         trailingIcon = {
-                            IconButton(onClick = { showDatePicker = true }) {
+                            IconButton(onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                showDatePicker = true
+                            }) {
                                 Icon(
                                     imageVector = AppleIcons.Calendar,
                                     contentDescription = "Select Date",
@@ -495,7 +501,10 @@ fun AddPolicyScreen(
                     Box(
                         modifier = Modifier
                             .matchParentSize()
-                            .clickable { showDatePicker = true }
+                            .clickable {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                showDatePicker = true
+                            }
                     )
                 }
 
@@ -649,73 +658,107 @@ fun AddPolicyScreen(
                 )
             }
 
-            val isDark = isSystemInDarkTheme()
-            if (state.hasAttemptedSave && !state.isFormValid) {
-                val missing = buildList {
-                    if (com.policydesk.app.domain.model.RegistrationNormalizer.normalize(state.regNo).isEmpty()) add("Registration No.")
-                    if (!FieldValidators.isValidPolicyNumber(state.policyNumber)) add("Policy Number")
-                    if (state.expiryDateEpochMs == null) add("Expiry Date")
-                    if ((state.totalPremium.toDoubleOrNull() ?: 0.0) <= 0.0) add("Total Premium")
-                    if (!FieldValidators.isValidName(state.name)) add("Customer Name")
-                    if (!FieldValidators.isValidMobile(state.mobile)) add("Valid Mobile No.")
-                }
-                Box(
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+    }
+}
+
+@Composable
+private fun FormBottomBar(
+    isEditMode: Boolean,
+    isSaving: Boolean,
+    hasAttemptedSave: Boolean,
+    isFormValid: Boolean,
+    missingFields: List<String>,
+    onSave: () -> Unit,
+    onSaveAndAddAnother: () -> Unit
+) {
+    val isDark = isSystemInDarkTheme()
+    val bg = if (isDark) Color(0xF21C1C1E) else Color(0xF7FFFFFF)
+    val topBorderColor = if (isDark) Color(0x26FFFFFF) else Color(0x1F000000)
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = bg,
+        shadowElevation = 8.dp
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(
+                    width = 0.5.dp,
+                    color = topBorderColor,
+                    shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+                )
+                .navigationBarsPadding()
+                .imePadding()
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+        ) {
+            // Missing fields warning banner right above buttons
+            if (hasAttemptedSave && !isFormValid && missingFields.isNotEmpty()) {
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .padding(bottom = 10.dp)
                         .background(
                             color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f),
-                            shape = RoundedCornerShape(10.dp)
+                            shape = RoundedCornerShape(8.dp)
                         )
                         .border(
                             1.dp,
-                            MaterialTheme.colorScheme.error.copy(alpha = 0.5f),
-                            RoundedCornerShape(10.dp)
+                            MaterialTheme.colorScheme.error.copy(alpha = 0.4f),
+                            RoundedCornerShape(8.dp)
                         )
-                        .padding(horizontal = 14.dp, vertical = 10.dp)
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Warning,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Text(
-                            text = "Please complete: ${missing.joinToString(", ")}",
-                            fontSize = 12.sp,
-                            color = if (isDark) Color(0xFFFFB4AB) else MaterialTheme.colorScheme.error,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
+                    Icon(
+                        imageVector = Icons.Default.Warning,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Text(
+                        text = "Required: ${missingFields.joinToString(", ")}",
+                        fontSize = 12.sp,
+                        color = if (isDark) Color(0xFFFFB4AB) else MaterialTheme.colorScheme.error,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Action Buttons
-            AppleButton(
-                text = if (state.isSaving) "Saving..." else if (state.isEditMode) "Save Changes" else "Save Policy",
-                onClick = { viewModel.savePolicy(addAnother = false) },
-                enabled = !state.isSaving,
-                isLoading = state.isSaving,
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            if (!state.isEditMode) {
-                Spacer(modifier = Modifier.height(10.dp))
-
-                AppleSecondaryButton(
-                    text = "Save and Add Another",
-                    onClick = { viewModel.savePolicy(addAnother = true) },
-                    enabled = !state.isSaving,
+            if (isEditMode) {
+                AppleButton(
+                    text = if (isSaving) "Saving..." else "Save Changes",
+                    onClick = onSave,
+                    enabled = !isSaving,
+                    isLoading = isSaving,
                     modifier = Modifier.fillMaxWidth()
                 )
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    AppleSecondaryButton(
+                        text = "Save & Add",
+                        onClick = onSaveAndAddAnother,
+                        enabled = !isSaving,
+                        modifier = Modifier.weight(1f)
+                    )
+                    AppleButton(
+                        text = if (isSaving) "Saving..." else "Save Policy",
+                        onClick = onSave,
+                        enabled = !isSaving,
+                        isLoading = isSaving,
+                        modifier = Modifier.weight(1.2f)
+                    )
+                }
             }
-
-            Spacer(modifier = Modifier.height(48.dp))
         }
     }
 }
@@ -734,12 +777,12 @@ fun FormSectionCard(
     ) {
         Text(
             text = title,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.SemiBold,
             color = titleColor,
             letterSpacing = (-0.2).sp
         )
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(12.dp))
         Column(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
