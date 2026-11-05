@@ -68,18 +68,3 @@ desktop.ini
 *.bak
 *~
 
-# Flutter artifacts & experimental non-Android workspace folders
-/.dart_tool/
-/.flutter-plugins-dependencies
-/.metadata
-/analysis_options.yaml
-/android/
-/ios/
-/lib/
-/linux/
-/macos/
-/pubspec.lock
-/pubspec.yaml
-/test/
-/windows/
-/install_flutter.ps1
