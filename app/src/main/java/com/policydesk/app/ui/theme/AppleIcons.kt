@@ -102,40 +102,38 @@ object AppleIcons {
     /** SF Symbol: person.2.fill (Cupertino client contacts) */
     val Person2: ImageVector by lazy {
         buildIcon("ApplePerson2") {
-            // Front person head
-            moveTo(9f, 4f)
-            curveTo(6.8f, 4f, 5f, 5.8f, 5f, 8f)
-            curveTo(5f, 10.2f, 6.8f, 12f, 9f, 12f)
-            curveTo(11.2f, 12f, 13f, 10.2f, 13f, 8f)
-            curveTo(13f, 5.8f, 11.2f, 4f, 9f, 4f)
+            // Front person head (center 8.5, 7.5, radius 3.2)
+            moveTo(8.5f, 4.3f)
+            curveTo(6.73f, 4.3f, 5.3f, 5.73f, 5.3f, 7.5f)
+            curveTo(5.3f, 9.27f, 6.73f, 10.7f, 8.5f, 10.7f)
+            curveTo(10.27f, 10.7f, 11.7f, 9.27f, 11.7f, 7.5f)
+            curveTo(11.7f, 5.73f, 10.27f, 4.3f, 8.5f, 4.3f)
             close()
 
             // Front person body
-            moveTo(9f, 13.5f)
-            curveTo(5.5f, 13.5f, 2f, 15.5f, 2f, 19f)
-            curveTo(2f, 20f, 2.8f, 20.5f, 3.8f, 20.5f)
-            lineTo(14.2f, 20.5f)
-            curveTo(15.2f, 20.5f, 16f, 20f, 16f, 19f)
-            curveTo(16f, 15.5f, 12.5f, 13.5f, 9f, 13.5f)
+            moveTo(8.5f, 12f)
+            curveTo(5f, 12f, 1.5f, 14.5f, 1.5f, 18f)
+            curveTo(1.5f, 19.8f, 2.2f, 20.5f, 3.5f, 20.5f)
+            lineTo(13.5f, 20.5f)
+            curveTo(14.8f, 20.5f, 15.5f, 19.8f, 15.5f, 18f)
+            curveTo(15.5f, 14.5f, 12f, 12f, 8.5f, 12f)
             close()
 
-            // Back person head
-            moveTo(16.5f, 5.5f)
-            curveTo(14.8f, 5.5f, 13.8f, 6.8f, 13.8f, 8.2f)
-            curveTo(13.8f, 8.8f, 14f, 9.4f, 14.3f, 9.9f)
-            curveTo(14.9f, 9.6f, 15.6f, 9.5f, 16.5f, 9.5f)
-            curveTo(17.8f, 9.5f, 18.9f, 10.2f, 19.5f, 11.2f)
-            curveTo(19.8f, 10.4f, 20f, 9.4f, 20f, 8.2f)
-            curveTo(20f, 6.5f, 18.5f, 5.5f, 16.5f, 5.5f)
+            // Back person head (center 16.8, 8.2, radius 2.6)
+            moveTo(16.8f, 5.6f)
+            curveTo(15.36f, 5.6f, 14.2f, 6.76f, 14.2f, 8.2f)
+            curveTo(14.2f, 9.64f, 15.36f, 10.8f, 16.8f, 10.8f)
+            curveTo(18.24f, 10.8f, 19.4f, 9.64f, 19.4f, 8.2f)
+            curveTo(19.4f, 6.76f, 18.24f, 5.6f, 16.8f, 5.6f)
             close()
 
-            // Back person shoulder
-            moveTo(17f, 13.5f)
-            curveTo(16.5f, 13.5f, 16f, 13.6f, 15.5f, 13.8f)
-            curveTo(16.8f, 15.2f, 17.5f, 17f, 17.5f, 19.2f)
-            lineTo(21.2f, 19.2f)
-            curveTo(21.8f, 19.2f, 22f, 18.8f, 22f, 18.2f)
-            curveTo(22f, 15.2f, 19.5f, 13.5f, 17f, 13.5f)
+            // Back person body / shoulder
+            moveTo(16.8f, 12.5f)
+            curveTo(19.5f, 12.5f, 22.5f, 14.5f, 22.5f, 17.5f)
+            curveTo(22.5f, 19.8f, 21.8f, 20.5f, 20.5f, 20.5f)
+            lineTo(17.5f, 20.5f)
+            curveTo(16.8f, 19.5f, 16.5f, 17.5f, 16.5f, 15.5f)
+            curveTo(16.5f, 13.5f, 16.5f, 12.5f, 16.8f, 12.5f)
             close()
         }
     }
