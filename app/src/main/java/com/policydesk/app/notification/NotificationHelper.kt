@@ -56,7 +56,8 @@ object NotificationHelper {
             daysRemaining < 0 -> "Overdue Alert: $regNo"
             daysRemaining == 0L -> "Expires Today: $regNo"
             daysRemaining <= 7 -> "Urgent: $regNo expires in $daysRemaining days!"
-            else -> "Reminder: $regNo expires in $daysRemaining days"
+            daysRemaining <= 30 -> "Reminder: $regNo expires in $daysRemaining days"
+            else -> "Reminder: $regNo expires in ${com.policydesk.app.ui.components.UiFormatters.formatCompoundDurationDetailed(daysRemaining)}"
         }
 
         val content = "$customerName / $insurer (Tap to open policy)"

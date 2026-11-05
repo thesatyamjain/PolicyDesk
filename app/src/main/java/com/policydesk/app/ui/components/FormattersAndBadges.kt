@@ -54,6 +54,51 @@ object UiFormatters {
         val formattedRemaining = remaining.reversed().chunked(2).joinToString(",").reversed()
         return "${sign}₹$formattedRemaining,$last3"
     }
+
+    /**
+     * Formats positive days (>30) into compound "X months, Y days" or "X years, Y months" for banners.
+     */
+    fun formatCompoundDurationDetailed(daysRemaining: Long): String {
+        if (daysRemaining <= 0) return "${daysRemaining} days"
+        if (daysRemaining <= 30) return if (daysRemaining == 1L) "1 day" else "$daysRemaining days"
+
+        val years = daysRemaining / 365
+        val remDaysAfterYears = daysRemaining % 365
+        val months = remDaysAfterYears / 30
+        val days = remDaysAfterYears % 30
+
+        val parts = mutableListOf<String>()
+        if (years > 0) {
+            parts.add(if (years == 1L) "1 year" else "$years years")
+        }
+        if (months > 0) {
+            parts.add(if (months == 1L) "1 month" else "$months months")
+        }
+        if (days > 0 && (years == 0L || parts.size < 2)) {
+            parts.add(if (days == 1L) "1 day" else "$days days")
+        }
+        return if (parts.isEmpty()) "1 month" else parts.joinToString(", ")
+    }
+
+    /**
+     * Formats positive days (>30) into compact "Xm Yd" or "Xy Ym" for list badges.
+     */
+    fun formatCompoundDurationCompact(daysRemaining: Long): String {
+        if (daysRemaining <= 0) return "${daysRemaining}d"
+        if (daysRemaining <= 30) return "${daysRemaining}d"
+
+        val years = daysRemaining / 365
+        val remDaysAfterYears = daysRemaining % 365
+        val months = remDaysAfterYears / 30
+        val days = remDaysAfterYears % 30
+
+        val parts = mutableListOf<String>()
+        if (years > 0) parts.add("${years}y")
+        if (months > 0) parts.add("${months}m")
+        if (days > 0 && (years == 0L || parts.size < 2)) parts.add("${days}d")
+
+        return if (parts.isEmpty()) "1m" else parts.joinToString(" ")
+    }
 }
 
 /**
@@ -96,7 +141,7 @@ fun DaysRemainingBadge(
         )
         else -> Pair(
             green,
-            "${daysRemaining} days left"
+            "${UiFormatters.formatCompoundDurationCompact(daysRemaining)} left"
         )
     }
 

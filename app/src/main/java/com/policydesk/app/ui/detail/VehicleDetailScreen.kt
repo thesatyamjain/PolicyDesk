@@ -516,7 +516,7 @@ fun CountdownLiveBanner(
         )
         else -> Pair(
             green,
-            "Policy Active: $daysRemaining days remaining (Expires $expiryStr)"
+            "Policy Active: ${UiFormatters.formatCompoundDurationDetailed(daysRemaining)} remaining (Expires $expiryStr)"
         )
     }
 
