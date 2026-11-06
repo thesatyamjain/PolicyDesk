@@ -35,6 +35,45 @@ data class OtaReleaseInfo(
 ) {
     val displaySizeMb: String
         get() = String.format("%.1f MB", apkSizeBytes / (1024.0 * 1024.0))
+
+    val parsedChangelog: List<String>
+        get() = parseReleaseNotes(releaseNotes)
+
+    companion object {
+        fun parseReleaseNotes(raw: String): List<String> {
+            if (raw.isBlank()) return listOf("Performance optimizations and general stability improvements.")
+            val lines = raw.lines()
+            val items = mutableListOf<String>()
+            val hashRegex = Regex("""\s*[\(\[][0-9a-fA-F]{7,8}[\)\]]\s*$""")
+            val prefixRegex = Regex("""^(feat|fix|chore|perf|refactor|design|style|docs|test)(\([^)]+\))?:\s*""", RegexOption.IGNORE_CASE)
+
+            for (rawLine in lines) {
+                val line = rawLine.trim()
+                if (line.startsWith("###") && (line.contains("Binary", ignoreCase = true) || line.contains("Installation", ignoreCase = true) || line.contains("Checksum", ignoreCase = true))) {
+                    break
+                }
+                if (line.startsWith("* ") || line.startsWith("- ")) {
+                    var item = line.substring(2).trim()
+                    item = hashRegex.replace(item, "").trim()
+                    item = prefixRegex.replace(item, "").trim()
+                    if (item.isNotBlank()) {
+                        val formatted = item.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
+                        items.add(formatted)
+                    }
+                }
+            }
+
+            return if (items.isNotEmpty()) {
+                items
+            } else {
+                val fallbackLines = raw.lines()
+                    .map { it.trim() }
+                    .filter { it.isNotBlank() && !it.startsWith("#") && !it.startsWith("|") && !it.startsWith("---") }
+                    .take(4)
+                if (fallbackLines.isNotEmpty()) fallbackLines else listOf("Performance optimizations and general stability improvements.")
+            }
+        }
+    }
 }
 
 sealed interface OtaState {

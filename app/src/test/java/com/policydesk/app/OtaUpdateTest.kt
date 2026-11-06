@@ -46,4 +46,28 @@ class OtaUpdateTest {
 
         assertEquals("3.4 MB", info.displaySizeMb)
     }
+
+    @Test
+    fun testParseReleaseNotes() {
+        val raw = """
+            ## 🚀 PolicyDesk v0.1.12
+
+            ### What's Changed
+            * feat(ui): format active policy countdown into compound months and days (Option B) (cf3018f)
+            * fix(ui): reconstruct AppleIcons.Person2 vector geometry with clean circular heads, rounded shoulders and negative-space separation (6cb5892)
+            * chore: clean up obsolete flutter entries from .gitignore (10f3e36)
+            * Add sticky actions to policy form (cd0a053)
+
+            ---
+            ### 🔒 Binary Integrity & Checksums
+            | File | Size | SHA-256 Checksum |
+        """.trimIndent()
+
+        val parsed = OtaReleaseInfo.parseReleaseNotes(raw)
+        assertEquals(4, parsed.size)
+        assertEquals("Format active policy countdown into compound months and days (Option B)", parsed[0])
+        assertEquals("Reconstruct AppleIcons.Person2 vector geometry with clean circular heads, rounded shoulders and negative-space separation", parsed[1])
+        assertEquals("Clean up obsolete flutter entries from .gitignore", parsed[2])
+        assertEquals("Add sticky actions to policy form", parsed[3])
+    }
 }
