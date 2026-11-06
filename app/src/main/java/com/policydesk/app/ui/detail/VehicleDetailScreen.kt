@@ -433,6 +433,14 @@ fun VehicleDetailScreen(
                                     showEditPremiumDialog = true
                                 }
                             )
+                            if (policy.commissionAmount != null || policy.commissionPercentage != null) {
+                                val commAmt = policy.commissionAmount?.let { UiFormatters.formatCurrency(it) } ?: "—"
+                                val commPct = policy.commissionPercentage?.let { pct ->
+                                    val formatted = if (pct % 1.0 == 0.0) pct.toLong().toString() else String.format(java.util.Locale.US, "%.1f", pct)
+                                    " ($formatted%)"
+                                } ?: ""
+                                DetailRow(label = "Advisor Commission", value = "$commAmt$commPct")
+                            }
                             val statusText = when {
                                 status == PolicyStatus.CLOSED -> "Closed"
                                 status == PolicyStatus.RENEWED -> "Renewed"

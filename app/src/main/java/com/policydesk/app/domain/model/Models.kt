@@ -36,6 +36,8 @@ data class Policy(
     val expiryDate: Long, // Epoch ms of expiry date
     val startDate: Long? = null,
     val totalPremium: Double,
+    val commissionPercentage: Double? = null,
+    val commissionAmount: Double? = null,
     val status: PolicyStatus = PolicyStatus.ACTIVE,
     val source: PolicySource = PolicySource.FORM,
     val attachmentId: String? = null,

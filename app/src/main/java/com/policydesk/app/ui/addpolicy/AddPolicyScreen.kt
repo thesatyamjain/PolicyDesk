@@ -59,6 +59,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.style.TextOverflow
 import com.policydesk.app.ui.theme.AppleDarkSystemBlue
+import com.policydesk.app.ui.theme.AppleDarkSystemGreen
 import com.policydesk.app.ui.theme.AppleIcons
 import com.policydesk.app.ui.theme.AppleSystemBlue
 import com.policydesk.app.ui.theme.IosDarkLabelPrimary
@@ -525,6 +526,38 @@ fun AddPolicyScreen(
                     shape = RoundedCornerShape(10.dp),
                     colors = formFieldColors()
                 )
+
+                // Advisor Commission (Commission % & Auto-calculated Amount)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    OutlinedTextField(
+                        value = state.commissionPercentage,
+                        onValueChange = viewModel::onCommissionPercentageChanged,
+                        modifier = Modifier.weight(1f),
+                        label = { Text("Commission %") },
+                        placeholder = { Text("e.g. 15") },
+                        suffix = { Text("%", fontWeight = FontWeight.SemiBold, color = if (isSystemInDarkTheme()) IosDarkLabelSecondary else IosLabelSecondary) },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = formFieldColors()
+                    )
+
+                    OutlinedTextField(
+                        value = state.commissionAmount,
+                        onValueChange = viewModel::onCommissionAmountChanged,
+                        modifier = Modifier.weight(1.2f),
+                        label = { Text("Advisor Comm.") },
+                        placeholder = { Text("Auto-calc") },
+                        prefix = { Text("₹ ", fontWeight = FontWeight.Bold, color = if (isSystemInDarkTheme()) AppleDarkSystemGreen else StatusActiveGreen) },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = formFieldColors()
+                    )
+                }
 
                 if (state.pastExpiryWarning) {
                     WarningBanner(

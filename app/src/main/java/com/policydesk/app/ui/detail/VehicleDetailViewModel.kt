@@ -61,7 +61,13 @@ class VehicleDetailViewModel @Inject constructor(
         viewModelScope.launch {
             val vehicleWithPolicies = vehicleData.value ?: return@launch
             val policy = vehicleWithPolicies.currentPolicy ?: return@launch
-            val updated = policy.copy(totalPremium = newPremium)
+            val newCommissionAmount = policy.commissionPercentage?.let { pct ->
+                (newPremium * pct) / 100.0
+            } ?: policy.commissionAmount
+            val updated = policy.copy(
+                totalPremium = newPremium,
+                commissionAmount = newCommissionAmount
+            )
             repository.saveVehicleAndPolicy(vehicleWithPolicies.vehicle, updated)
             _uiEvent.emit(DetailUiEvent.ShowToast("Premium updated successfully"))
         }

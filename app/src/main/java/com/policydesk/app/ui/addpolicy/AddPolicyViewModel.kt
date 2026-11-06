@@ -45,6 +45,8 @@ data class AddPolicyFormState(
     val policyNumber: String = "",
     val expiryDateEpochMs: Long? = null,
     val totalPremium: String = "",
+    val commissionPercentage: String = "",
+    val commissionAmount: String = "",
 
     // Vehicle Specifications
     val regNo: String = "",
@@ -305,11 +307,10 @@ class AddPolicyViewModel @Inject constructor(
         }
     }
 
-    fun onTotalPremiumChanged(premium: String) {
-        // Allow only valid decimal numbers (at most one decimal point)
-        val filtered = buildString {
+    private fun filterDecimal(input: String): String {
+        return buildString {
             var hasDot = false
-            for (ch in premium) {
+            for (ch in input) {
                 if (ch.isDigit()) {
                     append(ch)
                 } else if (ch == '.' && !hasDot) {
@@ -318,7 +319,68 @@ class AddPolicyViewModel @Inject constructor(
                 }
             }
         }
-        _formState.update { it.copy(totalPremium = filtered) }
+    }
+
+    private fun formatDecimal(value: Double): String {
+        return if (value % 1.0 == 0.0) {
+            value.toLong().toString()
+        } else {
+            String.format(java.util.Locale.US, "%.2f", value).trimEnd('0').trimEnd('.')
+        }
+    }
+
+    fun onTotalPremiumChanged(premium: String) {
+        val filtered = filterDecimal(premium)
+        val prem = filtered.toDoubleOrNull()
+        val pctNum = _formState.value.commissionPercentage.toDoubleOrNull()
+        val calculatedAmount = if (prem != null && prem > 0.0 && pctNum != null && pctNum >= 0.0) {
+            val amt = (prem * pctNum) / 100.0
+            formatDecimal(amt)
+        } else {
+            _formState.value.commissionAmount
+        }
+        _formState.update {
+            it.copy(
+                totalPremium = filtered,
+                commissionAmount = calculatedAmount
+            )
+        }
+    }
+
+    fun onCommissionPercentageChanged(pct: String) {
+        val filtered = filterDecimal(pct)
+        val prem = _formState.value.totalPremium.toDoubleOrNull()
+        val pctNum = filtered.toDoubleOrNull()
+        val calculatedAmount = if (prem != null && prem > 0.0 && pctNum != null && pctNum >= 0.0) {
+            val amt = (prem * pctNum) / 100.0
+            formatDecimal(amt)
+        } else {
+            if (filtered.isBlank()) "" else _formState.value.commissionAmount
+        }
+        _formState.update {
+            it.copy(
+                commissionPercentage = filtered,
+                commissionAmount = calculatedAmount
+            )
+        }
+    }
+
+    fun onCommissionAmountChanged(amt: String) {
+        val filtered = filterDecimal(amt)
+        val prem = _formState.value.totalPremium.toDoubleOrNull()
+        val amtNum = filtered.toDoubleOrNull()
+        val calculatedPct = if (prem != null && prem > 0.0 && amtNum != null && amtNum >= 0.0) {
+            val pct = (amtNum / prem) * 100.0
+            formatDecimal(pct)
+        } else {
+            if (filtered.isBlank()) "" else _formState.value.commissionPercentage
+        }
+        _formState.update {
+            it.copy(
+                commissionAmount = filtered,
+                commissionPercentage = calculatedPct
+            )
+        }
     }
 
     fun onRegNoChanged(raw: String) {
@@ -373,7 +435,9 @@ class AddPolicyViewModel @Inject constructor(
                     expiryDateEpochMs = p?.expiryDate,
                     totalPremium = p?.totalPremium?.let { prem ->
                         if (prem % 1.0 == 0.0) prem.toLong().toString() else prem.toString()
-                    } ?: ""
+                    } ?: "",
+                    commissionPercentage = p?.commissionPercentage?.let { formatDecimal(it) } ?: "",
+                    commissionAmount = p?.commissionAmount?.let { formatDecimal(it) } ?: ""
                 )
             }
         }
@@ -494,6 +558,8 @@ class AddPolicyViewModel @Inject constructor(
                 expiryDate = state.expiryDateEpochMs!!,
                 startDate = state.existingStartDate,
                 totalPremium = state.totalPremium.toDoubleOrNull() ?: 0.0,
+                commissionPercentage = state.commissionPercentage.toDoubleOrNull(),
+                commissionAmount = state.commissionAmount.toDoubleOrNull(),
                 source = PolicySource.FORM,
                 attachmentId = state.existingAttachmentId,
                 saleType = SaleType.NEW_BUSINESS,

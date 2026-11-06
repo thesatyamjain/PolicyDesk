@@ -730,6 +730,8 @@ object GoogleDriveManager {
                 pObj.put("expiryDate", p.expiryDate)
                 pObj.put("startDate", p.startDate ?: 0L)
                 pObj.put("totalPremium", p.totalPremium)
+                if (p.commissionPercentage != null) pObj.put("commissionPercentage", p.commissionPercentage)
+                if (p.commissionAmount != null) pObj.put("commissionAmount", p.commissionAmount)
                 pObj.put("status", p.status.name)
                 pObj.put("source", p.source.name)
                 pObj.put("attachmentId", p.attachmentId ?: "")
@@ -824,6 +826,8 @@ object GoogleDriveManager {
                     expiryDate = pObj.optLong("expiryDate", System.currentTimeMillis()),
                     startDate = pObj.optLong("startDate").takeIf { it > 0 },
                     totalPremium = pObj.optDouble("totalPremium", 0.0),
+                    commissionPercentage = if (pObj.has("commissionPercentage") && !pObj.isNull("commissionPercentage")) pObj.optDouble("commissionPercentage") else null,
+                    commissionAmount = if (pObj.has("commissionAmount") && !pObj.isNull("commissionAmount")) pObj.optDouble("commissionAmount") else null,
                     status = status,
                     source = source,
                     attachmentId = pObj.optString("attachmentId").ifBlank { null },
