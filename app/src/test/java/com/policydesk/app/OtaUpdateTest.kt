@@ -16,6 +16,8 @@ class OtaUpdateTest {
         assertTrue(OtaVersionComparator.isNewerVersion("0.2.0", "0.1.9"))
         assertTrue(OtaVersionComparator.isNewerVersion("1.0.0", "0.9.9"))
         assertTrue(OtaVersionComparator.isNewerVersion("0.1.10", "0.1.9"))
+        assertTrue(OtaVersionComparator.isNewerVersion("0.1.12", "0.1.1"))
+        assertTrue(OtaVersionComparator.isNewerVersion("0.1.13", "0.1.12"))
         assertTrue(OtaVersionComparator.isNewerVersion("v0.1.1", "v0.1.0"))
         assertTrue(OtaVersionComparator.isNewerVersion("v0.1.1", "0.1.0"))
 

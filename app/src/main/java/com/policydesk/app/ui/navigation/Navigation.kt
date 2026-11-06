@@ -19,6 +19,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -76,7 +77,8 @@ sealed class Screen(val route: String) {
 @Composable
 fun PolicyDeskNavHost(
     initialPdfUri: android.net.Uri? = null,
-    initialRegNo: String? = null
+    initialRegNo: String? = null,
+    otaManager: com.policydesk.app.data.ota.OtaManager? = null
 ) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -91,6 +93,10 @@ fun PolicyDeskNavHost(
     val pagerState = rememberPagerState(initialPage = 0, pageCount = { 4 })
     val coroutineScope = rememberCoroutineScope()
     val haptic = LocalHapticFeedback.current
+
+    val emptyOtaState = remember { kotlinx.coroutines.flow.MutableStateFlow(com.policydesk.app.data.ota.OtaState.Idle) }
+    val otaState by (otaManager?.otaState ?: emptyOtaState).collectAsState()
+    val isUpdateAvailable = otaState is com.policydesk.app.data.ota.OtaState.UpdateAvailable || otaState is com.policydesk.app.data.ota.OtaState.ReadyToInstall
 
     val isTopLevelRoute = currentRoute == null || currentRoute == Screen.Dashboard.route
     val currentTab = if (isTopLevelRoute) {
@@ -205,7 +211,8 @@ fun PolicyDeskNavHost(
                             onNavigateToVehicleDetail = { regNo ->
                                 navController.navigate(Screen.VehicleDetail.createRoute(regNo))
                             },
-                            onSelectionModeChange = { isSelectionActive = it }
+                            onSelectionModeChange = { isSelectionActive = it },
+                            isUpdateAvailable = isUpdateAvailable
                         )
                         1 -> CustomersScreen(
                             onNavigateBack = null,
@@ -354,6 +361,10 @@ fun PolicyDeskNavHost(
                     pagerPosition = pagerPosition
                 )
             }
+        }
+
+        if (otaManager != null) {
+            com.policydesk.app.ui.components.OtaUpdateDialog(otaManager = otaManager)
         }
     }
 }

@@ -134,6 +134,7 @@ fun DashboardScreen(
     onNavigateToSettings: () -> Unit,
     onNavigateToVehicleDetail: (String) -> Unit,
     onSelectionModeChange: (Boolean) -> Unit = {},
+    isUpdateAvailable: Boolean = false,
     viewModel: DashboardViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -580,6 +581,17 @@ fun DashboardScreen(
                                     tint = if (isDark) IosDarkLabelPrimary else IosLabelPrimary,
                                     modifier = Modifier.size(18.dp)
                                 )
+                                if (isUpdateAvailable) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(8.dp)
+                                            .align(Alignment.TopEnd)
+                                            .background(
+                                                color = if (isDark) AppleDarkSystemBlue else AppleSystemBlue,
+                                                shape = CircleShape
+                                            )
+                                    )
+                                }
                             }
                         }
                     )

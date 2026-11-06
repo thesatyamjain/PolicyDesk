@@ -144,6 +144,16 @@ class SettingsViewModel @Inject constructor(
             if (!connectedPhotoUrl.isNullOrBlank() && !File(context.filesDir, "google_avatar.png").exists()) {
                 fetchAndCacheAvatar(connectedPhotoUrl)
             }
+            viewModelScope.launch {
+                otaManager.otaState.collect { ota ->
+                    _uiState.update { it.copy(otaState = ota) }
+                }
+            }
+            viewModelScope.launch {
+                otaManager.showOtaDialog.collect { show ->
+                    _uiState.update { it.copy(showOtaDialog = show) }
+                }
+            }
             checkForUpdates(manual = false)
         }
     }
@@ -738,108 +748,27 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun checkForUpdates(manual: Boolean = true) {
-        viewModelScope.launch {
-            _uiState.update { it.copy(otaState = OtaState.Checking) }
-            val currentVersion = uiState.value.appVersionName
-            val result = otaManager.checkForUpdates(currentVersion)
-
-            result.fold(
-                onSuccess = { release ->
-                    if (release != null) {
-                        _uiState.update {
-                            it.copy(
-                                otaState = OtaState.UpdateAvailable(release),
-                                showOtaDialog = manual
-                            )
-                        }
-                    } else {
-                        _uiState.update {
-                            it.copy(
-                                otaState = OtaState.UpToDate,
-                                showOtaDialog = false
-                            )
-                        }
-                        if (manual) {
-                            Toast.makeText(context, "PolicyDesk is up to date (v$currentVersion)", Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                },
-                onFailure = { error ->
-                    _uiState.update {
-                        it.copy(otaState = OtaState.Error(error.message ?: "Failed to check updates"))
-                    }
-                    if (manual) {
-                        Toast.makeText(context, error.message ?: "Could not check updates", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            )
+        if (manual) {
+            otaManager.checkForUpdatesManual()
+        } else {
+            otaManager.checkForUpdatesOnLaunch()
         }
     }
 
     fun startOtaDownload() {
-        val currentOta = uiState.value.otaState
-        val release = when (currentOta) {
-            is OtaState.UpdateAvailable -> currentOta.release
-            is OtaState.Downloading -> currentOta.release
-            is OtaState.ReadyToInstall -> currentOta.release
-            else -> return
-        }
-
-        viewModelScope.launch {
-            _uiState.update {
-                it.copy(
-                    otaState = OtaState.Downloading(
-                        progressPercent = 0,
-                        downloadedBytes = 0,
-                        totalBytes = release.apkSizeBytes,
-                        release = release
-                    )
-                )
-            }
-
-            val downloadResult = otaManager.downloadUpdate(release) { percent, downloaded, total ->
-                _uiState.update {
-                    it.copy(
-                        otaState = OtaState.Downloading(
-                            progressPercent = percent,
-                            downloadedBytes = downloaded,
-                            totalBytes = total,
-                            release = release
-                        )
-                    )
-                }
-            }
-
-            downloadResult.fold(
-                onSuccess = { apkFile ->
-                    _uiState.update {
-                        it.copy(otaState = OtaState.ReadyToInstall(apkFile, release))
-                    }
-                    installOtaUpdate(apkFile)
-                },
-                onFailure = { error ->
-                    _uiState.update {
-                        it.copy(otaState = OtaState.Error(error.message ?: "Download failed"))
-                    }
-                    Toast.makeText(context, error.message ?: "Download failed", Toast.LENGTH_LONG).show()
-                }
-            )
-        }
+        otaManager.startDownload()
     }
 
     fun installOtaUpdate(file: File? = null) {
-        val apkFile = file ?: (uiState.value.otaState as? OtaState.ReadyToInstall)?.apkFile ?: return
-        val installResult = otaManager.installUpdate(apkFile)
-        installResult.onFailure { error ->
-            Toast.makeText(context, error.message ?: "Could not open installer", Toast.LENGTH_LONG).show()
-        }
+        val apkFile = file ?: (otaManager.otaState.value as? OtaState.ReadyToInstall)?.apkFile ?: return
+        otaManager.installUpdate(apkFile)
     }
 
     fun openOtaDialog() {
-        _uiState.update { it.copy(showOtaDialog = true) }
+        otaManager.openOtaDialog()
     }
 
     fun dismissOtaDialog() {
-        _uiState.update { it.copy(showOtaDialog = false) }
+        otaManager.dismissOtaDialog()
     }
 }

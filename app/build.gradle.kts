@@ -14,8 +14,8 @@ android {
         applicationId = "com.policydesk.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = (project.findProperty("versionCode") as? String)?.toIntOrNull() ?: 2
-        versionName = (project.findProperty("versionName") as? String) ?: "0.1.1"
+        versionCode = (project.findProperty("versionCode") as? String)?.toIntOrNull() ?: 12
+        versionName = (project.findProperty("versionName") as? String) ?: "0.1.12"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

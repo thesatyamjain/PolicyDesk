@@ -5,9 +5,16 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import android.widget.Toast
 import androidx.core.content.FileProvider
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.File
@@ -56,6 +63,132 @@ class OtaManager @Inject constructor(
             "https://api.github.com/repos/$GITHUB_OWNER/$GITHUB_REPO/releases/latest"
         private const val CONNECT_TIMEOUT_MS = 15000
         private const val READ_TIMEOUT_MS = 30000
+    }
+
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+
+    private val _otaState = MutableStateFlow<OtaState>(OtaState.Idle)
+    val otaState: StateFlow<OtaState> = _otaState.asStateFlow()
+
+    private val _showOtaDialog = MutableStateFlow(false)
+    val showOtaDialog: StateFlow<Boolean> = _showOtaDialog.asStateFlow()
+
+    private var hasAutoCheckedThisLaunch = false
+
+    fun getCurrentVersionName(): String {
+        return try {
+            val pkgInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+            pkgInfo.versionName ?: "0.1.12"
+        } catch (_: Exception) {
+            "0.1.12"
+        }
+    }
+
+    fun openOtaDialog() {
+        _showOtaDialog.value = true
+    }
+
+    fun dismissOtaDialog() {
+        _showOtaDialog.value = false
+    }
+
+    /**
+     * Called automatically when the user opens PolicyDesk.
+     * Fails silently on network errors so the user is never bothered offline.
+     * If an update is detected, automatically presents the update dialog.
+     */
+    fun checkForUpdatesOnLaunch() {
+        if (hasAutoCheckedThisLaunch) return
+        hasAutoCheckedThisLaunch = true
+
+        scope.launch {
+            _otaState.value = OtaState.Checking
+            val currentVersion = getCurrentVersionName()
+            val result = checkForUpdates(currentVersion)
+            result.fold(
+                onSuccess = { release ->
+                    if (release != null) {
+                        _otaState.value = OtaState.UpdateAvailable(release)
+                        _showOtaDialog.value = true
+                    } else {
+                        _otaState.value = OtaState.UpToDate
+                    }
+                },
+                onFailure = { error ->
+                    _otaState.value = OtaState.Error(error.message ?: "Failed to check updates")
+                }
+            )
+        }
+    }
+
+    /**
+     * Manual update check initiated by tapping "Check for Updates" in Settings.
+     * Displays a Toast feedback if up to date or if check fails.
+     */
+    fun checkForUpdatesManual() {
+        scope.launch {
+            _otaState.value = OtaState.Checking
+            val currentVersion = getCurrentVersionName()
+            val result = checkForUpdates(currentVersion)
+            result.fold(
+                onSuccess = { release ->
+                    if (release != null) {
+                        _otaState.value = OtaState.UpdateAvailable(release)
+                        _showOtaDialog.value = true
+                    } else {
+                        _otaState.value = OtaState.UpToDate
+                        Toast.makeText(context, "PolicyDesk is up to date (v$currentVersion)", Toast.LENGTH_SHORT).show()
+                    }
+                },
+                onFailure = { error ->
+                    _otaState.value = OtaState.Error(error.message ?: "Could not check updates")
+                    Toast.makeText(context, error.message ?: "Could not check updates", Toast.LENGTH_SHORT).show()
+                }
+            )
+        }
+    }
+
+    /**
+     * Starts background download and updates progress state.
+     * On completion, automatically launches the package installer.
+     */
+    fun startDownload() {
+        val current = _otaState.value
+        val release = when (current) {
+            is OtaState.UpdateAvailable -> current.release
+            is OtaState.Downloading -> current.release
+            is OtaState.ReadyToInstall -> current.release
+            else -> return
+        }
+
+        scope.launch {
+            _otaState.value = OtaState.Downloading(
+                progressPercent = 0,
+                downloadedBytes = 0,
+                totalBytes = release.apkSizeBytes,
+                release = release
+            )
+
+            val downloadResult = downloadUpdate(release) { percent, downloaded, total ->
+                _otaState.value = OtaState.Downloading(
+                    progressPercent = percent,
+                    downloadedBytes = downloaded,
+                    totalBytes = total,
+                    release = release
+                )
+            }
+
+            downloadResult.fold(
+                onSuccess = { apkFile ->
+                    _otaState.value = OtaState.ReadyToInstall(apkFile, release)
+                    installUpdate(apkFile)
+                },
+                onFailure = { error ->
+                    _otaState.value = OtaState.Error(error.message ?: "Download failed")
+                    Toast.makeText(context, error.message ?: "Download failed", Toast.LENGTH_LONG).show()
+                }
+            )
+        }
     }
 
     /**

@@ -47,6 +47,9 @@ import dagger.hilt.android.AndroidEntryPoint
 @AndroidEntryPoint
 class MainActivity : FragmentActivity() {
 
+    @javax.inject.Inject
+    lateinit var otaManager: com.policydesk.app.data.ota.OtaManager
+
     private var currentPdfUri by mutableStateOf<android.net.Uri?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -72,9 +75,14 @@ class MainActivity : FragmentActivity() {
                     var isUnlocked by remember { mutableStateOf(!lockEnabled) }
 
                     if (isUnlocked) {
+                        androidx.compose.runtime.LaunchedEffect(Unit) {
+                            otaManager.checkForUpdatesOnLaunch()
+                        }
+
                         PolicyDeskNavHost(
                             initialPdfUri = currentPdfUri,
-                            initialRegNo = openRegNo
+                            initialRegNo = openRegNo,
+                            otaManager = otaManager
                         )
                     } else {
                         androidx.compose.runtime.LaunchedEffect(Unit) {
