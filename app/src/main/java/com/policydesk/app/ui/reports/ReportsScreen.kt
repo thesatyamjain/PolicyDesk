@@ -62,6 +62,8 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import com.policydesk.app.ui.theme.IosDarkLabelPrimary
 import com.policydesk.app.ui.theme.IosDarkLabelSecondary
 import com.policydesk.app.ui.theme.IosDarkLabelTertiary
+import com.policydesk.app.ui.theme.AppleDarkSystemGreen
+import com.policydesk.app.ui.theme.AppleSystemGreen
 import com.policydesk.app.ui.theme.IosLabelPrimary
 import com.policydesk.app.ui.theme.IosLabelSecondary
 import com.policydesk.app.ui.theme.IosLabelTertiary
@@ -235,7 +237,7 @@ fun SalesTabContent(
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = UiFormatters.formatCurrency(sales.totalPremium),
-                            fontSize = 20.sp,
+                            fontSize = 19.sp,
                             fontWeight = FontWeight.Bold,
                             color = SapphireBlue
                         )
@@ -246,29 +248,34 @@ fun SalesTabContent(
                     modifier = Modifier.weight(1f)
                 ) {
                     Column(modifier = Modifier.padding(14.dp)) {
-                        Text("Policies Sold", fontSize = 11.sp, color = labelSecondary)
+                        Text("Commission Earned", fontSize = 11.sp, color = labelSecondary)
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = sales.totalCount.toString(),
-                            fontSize = 20.sp,
+                            text = UiFormatters.formatCurrency(sales.totalCommission),
+                            fontSize = 19.sp,
                             fontWeight = FontWeight.Bold,
-                            color = labelPrimary
+                            color = if (isDark) AppleDarkSystemGreen else AppleSystemGreen
                         )
                     }
                 }
             }
         }
 
-        // New Business vs Renewal Split
+        // Sales Performance & Split
         item {
             LiquidGlassCard(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Sale Type Split", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = labelPrimary)
+                    Text("Sales Performance", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = labelPrimary)
                     Spacer(modifier = Modifier.height(10.dp))
+                    DetailRow(label = "Total Policies Sold", value = "${sales.totalCount} policies")
                     DetailRow(label = "New Business", value = "${sales.newBusinessCount} policies")
                     DetailRow(label = "Renewals", value = "${sales.renewalCount} policies")
+                    if (sales.totalPremium > 0.0 && sales.totalCommission > 0.0) {
+                        val avgCommPct = (sales.totalCommission / sales.totalPremium) * 100.0
+                        DetailRow(label = "Average Commission Rate", value = "${String.format(java.util.Locale.US, "%.1f", avgCommPct)}%")
+                    }
                 }
             }
         }
@@ -659,6 +666,10 @@ fun AnalyticsTabContent(aggregate: ReportsAggregate) {
                     DetailRow(
                         label = "Premium at Risk (Overdue)",
                         value = UiFormatters.formatCurrency(analytics.premiumAtRisk)
+                    )
+                    DetailRow(
+                        label = "Period Commission Earned",
+                        value = UiFormatters.formatCurrency(analytics.commissionEarned)
                     )
                 }
             }

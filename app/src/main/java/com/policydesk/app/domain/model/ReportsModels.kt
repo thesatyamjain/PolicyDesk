@@ -38,11 +38,13 @@ data class MonthlyTrendItem(
     val monthLabel: String,
     val newBusinessPremium: Double = 0.0,
     val renewalPremium: Double = 0.0,
-    val totalPremium: Double = 0.0
+    val totalPremium: Double = 0.0,
+    val totalCommission: Double = 0.0
 )
 
 data class SalesSummary(
     val totalPremium: Double = 0.0,
+    val totalCommission: Double = 0.0,
     val totalCount: Int = 0,
     val newBusinessCount: Int = 0,
     val renewalCount: Int = 0,
@@ -72,6 +74,7 @@ data class RenewalPerformance(
 
 data class AnalyticsSummary(
     val premiumSold: Double = 0.0,
+    val commissionEarned: Double = 0.0,
     val policiesSold: Int = 0,
     val renewalRatePercent: Double = 0.0,
     val onTimeRatePercent: Double = 0.0,

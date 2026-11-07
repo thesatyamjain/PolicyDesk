@@ -160,6 +160,7 @@ class VehicleRepositoryImpl @Inject constructor(
         return getAllVehicles().map { all ->
             val matchingItems = mutableListOf<VehicleWithPolicies>()
             var totalPremium = 0.0
+            var totalCommission = 0.0
 
             val zone = ZoneId.systemDefault()
 
@@ -169,6 +170,8 @@ class VehicleRepositoryImpl @Inject constructor(
                 if (localDate.year == year && localDate.monthValue == month) {
                     matchingItems.add(item)
                     totalPremium += policy.totalPremium
+                    val comm = policy.commissionAmount ?: (policy.commissionPercentage?.let { pct -> (policy.totalPremium * pct) / 100.0 } ?: 0.0)
+                    totalCommission += comm
                 }
             }
 
@@ -184,6 +187,7 @@ class VehicleRepositoryImpl @Inject constructor(
                 month = month,
                 totalPolicies = matchingItems.size,
                 totalPremium = totalPremium,
+                totalCommission = totalCommission,
                 dateGroupedPolicies = grouped
             )
         }
@@ -199,6 +203,7 @@ class VehicleRepositoryImpl @Inject constructor(
             // 1. Sales Calculation
             val soldItems = mutableListOf<VehicleWithPolicies>()
             var salesTotalPremium = 0.0
+            var salesTotalCommission = 0.0
             var newBusinessCount = 0
             var renewalCount = 0
             val insurerSplit = mutableMapOf<String, Double>()
@@ -273,6 +278,8 @@ class VehicleRepositoryImpl @Inject constructor(
                     if (p.countsAsSale && p.saleDate in startMillis..endMillis) {
                         soldItems.add(vehicleWithPolicies)
                         salesTotalPremium += p.totalPremium
+                        val comm = p.commissionAmount ?: (p.commissionPercentage?.let { pct -> (p.totalPremium * pct) / 100.0 } ?: 0.0)
+                        salesTotalCommission += comm
                         if (p.saleType == com.policydesk.app.domain.model.SaleType.NEW_BUSINESS) {
                             newBusinessCount++
                         } else {
@@ -312,6 +319,7 @@ class VehicleRepositoryImpl @Inject constructor(
 
                 var nbPrem = 0.0
                 var renPrem = 0.0
+                var totalComm = 0.0
                 for (v in allVehicles) {
                     for (p in v.policies) {
                         if (p.countsAsSale && p.saleDate in start..end) {
@@ -320,6 +328,8 @@ class VehicleRepositoryImpl @Inject constructor(
                             } else {
                                 renPrem += p.totalPremium
                             }
+                            val comm = p.commissionAmount ?: (p.commissionPercentage?.let { pct -> (p.totalPremium * pct) / 100.0 } ?: 0.0)
+                            totalComm += comm
                         }
                     }
                 }
@@ -328,13 +338,15 @@ class VehicleRepositoryImpl @Inject constructor(
                         monthLabel = label,
                         newBusinessPremium = nbPrem,
                         renewalPremium = renPrem,
-                        totalPremium = nbPrem + renPrem
+                        totalPremium = nbPrem + renPrem,
+                        totalCommission = totalComm
                     )
                 )
             }
 
             val salesSummary = com.policydesk.app.domain.model.SalesSummary(
                 totalPremium = salesTotalPremium,
+                totalCommission = salesTotalCommission,
                 totalCount = soldItems.size,
                 newBusinessCount = newBusinessCount,
                 renewalCount = renewalCount,
@@ -364,6 +376,7 @@ class VehicleRepositoryImpl @Inject constructor(
 
             val analytics = com.policydesk.app.domain.model.AnalyticsSummary(
                 premiumSold = salesTotalPremium,
+                commissionEarned = salesTotalCommission,
                 policiesSold = soldItems.size,
                 renewalRatePercent = renewalRatePercent,
                 onTimeRatePercent = onTimeRatePercent,

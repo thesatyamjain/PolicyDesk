@@ -115,4 +115,37 @@ class CommissionCalculationTest {
         val zeroPremPct = calculatePercentage(0.0, 500.0)
         assertEquals(0.0, zeroPremPct, 0.001)
     }
+
+    @Test
+    fun testAnalyticsCommissionAggregation() {
+        val trend = com.policydesk.app.domain.model.MonthlyTrendItem(
+            monthLabel = "Nov '26",
+            newBusinessPremium = 14500.0,
+            renewalPremium = 20000.0,
+            totalPremium = 34500.0,
+            totalCommission = 5175.0
+        )
+        assertEquals(5175.0, trend.totalCommission, 0.001)
+
+        val sales = com.policydesk.app.domain.model.SalesSummary(
+            totalPremium = 34500.0,
+            totalCommission = 5175.0,
+            totalCount = 2,
+            newBusinessCount = 1,
+            renewalCount = 1,
+            monthlyTrends = listOf(trend)
+        )
+        assertEquals(5175.0, sales.totalCommission, 0.001)
+        val avgCommRate = (sales.totalCommission / sales.totalPremium) * 100.0
+        assertEquals(15.0, avgCommRate, 0.001)
+
+        val monthView = com.policydesk.app.domain.model.MonthViewData(
+            year = 2026,
+            month = 11,
+            totalPolicies = 2,
+            totalPremium = 34500.0,
+            totalCommission = 5175.0
+        )
+        assertEquals(5175.0, monthView.totalCommission, 0.001)
+    }
 }

@@ -55,6 +55,7 @@ import com.policydesk.app.ui.components.LiquidGlassTopBar
 import com.policydesk.app.ui.components.UiFormatters
 import com.policydesk.app.ui.dashboard.VehicleExpiryCard
 import com.policydesk.app.ui.theme.AppleDarkSystemBlue
+import com.policydesk.app.ui.theme.AppleDarkSystemGreen
 import com.policydesk.app.ui.theme.AppleSystemBlue
 import com.policydesk.app.ui.theme.AppleSystemGreen
 import com.policydesk.app.ui.theme.AppleSystemRed
@@ -193,15 +194,28 @@ fun MonthViewScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Policies Expiring", fontSize = 12.sp, color = labelSecondary)
+                        Text("Policies", fontSize = 11.sp, color = labelSecondary)
                         Spacer(modifier = Modifier.height(2.dp))
-                        Text("${data.totalPolicies}", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = labelPrimary)
+                        Text("${data.totalPolicies}", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = labelPrimary)
                     }
-                    Box(modifier = Modifier.width(1.dp).height(30.dp).background(if (isDark) IosDarkSeparator else Color(0x26000000)))
+                    Box(modifier = Modifier.width(1.dp).height(28.dp).background(if (isDark) IosDarkSeparator else Color(0x26000000)))
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Total Premium", fontSize = 12.sp, color = labelSecondary)
+                        Text("Total Premium", fontSize = 11.sp, color = labelSecondary)
                         Spacer(modifier = Modifier.height(2.dp))
-                        Text(UiFormatters.formatCurrency(data.totalPremium), fontSize = 20.sp, fontWeight = FontWeight.Bold, color = AppleSystemBlue)
+                        Text(UiFormatters.formatCurrency(data.totalPremium), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = AppleSystemBlue)
+                    }
+                    if (data.totalCommission > 0.0) {
+                        Box(modifier = Modifier.width(1.dp).height(28.dp).background(if (isDark) IosDarkSeparator else Color(0x26000000)))
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("Est. Commission", fontSize = 11.sp, color = labelSecondary)
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                UiFormatters.formatCurrency(data.totalCommission),
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isDark) AppleDarkSystemGreen else AppleSystemGreen
+                            )
+                        }
                     }
                 }
             }

@@ -13,5 +13,6 @@ data class MonthViewData(
     val month: Int,
     val totalPolicies: Int = 0,
     val totalPremium: Double = 0.0,
+    val totalCommission: Double = 0.0,
     val dateGroupedPolicies: Map<Int, List<VehicleWithPolicies>> = emptyMap()
 )
