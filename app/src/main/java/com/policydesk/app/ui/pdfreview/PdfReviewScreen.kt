@@ -69,6 +69,7 @@ import com.policydesk.app.ui.addpolicy.SectorOptionPill
 import com.policydesk.app.ui.addpolicy.formFieldColors
 import com.policydesk.app.ui.components.HsrpNumberPlate
 import com.policydesk.app.ui.components.RegistrationPlateVisualTransformation
+import com.policydesk.app.ui.components.UiFormatters
 import androidx.compose.foundation.isSystemInDarkTheme
 import com.policydesk.app.ui.theme.AppleDarkSystemGreen
 import com.policydesk.app.ui.theme.AppleSystemGreen
@@ -522,6 +523,11 @@ fun PdfReviewScreen(
                     }
                 }
 
+                val existingClient = state.existingClientInfo
+                if (state.isRenewalDetected && existingClient != null) {
+                    ExistingClientRenewalBanner(existingInfo = existingClient)
+                }
+
                 // Section 1: Vehicle Details
                 FormSectionCard(title = "Vehicle Information") {
                     OutlinedTextField(
@@ -794,4 +800,121 @@ fun PdfReviewScreen(
         }
     }
 }
+}
+
+@Composable
+private fun ExistingClientRenewalBanner(
+    existingInfo: ExistingClientInfo,
+    modifier: Modifier = Modifier
+) {
+    val isDark = isSystemInDarkTheme()
+    val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
+    val labelSecondary = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
+    val accentColor = if (isDark) Color(0xFF0A84FF) else Color(0xFF007AFF)
+    val cardBg = if (isDark) Color(0xFF0F2644) else Color(0xFFF0F7FF)
+    val borderColor = if (isDark) Color(0xFF1D4ED8).copy(alpha = 0.5f) else Color(0xFF93C5FD)
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(cardBg)
+            .border(1.dp, borderColor, RoundedCornerShape(16.dp))
+            .padding(14.dp)
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .background(accentColor.copy(alpha = 0.15f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = AppleIcons.History,
+                            contentDescription = null,
+                            tint = accentColor,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                    Column {
+                        Text(
+                            text = "Existing Client & Renewal Detected",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = accentColor
+                        )
+                        Text(
+                            text = "Auto-linked to existing customer records in PolicyDesk",
+                            fontSize = 11.sp,
+                            color = labelSecondary
+                        )
+                    }
+                }
+
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(accentColor.copy(alpha = 0.15f))
+                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                ) {
+                    Text(
+                        text = "Renewal",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = accentColor
+                    )
+                }
+            }
+
+            // Client row
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.padding(start = 2.dp)
+            ) {
+                Icon(
+                    imageVector = AppleIcons.Person,
+                    contentDescription = null,
+                    tint = labelSecondary,
+                    modifier = Modifier.size(14.dp)
+                )
+                Text(
+                    text = "${existingInfo.clientName} (${existingInfo.mobile})",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = labelPrimary
+                )
+            }
+
+            // Previous policy row
+            if (!existingInfo.previousPolicyNumber.isNullOrBlank()) {
+                val expiryText = existingInfo.previousExpiryEpochMs?.let {
+                    " • Expired: ${UiFormatters.formatDate(it)}"
+                } ?: ""
+                Text(
+                    text = "Previous: ${existingInfo.previousInsurer ?: "Insurer"} [${existingInfo.previousPolicyNumber}]$expiryText",
+                    fontSize = 12.sp,
+                    color = labelSecondary,
+                    modifier = Modifier.padding(start = 2.dp)
+                )
+            }
+
+            Text(
+                text = "Contact info and prior commission % have been auto-filled from records.",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Normal,
+                color = labelSecondary.copy(alpha = 0.9f),
+                modifier = Modifier.padding(start = 2.dp)
+            )
+        }
+    }
 }

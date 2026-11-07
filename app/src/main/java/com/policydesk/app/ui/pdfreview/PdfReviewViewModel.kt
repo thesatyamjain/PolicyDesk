@@ -30,7 +30,18 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.UUID
 import javax.inject.Inject
+
+data class ExistingClientInfo(
+    val clientName: String,
+    val mobile: String,
+    val previousInsurer: String?,
+    val previousPolicyNumber: String?,
+    val previousExpiryEpochMs: Long?,
+    val previousPolicyId: String?,
+    val totalPoliciesCount: Int = 1
+)
 
 data class PdfReviewUiState(
     val queue: List<Uri> = emptyList(),
@@ -41,6 +52,10 @@ data class PdfReviewUiState(
     val passwordInput: String = "",
     val extractionError: String? = null,
     val extractedData: ExtractedPolicyData? = null,
+
+    // Existing client & Renewal detection
+    val existingClientInfo: ExistingClientInfo? = null,
+    val isRenewalDetected: Boolean = false,
 
     // Editable form fields
     val regNo: String = "",
@@ -161,25 +176,80 @@ class PdfReviewViewModel @Inject constructor(
                         finalInsurer = matched.second
                     }
 
+                    // Existing client & renewal check
+                    val normalizedReg = RegistrationNormalizer.normalize(data.regNo)
+                    val existing = if (normalizedReg.isNotBlank()) {
+                        repository.getVehicleWithPoliciesDirect(normalizedReg)
+                    } else null
+
+                    val prevPolicy = existing?.currentPolicy
+                    val existingInfo = if (existing != null) {
+                        ExistingClientInfo(
+                            clientName = existing.vehicle.customer.name,
+                            mobile = existing.vehicle.customer.mobile,
+                            previousInsurer = prevPolicy?.insurer,
+                            previousPolicyNumber = prevPolicy?.policyNumber,
+                            previousExpiryEpochMs = prevPolicy?.expiryDate,
+                            previousPolicyId = prevPolicy?.id,
+                            totalPoliciesCount = existing.policies.size
+                        )
+                    } else null
+
+                    // Smart auto-fill for customer fields (often masked in PDFs, e.g. 98XXXXXX12)
+                    val extractedMobileNorm = FieldValidators.normalizeMobile(data.mobile)
+                    val isExtractedMobileMaskedOrInvalid = data.mobile.contains("X", ignoreCase = true) ||
+                            data.mobile.contains("*") ||
+                            !FieldValidators.isValidMobile(extractedMobileNorm)
+
+                    val resolvedMobile = if (isExtractedMobileMaskedOrInvalid && existing != null && FieldValidators.isValidMobile(existing.vehicle.customer.mobile)) {
+                        existing.vehicle.customer.mobile
+                    } else {
+                        extractedMobileNorm
+                    }
+
+                    val resolvedName = data.customerName.ifBlank { existing?.vehicle?.customer?.name ?: "" }
+                    val resolvedTitle = data.title.ifBlank { existing?.vehicle?.customer?.title ?: "" }
+                    val resolvedEmail = data.email.ifBlank { existing?.vehicle?.customer?.email ?: "" }
+                    val resolvedAddress = data.address.ifBlank { existing?.vehicle?.customer?.address ?: "" }
+                    val resolvedMakeModel = data.makeModel.ifBlank { existing?.vehicle?.makeModel ?: "" }
+                    val resolvedVin = data.vin.ifBlank { existing?.vehicle?.vin ?: "" }
+                    val resolvedEngineNo = data.engineNo.ifBlank { existing?.vehicle?.engineNo ?: "" }
+
+                    // Advisor commission pre-fill if available from previous policy on this vehicle
+                    val prevCommPct = prevPolicy?.commissionPercentage
+                    val resolvedCommPct = if (prevCommPct != null && prevCommPct > 0.0) {
+                        formatDecimal(prevCommPct)
+                    } else ""
+
+                    val premNum = data.totalPremium.toDoubleOrNull()
+                    val resolvedCommAmt = if (premNum != null && premNum > 0.0 && prevCommPct != null && prevCommPct > 0.0) {
+                        val netPrem = premNum / 1.18
+                        formatDecimal((netPrem * prevCommPct) / 100.0)
+                    } else ""
+
                     _uiState.update {
                         it.copy(
                             isExtracting = false,
                             isPasswordProtected = false,
                             extractedData = data,
-                            regNo = RegistrationNormalizer.normalize(data.regNo),
-                            customerName = data.customerName,
-                            title = data.title,
-                            mobile = FieldValidators.normalizeMobile(data.mobile),
-                            email = data.email,
-                            address = data.address,
+                            existingClientInfo = existingInfo,
+                            isRenewalDetected = existingInfo != null,
+                            regNo = normalizedReg,
+                            customerName = resolvedName,
+                            title = resolvedTitle,
+                            mobile = resolvedMobile,
+                            email = resolvedEmail,
+                            address = resolvedAddress,
                             sector = sector ?: Sector.PRIVATE,
                             insurer = finalInsurer,
                             policyNumber = data.policyNumber,
                             expiryDate = data.expiryDate,
                             totalPremium = data.totalPremium,
-                            makeModel = data.makeModel,
-                            vin = data.vin,
-                            engineNo = data.engineNo
+                            commissionPercentage = resolvedCommPct,
+                            commissionAmount = resolvedCommAmt,
+                            makeModel = resolvedMakeModel,
+                            vin = resolvedVin,
+                            engineNo = resolvedEngineNo
                         )
                     }
                 }
@@ -246,7 +316,78 @@ class PdfReviewViewModel @Inject constructor(
         loadPdf(uri, password)
     }
 
+    private fun checkExistingVehicle(rawRegNo: String) {
+        val normalized = RegistrationNormalizer.normalize(rawRegNo)
+        if (normalized.length < 5) {
+            _uiState.update { it.copy(existingClientInfo = null, isRenewalDetected = false) }
+            return
+        }
+        viewModelScope.launch {
+            val existing = repository.getVehicleWithPoliciesDirect(normalized)
+            if (existing != null) {
+                val prevPolicy = existing.currentPolicy
+                val info = ExistingClientInfo(
+                    clientName = existing.vehicle.customer.name,
+                    mobile = existing.vehicle.customer.mobile,
+                    previousInsurer = prevPolicy?.insurer,
+                    previousPolicyNumber = prevPolicy?.policyNumber,
+                    previousExpiryEpochMs = prevPolicy?.expiryDate,
+                    previousPolicyId = prevPolicy?.id,
+                    totalPoliciesCount = existing.policies.size
+                )
+                _uiState.update { curr ->
+                    val isCurrMobileInvalid = curr.mobile.isBlank() ||
+                            curr.mobile.contains("X", ignoreCase = true) ||
+                            curr.mobile.contains("*") ||
+                            !FieldValidators.isValidMobile(curr.mobile)
+
+                    val useMobile = if (isCurrMobileInvalid && FieldValidators.isValidMobile(existing.vehicle.customer.mobile)) {
+                        existing.vehicle.customer.mobile
+                    } else curr.mobile
+
+                    val useName = curr.customerName.ifBlank { existing.vehicle.customer.name }
+                    val useTitle = curr.title.ifBlank { existing.vehicle.customer.title ?: "" }
+                    val useAddress = curr.address.ifBlank { existing.vehicle.customer.address }
+                    val useEmail = curr.email.ifBlank { existing.vehicle.customer.email ?: "" }
+                    val useMakeModel = curr.makeModel.ifBlank { existing.vehicle.makeModel ?: "" }
+                    val useVin = curr.vin.ifBlank { existing.vehicle.vin ?: "" }
+                    val useEngineNo = curr.engineNo.ifBlank { existing.vehicle.engineNo ?: "" }
+
+                    val useCommPct = if (curr.commissionPercentage.isBlank() && prevPolicy?.commissionPercentage != null && prevPolicy.commissionPercentage > 0.0) {
+                        formatDecimal(prevPolicy.commissionPercentage)
+                    } else curr.commissionPercentage
+
+                    val prem = curr.totalPremium.toDoubleOrNull()
+                    val pctNum = useCommPct.toDoubleOrNull()
+                    val useCommAmt = if (curr.commissionAmount.isBlank() && prem != null && prem > 0.0 && pctNum != null && pctNum >= 0.0) {
+                        formatDecimal(((prem / 1.18) * pctNum) / 100.0)
+                    } else curr.commissionAmount
+
+                    curr.copy(
+                        existingClientInfo = info,
+                        isRenewalDetected = true,
+                        customerName = useName,
+                        title = useTitle,
+                        mobile = useMobile,
+                        address = useAddress,
+                        email = useEmail,
+                        makeModel = useMakeModel,
+                        vin = useVin,
+                        engineNo = useEngineNo,
+                        commissionPercentage = useCommPct,
+                        commissionAmount = useCommAmt
+                    )
+                }
+            } else {
+                _uiState.update { it.copy(existingClientInfo = null, isRenewalDetected = false) }
+            }
+        }
+    }
+
     fun onFieldChanged(fieldKey: String, value: String) {
+        if (fieldKey == "regNo") {
+            checkExistingVehicle(value)
+        }
         _uiState.update { current ->
             when (fieldKey) {
                 "regNo" -> current.copy(regNo = RegistrationNormalizer.normalize(value))
@@ -331,6 +472,15 @@ class PdfReviewViewModel @Inject constructor(
 
         viewModelScope.launch {
             val now = System.currentTimeMillis()
+            val existingInfo = state.existingClientInfo
+            val isRenewal = state.isRenewalDetected && existingInfo != null
+
+            // Check if there's an existing policy on this vehicle to mark as renewed
+            val isSamePolicyNo = existingInfo?.previousPolicyNumber?.equals(state.policyNumber.trim(), ignoreCase = true) == true
+            if (isRenewal && existingInfo?.previousPolicyId != null && !isSamePolicyNo) {
+                repository.markPolicyRenewed(existingInfo.previousPolicyId, now)
+            }
+
             val customer = Customer(
                 title = state.title.ifBlank { null },
                 name = state.customerName.trim(),
@@ -348,7 +498,14 @@ class PdfReviewViewModel @Inject constructor(
                 updatedAt = now
             )
 
+            val policyId = if (isSamePolicyNo && existingInfo?.previousPolicyId != null) {
+                existingInfo.previousPolicyId
+            } else {
+                UUID.randomUUID().toString()
+            }
+
             val policy = Policy(
+                id = policyId,
                 vehicleRegNo = normalizedReg,
                 companySector = state.sector ?: Sector.PRIVATE,
                 insurer = state.insurer.trim(),
@@ -358,6 +515,7 @@ class PdfReviewViewModel @Inject constructor(
                 commissionPercentage = state.commissionPercentage.toDoubleOrNull(),
                 commissionAmount = state.commissionAmount.toDoubleOrNull(),
                 source = PolicySource.PDF,
+                saleType = if (isRenewal && !isSamePolicyNo) SaleType.RENEWAL else SaleType.NEW_BUSINESS,
                 saleDate = now,
                 countsAsSale = true
             )

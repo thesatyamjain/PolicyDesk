@@ -900,7 +900,7 @@ fun SettingsScreen(
                     },
                     onClick = {
                         val intent = Intent(Intent.ACTION_SENDTO).apply {
-                            data = Uri.parse("mailto:support@policydesk.app")
+                            data = Uri.parse("mailto:thesoftwarelabs@zohomail.in")
                             putExtra(Intent.EXTRA_SUBJECT, "PolicyDesk App Feedback [v${state.appVersionName}]")
                             putExtra(Intent.EXTRA_TEXT, "Device: ${Build.MANUFACTURER} ${Build.MODEL}\nAndroid: ${Build.VERSION.RELEASE}\n\nFeedback:")
                         }
