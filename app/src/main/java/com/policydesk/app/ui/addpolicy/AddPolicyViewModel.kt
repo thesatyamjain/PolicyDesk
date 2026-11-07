@@ -334,7 +334,8 @@ class AddPolicyViewModel @Inject constructor(
         val prem = filtered.toDoubleOrNull()
         val pctNum = _formState.value.commissionPercentage.toDoubleOrNull()
         val calculatedAmount = if (prem != null && prem > 0.0 && pctNum != null && pctNum >= 0.0) {
-            val amt = (prem * pctNum) / 100.0
+            val netPrem = prem / 1.18
+            val amt = (netPrem * pctNum) / 100.0
             formatDecimal(amt)
         } else {
             _formState.value.commissionAmount
@@ -352,7 +353,8 @@ class AddPolicyViewModel @Inject constructor(
         val prem = _formState.value.totalPremium.toDoubleOrNull()
         val pctNum = filtered.toDoubleOrNull()
         val calculatedAmount = if (prem != null && prem > 0.0 && pctNum != null && pctNum >= 0.0) {
-            val amt = (prem * pctNum) / 100.0
+            val netPrem = prem / 1.18
+            val amt = (netPrem * pctNum) / 100.0
             formatDecimal(amt)
         } else {
             if (filtered.isBlank()) "" else _formState.value.commissionAmount
@@ -370,7 +372,8 @@ class AddPolicyViewModel @Inject constructor(
         val prem = _formState.value.totalPremium.toDoubleOrNull()
         val amtNum = filtered.toDoubleOrNull()
         val calculatedPct = if (prem != null && prem > 0.0 && amtNum != null && amtNum >= 0.0) {
-            val pct = (amtNum / prem) * 100.0
+            val netPrem = prem / 1.18
+            val pct = (amtNum / netPrem) * 100.0
             formatDecimal(pct)
         } else {
             if (filtered.isBlank()) "" else _formState.value.commissionPercentage

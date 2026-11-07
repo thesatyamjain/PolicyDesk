@@ -62,7 +62,8 @@ class VehicleDetailViewModel @Inject constructor(
             val vehicleWithPolicies = vehicleData.value ?: return@launch
             val policy = vehicleWithPolicies.currentPolicy ?: return@launch
             val newCommissionAmount = policy.commissionPercentage?.let { pct ->
-                (newPremium * pct) / 100.0
+                val netPrem = newPremium / 1.18
+                (netPrem * pct) / 100.0
             } ?: policy.commissionAmount
             val updated = policy.copy(
                 totalPremium = newPremium,

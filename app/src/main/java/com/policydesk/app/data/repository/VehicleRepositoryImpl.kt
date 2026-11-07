@@ -170,7 +170,7 @@ class VehicleRepositoryImpl @Inject constructor(
                 if (localDate.year == year && localDate.monthValue == month) {
                     matchingItems.add(item)
                     totalPremium += policy.totalPremium
-                    val comm = policy.commissionAmount ?: (policy.commissionPercentage?.let { pct -> (policy.totalPremium * pct) / 100.0 } ?: 0.0)
+                    val comm = policy.commissionAmount ?: (policy.commissionPercentage?.let { pct -> ((policy.totalPremium / 1.18) * pct) / 100.0 } ?: 0.0)
                     totalCommission += comm
                 }
             }
@@ -280,7 +280,7 @@ class VehicleRepositoryImpl @Inject constructor(
                     if (p.countsAsSale && p.saleDate in startMillis..endMillis) {
                         soldItems.add(vehicleWithPolicies)
                         salesTotalPremium += p.totalPremium
-                        val comm = p.commissionAmount ?: (p.commissionPercentage?.let { pct -> (p.totalPremium * pct) / 100.0 } ?: 0.0)
+                        val comm = p.commissionAmount ?: (p.commissionPercentage?.let { pct -> ((p.totalPremium / 1.18) * pct) / 100.0 } ?: 0.0)
                         salesTotalCommission += comm
                         if (p.saleType == com.policydesk.app.domain.model.SaleType.NEW_BUSINESS) {
                             newBusinessCount++
@@ -332,7 +332,7 @@ class VehicleRepositoryImpl @Inject constructor(
                             } else {
                                 renPrem += p.totalPremium
                             }
-                            val comm = p.commissionAmount ?: (p.commissionPercentage?.let { pct -> (p.totalPremium * pct) / 100.0 } ?: 0.0)
+                            val comm = p.commissionAmount ?: (p.commissionPercentage?.let { pct -> ((p.totalPremium / 1.18) * pct) / 100.0 } ?: 0.0)
                             totalComm += comm
                         }
                     }

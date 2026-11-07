@@ -554,6 +554,18 @@ fun AddPolicyScreen(
                     )
                 }
 
+                val premVal = state.totalPremium.toDoubleOrNull()
+                if (premVal != null && premVal > 0.0) {
+                    val netVal = premVal / 1.18
+                    Text(
+                        text = "Calculated on Net ₹${String.format(java.util.Locale.US, "%,.0f", netVal)} (18% GST excluded)",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = if (isSystemInDarkTheme()) IosDarkLabelSecondary else IosLabelSecondary,
+                        modifier = Modifier.padding(start = 2.dp, top = 2.dp)
+                    )
+                }
+
                 if (state.pastExpiryWarning) {
                     WarningBanner(
                         text = "This date is in the past. Saving will mark the policy as Overdue."

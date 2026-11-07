@@ -274,8 +274,9 @@ fun SalesTabContent(
                     DetailRow(label = "New Business", value = "${sales.newBusinessCount} policies")
                     DetailRow(label = "Renewals", value = "${sales.renewalCount} policies")
                     if (sales.totalPremium > 0.0 && sales.totalCommission > 0.0) {
-                        val avgCommPct = (sales.totalCommission / sales.totalPremium) * 100.0
-                        DetailRow(label = "Average Commission Rate", value = "${String.format(java.util.Locale.US, "%.1f", avgCommPct)}%")
+                        val netPremium = sales.totalPremium / 1.18
+                        val avgCommPct = (sales.totalCommission / netPremium) * 100.0
+                        DetailRow(label = "Average Commission Rate", value = "${String.format(java.util.Locale.US, "%.1f", avgCommPct)}% (Net)")
                     }
                 }
             }
@@ -342,7 +343,8 @@ fun SalesTabContent(
                                         )
 
                                         if (item.totalCommission > 0.0) {
-                                            val effPct = if (item.totalPremium > 0.0) (item.totalCommission / item.totalPremium) * 100.0 else 0.0
+                                            val netPrem = item.totalPremium / 1.18
+                                            val effPct = if (netPrem > 0.0) (item.totalCommission / netPrem) * 100.0 else 0.0
                                             val commStr = UiFormatters.formatCurrency(item.totalCommission)
                                             val pctStr = String.format(java.util.Locale.US, "%.1f", effPct)
                                             Text(
