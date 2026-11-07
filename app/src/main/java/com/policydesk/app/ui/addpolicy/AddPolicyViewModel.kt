@@ -3,6 +3,7 @@ package com.policydesk.app.ui.addpolicy
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.policydesk.app.domain.model.Customer
+import com.policydesk.app.domain.model.ExistingClientInfo
 import com.policydesk.app.domain.model.FieldValidators
 import com.policydesk.app.domain.model.InsurerCatalog
 import com.policydesk.app.domain.model.Policy
@@ -62,6 +63,10 @@ data class AddPolicyFormState(
     val regNoUnusualWarning: Boolean = false,
     val vinWarning: Boolean = false,
     val pastExpiryWarning: Boolean = false,
+
+    // Renewal & Existing Client Detection
+    val existingClientInfo: ExistingClientInfo? = null,
+    val isRenewalDetected: Boolean = false,
 
     // Dialog state for duplicate registration
     val showDuplicateDialog: Boolean = false,
@@ -396,6 +401,68 @@ class AddPolicyViewModel @Inject constructor(
                 regNoDuplicate = false
             )
         }
+        checkExistingVehicle(normalized)
+    }
+
+    private fun checkExistingVehicle(normalized: String) {
+        if (_formState.value.isEditMode || normalized.length < 5) {
+            _formState.update { it.copy(existingClientInfo = null, isRenewalDetected = false) }
+            return
+        }
+        viewModelScope.launch {
+            val existing = repository.getVehicleWithPoliciesDirect(normalized)
+            if (existing != null && !_formState.value.isEditMode) {
+                val prevPolicy = existing.currentPolicy
+                val info = ExistingClientInfo(
+                    clientName = existing.vehicle.customer.name,
+                    mobile = existing.vehicle.customer.mobile,
+                    previousInsurer = prevPolicy?.insurer,
+                    previousPolicyNumber = prevPolicy?.policyNumber,
+                    previousExpiryEpochMs = prevPolicy?.expiryDate,
+                    previousPolicyId = prevPolicy?.id,
+                    totalPoliciesCount = existing.policies.size
+                )
+                _formState.update { curr ->
+                    val useName = curr.name.ifBlank { existing.vehicle.customer.name }
+                    val useTitle = curr.title.ifBlank { existing.vehicle.customer.title ?: "" }
+                    val useMobile = if (!FieldValidators.isValidMobile(curr.mobile) && FieldValidators.isValidMobile(existing.vehicle.customer.mobile)) {
+                        existing.vehicle.customer.mobile
+                    } else curr.mobile
+                    val useEmail = curr.email.ifBlank { existing.vehicle.customer.email ?: "" }
+                    val useAddress = curr.address.ifBlank { existing.vehicle.customer.address }
+                    val useMakeModel = curr.makeModel.ifBlank { existing.vehicle.makeModel ?: "" }
+                    val useVin = curr.vin.ifBlank { existing.vehicle.vin ?: "" }
+                    val useEngineNo = curr.engineNo.ifBlank { existing.vehicle.engineNo ?: "" }
+
+                    val useCommPct = if (curr.commissionPercentage.isBlank() && prevPolicy?.commissionPercentage != null && prevPolicy.commissionPercentage > 0.0) {
+                        formatDecimal(prevPolicy.commissionPercentage)
+                    } else curr.commissionPercentage
+
+                    val prem = curr.totalPremium.toDoubleOrNull()
+                    val pctNum = useCommPct.toDoubleOrNull()
+                    val useCommAmt = if (curr.commissionAmount.isBlank() && prem != null && prem > 0.0 && pctNum != null && pctNum >= 0.0) {
+                        formatDecimal(((prem / 1.18) * pctNum) / 100.0)
+                    } else curr.commissionAmount
+
+                    curr.copy(
+                        existingClientInfo = info,
+                        isRenewalDetected = true,
+                        name = useName,
+                        title = useTitle,
+                        mobile = useMobile,
+                        email = useEmail,
+                        address = useAddress,
+                        makeModel = useMakeModel,
+                        vin = useVin,
+                        engineNo = useEngineNo,
+                        commissionPercentage = useCommPct,
+                        commissionAmount = useCommAmt
+                    )
+                }
+            } else {
+                _formState.update { it.copy(existingClientInfo = null, isRenewalDetected = false) }
+            }
+        }
     }
 
     fun loadForEditing(regNo: String) {
@@ -451,22 +518,12 @@ class AddPolicyViewModel @Inject constructor(
         _formState.update { it.copy(regNo = normalized) }
         if (normalized.isEmpty()) return
 
-        // If in edit mode and the registration has not changed from original, don't show duplicate dialog
+        // If in edit mode and the registration has not changed from original, don't re-check
         if (_formState.value.isEditMode && normalized.equals(_formState.value.originalRegNo, ignoreCase = true)) {
             return
         }
 
-        viewModelScope.launch {
-            val exists = repository.exists(normalized)
-            if (exists) {
-                _formState.update {
-                    it.copy(
-                        regNoDuplicate = true,
-                        showDuplicateDialog = true
-                    )
-                }
-            }
-        }
+        checkExistingVehicle(normalized)
     }
 
     fun onMakeModelChanged(makeModel: String) {
@@ -552,8 +609,34 @@ class AddPolicyViewModel @Inject constructor(
                 closeReason = state.existingCloseReason
             )
 
+            val isRenewal = state.isRenewalDetected && state.existingClientInfo != null
+            val existingInfo = state.existingClientInfo
+
+            if (isRenewal && existingInfo?.previousPolicyId != null && !state.isEditMode) {
+                val isSamePolicyNo = existingInfo.previousPolicyNumber?.equals(state.policyNumber.trim(), ignoreCase = true) == true
+                if (!isSamePolicyNo) {
+                    repository.markPolicyRenewed(existingInfo.previousPolicyId, System.currentTimeMillis())
+                }
+            }
+
+            val saleType = when {
+                state.isEditMode -> SaleType.NEW_BUSINESS
+                isRenewal -> {
+                    val isSamePolicyNo = existingInfo?.previousPolicyNumber?.equals(state.policyNumber.trim(), ignoreCase = true) == true
+                    if (isSamePolicyNo) SaleType.NEW_BUSINESS else SaleType.RENEWAL
+                }
+                else -> SaleType.NEW_BUSINESS
+            }
+
+            val policyId = when {
+                state.existingPolicyId != null -> state.existingPolicyId
+                isRenewal && existingInfo?.previousPolicyNumber?.equals(state.policyNumber.trim(), ignoreCase = true) == true && existingInfo.previousPolicyId != null ->
+                    existingInfo.previousPolicyId
+                else -> java.util.UUID.randomUUID().toString()
+            }
+
             val policy = Policy(
-                id = state.existingPolicyId ?: java.util.UUID.randomUUID().toString(),
+                id = policyId,
                 vehicleRegNo = normalizedReg,
                 companySector = state.sector!!,
                 insurer = finalInsurer,
@@ -565,7 +648,7 @@ class AddPolicyViewModel @Inject constructor(
                 commissionAmount = state.commissionAmount.toDoubleOrNull(),
                 source = PolicySource.FORM,
                 attachmentId = state.existingAttachmentId,
-                saleType = SaleType.NEW_BUSINESS,
+                saleType = saleType,
                 countsAsSale = true
             )
 

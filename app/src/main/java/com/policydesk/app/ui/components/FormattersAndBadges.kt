@@ -3,12 +3,21 @@ package com.policydesk.app.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
@@ -18,16 +27,22 @@ import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.policydesk.app.domain.model.ExistingClientInfo
 import com.policydesk.app.domain.model.PolicyStatus
 import com.policydesk.app.domain.model.RegistrationNormalizer
 import com.policydesk.app.ui.theme.AppleDarkSystemDeepOrange
 import com.policydesk.app.ui.theme.AppleDarkSystemGreen
 import com.policydesk.app.ui.theme.AppleDarkSystemOrange
 import com.policydesk.app.ui.theme.AppleDarkSystemRed
+import com.policydesk.app.ui.theme.AppleIcons
 import com.policydesk.app.ui.theme.AppleSystemDeepOrange
 import com.policydesk.app.ui.theme.AppleSystemGreen
 import com.policydesk.app.ui.theme.AppleSystemOrange
 import com.policydesk.app.ui.theme.AppleSystemRed
+import com.policydesk.app.ui.theme.IosDarkLabelPrimary
+import com.policydesk.app.ui.theme.IosDarkLabelSecondary
+import com.policydesk.app.ui.theme.IosLabelPrimary
+import com.policydesk.app.ui.theme.IosLabelSecondary
 
 object UiFormatters {
     private val DATE_FORMATTER = java.time.format.DateTimeFormatter.ofPattern("dd MMM yyyy")
@@ -217,5 +232,126 @@ object RegistrationPlateVisualTransformation : VisualTransformation {
         }
 
         return TransformedText(AnnotatedString(sb.toString()), offsetMapping)
+    }
+}
+
+/**
+ * Apple HIG / Liquid Glass banner displayed when an existing client and renewal policy
+ * are detected from vehicle registration number (either during manual entry or AI scan).
+ */
+@Composable
+fun ExistingClientRenewalBanner(
+    existingInfo: ExistingClientInfo,
+    modifier: Modifier = Modifier
+) {
+    val isDark = isSystemInDarkTheme()
+    val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
+    val labelSecondary = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
+    val accentColor = if (isDark) Color(0xFF0A84FF) else Color(0xFF007AFF)
+    val cardBg = if (isDark) Color(0xFF0F2644) else Color(0xFFF0F7FF)
+    val borderColor = if (isDark) Color(0xFF1D4ED8).copy(alpha = 0.5f) else Color(0xFF93C5FD)
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(cardBg)
+            .border(1.dp, borderColor, RoundedCornerShape(16.dp))
+            .padding(14.dp)
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .background(accentColor.copy(alpha = 0.15f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = AppleIcons.History,
+                            contentDescription = null,
+                            tint = accentColor,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                    Column {
+                        Text(
+                            text = "Existing Client & Renewal Detected",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = accentColor
+                        )
+                        Text(
+                            text = "Auto-linked to existing customer records in PolicyDesk",
+                            fontSize = 11.sp,
+                            color = labelSecondary
+                        )
+                    }
+                }
+
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(accentColor.copy(alpha = 0.15f))
+                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                ) {
+                    Text(
+                        text = "Renewal",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = accentColor
+                    )
+                }
+            }
+
+            // Client row
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.padding(start = 2.dp)
+            ) {
+                Icon(
+                    imageVector = AppleIcons.Person,
+                    contentDescription = null,
+                    tint = labelSecondary,
+                    modifier = Modifier.size(14.dp)
+                )
+                Text(
+                    text = "${existingInfo.clientName} (${existingInfo.mobile})",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = labelPrimary
+                )
+            }
+
+            // Previous policy row
+            if (!existingInfo.previousPolicyNumber.isNullOrBlank()) {
+                val expiryText = existingInfo.previousExpiryEpochMs?.let {
+                    " • Expired: ${UiFormatters.formatDate(it)}"
+                } ?: ""
+                Text(
+                    text = "Previous: ${existingInfo.previousInsurer ?: "Insurer"} [${existingInfo.previousPolicyNumber}]$expiryText",
+                    fontSize = 12.sp,
+                    color = labelSecondary,
+                    modifier = Modifier.padding(start = 2.dp)
+                )
+            }
+
+            Text(
+                text = "Contact info and prior commission % have been auto-filled from records.",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Normal,
+                color = labelSecondary.copy(alpha = 0.9f),
+                modifier = Modifier.padding(start = 2.dp)
+            )
+        }
     }
 }

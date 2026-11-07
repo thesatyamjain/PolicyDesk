@@ -95,3 +95,13 @@ data class CustomerGroup(
     val totalPolicies: Int,
     val totalActivePremium: Double
 )
+
+data class ExistingClientInfo(
+    val clientName: String,
+    val mobile: String,
+    val previousInsurer: String?,
+    val previousPolicyNumber: String?,
+    val previousExpiryEpochMs: Long?,
+    val previousPolicyId: String?,
+    val totalPoliciesCount: Int = 1
+)

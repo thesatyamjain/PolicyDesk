@@ -88,6 +88,7 @@ import com.policydesk.app.domain.model.FieldValidators
 import com.policydesk.app.domain.model.InsurerCatalog
 import com.policydesk.app.domain.model.RegistrationNormalizer
 import com.policydesk.app.domain.model.Sector
+import com.policydesk.app.ui.components.ExistingClientRenewalBanner
 import com.policydesk.app.ui.components.HsrpNumberPlate
 import com.policydesk.app.ui.components.RegistrationPlateVisualTransformation
 import com.policydesk.app.ui.components.UiFormatters
@@ -350,6 +351,11 @@ fun AddPolicyScreen(
                             )
                         }
                     }
+                }
+
+                val existingClient = state.existingClientInfo
+                if (state.isRenewalDetected && existingClient != null && !state.isEditMode) {
+                    ExistingClientRenewalBanner(existingInfo = existingClient)
                 }
 
                 // Registration Warnings

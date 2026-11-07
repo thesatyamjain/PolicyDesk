@@ -30,18 +30,9 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.policydesk.app.domain.model.ExistingClientInfo
 import java.util.UUID
 import javax.inject.Inject
-
-data class ExistingClientInfo(
-    val clientName: String,
-    val mobile: String,
-    val previousInsurer: String?,
-    val previousPolicyNumber: String?,
-    val previousExpiryEpochMs: Long?,
-    val previousPolicyId: String?,
-    val totalPoliciesCount: Int = 1
-)
 
 data class PdfReviewUiState(
     val queue: List<Uri> = emptyList(),

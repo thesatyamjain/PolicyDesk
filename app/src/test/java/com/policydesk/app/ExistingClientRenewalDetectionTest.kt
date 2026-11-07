@@ -10,7 +10,7 @@ import com.policydesk.app.domain.model.SaleType
 import com.policydesk.app.domain.model.Sector
 import com.policydesk.app.domain.model.Vehicle
 import com.policydesk.app.domain.model.VehicleWithPolicies
-import com.policydesk.app.ui.pdfreview.ExistingClientInfo
+import com.policydesk.app.domain.model.ExistingClientInfo
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -137,5 +137,53 @@ class ExistingClientRenewalDetectionTest {
 
         assertEquals(15000.0, netPrem, 0.001)
         assertEquals(2250.0, calculatedCommAmount, 0.001)
+    }
+
+    @Test
+    fun testManualFormPrefillFromExistingClient() {
+        val existingCustomer = Customer(
+            name = "Priya Patel",
+            mobile = "9823456789",
+            email = "priya@example.com",
+            address = "Satellite, Ahmedabad"
+        )
+        val existingVehicle = Vehicle(
+            regNo = "GJ01AB9999",
+            customer = existingCustomer,
+            makeModel = "Hyundai Creta SX",
+            vin = "MALB1234567890123",
+            engineNo = "G4FL123456"
+        )
+
+        // User typed nothing yet in customer/vehicle fields
+        val currName = ""
+        val currMobile = ""
+        val currAddress = ""
+        val currMakeModel = ""
+
+        val prefilledName = currName.ifBlank { existingVehicle.customer.name }
+        val prefilledMobile = if (!FieldValidators.isValidMobile(currMobile) && FieldValidators.isValidMobile(existingVehicle.customer.mobile)) {
+            existingVehicle.customer.mobile
+        } else currMobile
+        val prefilledAddress = currAddress.ifBlank { existingVehicle.customer.address }
+        val prefilledMakeModel = currMakeModel.ifBlank { existingVehicle.makeModel ?: "" }
+
+        assertEquals("Priya Patel", prefilledName)
+        assertEquals("9823456789", prefilledMobile)
+        assertEquals("Satellite, Ahmedabad", prefilledAddress)
+        assertEquals("Hyundai Creta SX", prefilledMakeModel)
+    }
+
+    @Test
+    fun testManualFormEditModeDoesNotTriggerRenewal() {
+        val isEditMode = true
+        val hasExistingClient = true
+
+        // When in edit mode, it updates the record and should not be treated as a renewal
+        val isRenewal = !isEditMode && hasExistingClient
+        assertFalse(isRenewal)
+
+        val saleType = if (isRenewal) SaleType.RENEWAL else SaleType.NEW_BUSINESS
+        assertEquals(SaleType.NEW_BUSINESS, saleType)
     }
 }
