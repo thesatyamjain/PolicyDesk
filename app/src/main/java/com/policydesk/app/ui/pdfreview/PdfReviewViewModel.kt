@@ -54,6 +54,8 @@ data class PdfReviewUiState(
     val policyNumber: String = "",
     val expiryDate: String = "",
     val totalPremium: String = "",
+    val commissionPercentage: String = "",
+    val commissionAmount: String = "",
     val makeModel: String = "",
     val vin: String = "",
     val engineNo: String = "",
@@ -216,6 +218,28 @@ class PdfReviewViewModel @Inject constructor(
         _uiState.update { it.copy(isPasswordProtected = false) }
     }
 
+    private fun filterDecimal(input: String): String {
+        return buildString {
+            var hasDot = false
+            for (ch in input) {
+                if (ch.isDigit()) {
+                    append(ch)
+                } else if (ch == '.' && !hasDot) {
+                    append(ch)
+                    hasDot = true
+                }
+            }
+        }
+    }
+
+    private fun formatDecimal(value: Double): String {
+        return if (value % 1.0 == 0.0) {
+            value.toLong().toString()
+        } else {
+            String.format(java.util.Locale.US, "%.2f", value).trimEnd('0').trimEnd('.')
+        }
+    }
+
     fun retryCurrentPdf() {
         val uri = _uiState.value.pdfUri ?: return
         val password = _uiState.value.passwordInput.ifBlank { null }
@@ -223,20 +247,67 @@ class PdfReviewViewModel @Inject constructor(
     }
 
     fun onFieldChanged(fieldKey: String, value: String) {
-        _uiState.update {
+        _uiState.update { current ->
             when (fieldKey) {
-                "regNo" -> it.copy(regNo = RegistrationNormalizer.normalize(value))
-                "customerName" -> it.copy(customerName = value)
-                "mobile" -> it.copy(mobile = FieldValidators.normalizeMobile(value))
-                "email" -> it.copy(email = value)
-                "address" -> it.copy(address = value)
-                "policyNumber" -> it.copy(policyNumber = value.uppercase())
-                "expiryDate" -> it.copy(expiryDate = value)
-                "totalPremium" -> it.copy(totalPremium = value.filter { c -> c.isDigit() || c == '.' })
-                "makeModel" -> it.copy(makeModel = value)
-                "vin" -> it.copy(vin = value.uppercase())
-                "engineNo" -> it.copy(engineNo = value.uppercase())
-                else -> it
+                "regNo" -> current.copy(regNo = RegistrationNormalizer.normalize(value))
+                "customerName" -> current.copy(customerName = value)
+                "mobile" -> current.copy(mobile = FieldValidators.normalizeMobile(value))
+                "email" -> current.copy(email = value)
+                "address" -> current.copy(address = value)
+                "policyNumber" -> current.copy(policyNumber = value.uppercase())
+                "expiryDate" -> current.copy(expiryDate = value)
+                "totalPremium" -> {
+                    val filtered = filterDecimal(value)
+                    val prem = filtered.toDoubleOrNull()
+                    val pctNum = current.commissionPercentage.toDoubleOrNull()
+                    val calculatedAmount = if (prem != null && prem > 0.0 && pctNum != null && pctNum >= 0.0) {
+                        val netPrem = prem / 1.18
+                        val amt = (netPrem * pctNum) / 100.0
+                        formatDecimal(amt)
+                    } else {
+                        current.commissionAmount
+                    }
+                    current.copy(
+                        totalPremium = filtered,
+                        commissionAmount = calculatedAmount
+                    )
+                }
+                "commissionPercentage" -> {
+                    val filtered = filterDecimal(value)
+                    val prem = current.totalPremium.toDoubleOrNull()
+                    val pctNum = filtered.toDoubleOrNull()
+                    val calculatedAmount = if (prem != null && prem > 0.0 && pctNum != null && pctNum >= 0.0) {
+                        val netPrem = prem / 1.18
+                        val amt = (netPrem * pctNum) / 100.0
+                        formatDecimal(amt)
+                    } else {
+                        if (filtered.isBlank()) "" else current.commissionAmount
+                    }
+                    current.copy(
+                        commissionPercentage = filtered,
+                        commissionAmount = calculatedAmount
+                    )
+                }
+                "commissionAmount" -> {
+                    val filtered = filterDecimal(value)
+                    val prem = current.totalPremium.toDoubleOrNull()
+                    val amtNum = filtered.toDoubleOrNull()
+                    val calculatedPct = if (prem != null && prem > 0.0 && amtNum != null && amtNum >= 0.0) {
+                        val netPrem = prem / 1.18
+                        val pct = (amtNum / netPrem) * 100.0
+                        formatDecimal(pct)
+                    } else {
+                        if (filtered.isBlank()) "" else current.commissionPercentage
+                    }
+                    current.copy(
+                        commissionAmount = filtered,
+                        commissionPercentage = calculatedPct
+                    )
+                }
+                "makeModel" -> current.copy(makeModel = value)
+                "vin" -> current.copy(vin = value.uppercase())
+                "engineNo" -> current.copy(engineNo = value.uppercase())
+                else -> current
             }
         }
     }
@@ -284,6 +355,8 @@ class PdfReviewViewModel @Inject constructor(
                 policyNumber = state.policyNumber.trim(),
                 expiryDate = expiryMs,
                 totalPremium = state.totalPremium.toDoubleOrNull() ?: 0.0,
+                commissionPercentage = state.commissionPercentage.toDoubleOrNull(),
+                commissionAmount = state.commissionAmount.toDoubleOrNull(),
                 source = PolicySource.PDF,
                 saleDate = now,
                 countsAsSale = true

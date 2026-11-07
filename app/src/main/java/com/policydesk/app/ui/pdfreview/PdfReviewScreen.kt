@@ -70,6 +70,8 @@ import com.policydesk.app.ui.addpolicy.formFieldColors
 import com.policydesk.app.ui.components.HsrpNumberPlate
 import com.policydesk.app.ui.components.RegistrationPlateVisualTransformation
 import androidx.compose.foundation.isSystemInDarkTheme
+import com.policydesk.app.ui.theme.AppleDarkSystemGreen
+import com.policydesk.app.ui.theme.AppleSystemGreen
 import com.policydesk.app.ui.theme.IosDarkLabelPrimary
 import com.policydesk.app.ui.theme.IosDarkLabelSecondary
 import com.policydesk.app.ui.theme.IosLabelPrimary
@@ -654,6 +656,50 @@ fun PdfReviewScreen(
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                             shape = RoundedCornerShape(10.dp),
                             colors = formFieldColors()
+                        )
+                    }
+
+                    // Advisor Commission (Commission % & Auto-calculated Amount)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = state.commissionPercentage,
+                            onValueChange = { viewModel.onFieldChanged("commissionPercentage", it) },
+                            modifier = Modifier.weight(1f),
+                            label = { Text("Commission %") },
+                            placeholder = { Text("e.g. 15") },
+                            suffix = { Text("%", fontWeight = FontWeight.SemiBold, color = if (isDark) IosDarkLabelSecondary else IosLabelSecondary) },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = formFieldColors()
+                        )
+
+                        OutlinedTextField(
+                            value = state.commissionAmount,
+                            onValueChange = { viewModel.onFieldChanged("commissionAmount", it) },
+                            modifier = Modifier.weight(1.2f),
+                            label = { Text("Advisor Comm.") },
+                            placeholder = { Text("Auto-calc") },
+                            prefix = { Text("₹ ", fontWeight = FontWeight.Bold, color = if (isDark) AppleDarkSystemGreen else AppleSystemGreen) },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = formFieldColors()
+                        )
+                    }
+
+                    val premVal = state.totalPremium.toDoubleOrNull()
+                    if (premVal != null && premVal > 0.0) {
+                        val netVal = premVal / 1.18
+                        Text(
+                            text = "Calculated on Net ₹${String.format(java.util.Locale.US, "%,.0f", netVal)} (18% GST excluded)",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = if (isDark) IosDarkLabelSecondary else IosLabelSecondary,
+                            modifier = Modifier.padding(start = 2.dp, top = 2.dp)
                         )
                     }
                 }
