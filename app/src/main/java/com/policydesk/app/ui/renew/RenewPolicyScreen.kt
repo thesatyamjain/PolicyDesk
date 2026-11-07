@@ -20,9 +20,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import com.policydesk.app.ui.components.AppleButton
+import com.policydesk.app.ui.components.CupertinoTopBarAction
 import com.policydesk.app.ui.theme.AppleIcons
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -36,7 +35,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDatePickerState
@@ -106,21 +104,22 @@ fun RenewPolicyScreen(
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
-                TextButton(
+                CupertinoTopBarAction(
+                    text = "Done",
+                    isProminent = true,
                     onClick = {
                         datePickerState.selectedDateMillis?.let {
                             viewModel.onExpiryDateSelected(it)
                         }
                         showDatePicker = false
                     }
-                ) {
-                    Text("Select", fontWeight = FontWeight.Bold)
-                }
+                )
             },
             dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) {
-                    Text("Cancel")
-                }
+                CupertinoTopBarAction(
+                    text = "Cancel",
+                    onClick = { showDatePicker = false }
+                )
             }
         ) {
             DatePicker(state = datePickerState)

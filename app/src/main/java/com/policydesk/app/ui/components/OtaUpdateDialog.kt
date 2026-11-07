@@ -21,7 +21,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -301,17 +300,11 @@ fun OtaUpdateDialog(
 
                 if (!isDownloading) {
                     Spacer(modifier = Modifier.height(4.dp))
-                    TextButton(
+                    CupertinoTopBarAction(
+                        text = "Later",
                         onClick = { otaManager.dismissOtaDialog() },
-                        modifier = Modifier.height(38.dp)
-                    ) {
-                        Text(
-                            text = "Later",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = labelSecondary
-                        )
-                    }
+                        tint = labelSecondary
+                    )
                 }
             }
         }

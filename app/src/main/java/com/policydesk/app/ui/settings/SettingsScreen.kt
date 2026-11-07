@@ -32,10 +32,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CloudDone
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
@@ -530,7 +526,7 @@ fun SettingsScreen(
                 LiquidGlassListRow(
                     title = "AI Policy Extraction (BYOK)",
                     subtitle = "${state.aiConfig.provider.displayName} • $activeModelName",
-                    icon = Icons.Default.Psychology,
+                    icon = AppleIcons.Brain,
                     iconBgColor = if (isDark) AppleDarkSystemPurple else AppleSystemPurple,
                     showDivider = false,
                     trailingContent = {
@@ -584,7 +580,7 @@ fun SettingsScreen(
                     } else {
                         "Sync encrypted backups to personal Google Drive"
                     },
-                    icon = Icons.Default.CloudDone,
+                    icon = AppleIcons.CloudDone,
                     iconBgColor = if (state.isDriveLinked) AppleSystemGreen else AppleSystemBlue,
                     trailingContent = {
                         if (state.isDriveLinked) {
@@ -728,7 +724,7 @@ fun SettingsScreen(
                 LiquidGlassListRow(
                     title = "Policy Expiry Alerts",
                     subtitle = "Daily background renewal checks at 9:00 AM",
-                    icon = Icons.Default.Notifications,
+                    icon = AppleIcons.Bell,
                     iconBgColor = AppleSystemOrange,
                     trailingContent = {
                         AppleSwitch(

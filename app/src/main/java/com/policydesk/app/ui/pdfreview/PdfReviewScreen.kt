@@ -27,6 +27,7 @@ import androidx.compose.foundation.verticalScroll
 import com.policydesk.app.ui.components.AppleAlertDialog
 import com.policydesk.app.ui.components.AppleButton
 import com.policydesk.app.ui.components.AppleSecondaryButton
+import com.policydesk.app.ui.components.CupertinoTopBarAction
 import com.policydesk.app.ui.components.LiquidGlassCanvas
 import com.policydesk.app.ui.components.LiquidGlassCard
 import com.policydesk.app.ui.theme.AppleIcons
@@ -199,13 +200,11 @@ fun PdfReviewScreen(
                         )
                     }
                     if (state.queue.size > 1 && state.pdfUri != null) {
-                        androidx.compose.material3.TextButton(onClick = viewModel::skipCurrentPdf) {
-                            Text(
-                                text = if (state.queueIndex + 1 < state.queue.size) "Skip" else "Finish",
-                                color = com.policydesk.app.ui.theme.AppleSystemBlue,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
+                        CupertinoTopBarAction(
+                            text = if (state.queueIndex + 1 < state.queue.size) "Skip" else "Finish",
+                            onClick = viewModel::skipCurrentPdf,
+                            tint = com.policydesk.app.ui.theme.AppleSystemBlue
+                        )
                     }
                 }
             )

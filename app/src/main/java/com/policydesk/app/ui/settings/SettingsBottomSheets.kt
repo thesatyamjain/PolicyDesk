@@ -22,15 +22,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
-import androidx.compose.material.icons.filled.ContentPaste
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -65,6 +56,7 @@ import com.policydesk.app.data.security.AiProvider
 import com.policydesk.app.ui.addpolicy.formFieldColors
 import com.policydesk.app.ui.components.AppleButton
 import com.policydesk.app.ui.components.AppleSecondaryButton
+import com.policydesk.app.ui.components.AppleSheetGrabber
 import com.policydesk.app.ui.theme.AppleDarkSystemBlue
 import com.policydesk.app.ui.theme.AppleIcons
 import com.policydesk.app.ui.theme.AppleSystemBlue
@@ -111,7 +103,8 @@ fun SettingsAdvisorProfileSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         containerColor = if (isDark) Color(0xFF1C1C1E) else Color(0xFFF2F2F7),
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+        shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp),
+        dragHandle = { AppleSheetGrabber() }
     ) {
         Column(
             modifier = Modifier
@@ -261,7 +254,8 @@ fun SettingsAiConfigSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         containerColor = if (isDark) Color(0xFF1C1C1E) else Color(0xFFF2F2F7),
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+        shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp),
+        dragHandle = { AppleSheetGrabber() }
     ) {
         Column(
             modifier = Modifier
@@ -394,7 +388,7 @@ fun SettingsAiConfigSheet(
                         color = labelSecondary
                     )
                     Icon(
-                        imageVector = if (showCloudflareAdvanced) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        imageVector = if (showCloudflareAdvanced) AppleIcons.ChevronUp else AppleIcons.ChevronDown,
                         contentDescription = "Toggle Custom Endpoint",
                         tint = if (isDark) IosDarkLabelTertiary else IosLabelTertiary,
                         modifier = Modifier.size(18.dp)
@@ -461,7 +455,7 @@ fun SettingsAiConfigSheet(
                             )
                         }
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                            imageVector = AppleIcons.ArrowUpRightSquare,
                             contentDescription = null,
                             tint = AppleSystemBlue,
                             modifier = Modifier.size(16.dp)
@@ -486,7 +480,7 @@ fun SettingsAiConfigSheet(
                         trailingIcon = {
                             IconButton(onClick = { showKey = !showKey }) {
                                 Icon(
-                                    imageVector = if (showKey) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                    imageVector = if (showKey) AppleIcons.EyeSlash else AppleIcons.Eye,
                                     contentDescription = "Toggle Key",
                                     tint = if (isDark) IosDarkLabelTertiary else IosLabelTertiary
                                 )
@@ -498,7 +492,7 @@ fun SettingsAiConfigSheet(
 
                     AppleSecondaryButton(
                         text = "Paste",
-                        icon = Icons.Default.ContentPaste,
+                        icon = AppleIcons.DocOnDoc,
                         onClick = {
                             val clipText = clipboardManager.getText()?.text?.trim()
                             if (!clipText.isNullOrBlank()) {
@@ -559,7 +553,7 @@ fun SettingsAiConfigSheet(
                             )
                         } else {
                             Icon(
-                                imageVector = Icons.Default.Refresh,
+                                imageVector = AppleIcons.ArrowClockwise,
                                 contentDescription = "Refresh Models",
                                 tint = if (state.aiConfig.apiKey.isNotBlank()) activeBlue else (if (isDark) IosDarkLabelTertiary else IosLabelTertiary),
                                 modifier = Modifier.size(15.dp)
@@ -638,7 +632,7 @@ fun SettingsAiConfigSheet(
                         text = "Remove",
                         onClick = viewModel::removeAiKey,
                         tintColor = AppleSystemRed,
-                        icon = Icons.Default.Delete,
+                        icon = AppleIcons.Trash,
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -699,7 +693,8 @@ fun SettingsVaultSnapshotsSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         containerColor = if (isDark) Color(0xFF1C1C1E) else Color(0xFFF2F2F7),
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+        shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp),
+        dragHandle = { AppleSheetGrabber() }
     ) {
         Column(
             modifier = Modifier

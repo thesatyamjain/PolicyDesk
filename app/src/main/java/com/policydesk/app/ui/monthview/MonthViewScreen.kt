@@ -27,7 +27,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -46,6 +45,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.policydesk.app.domain.model.VehicleWithPolicies
 import com.policydesk.app.ui.components.AppleSecondaryButton
+import com.policydesk.app.ui.components.CupertinoTopBarAction
 import com.policydesk.app.ui.components.LiquidGlassCard
 import com.policydesk.app.ui.components.LiquidGlassSegmentedControl
 import com.policydesk.app.ui.components.LiquidGlassTopBar
@@ -95,18 +95,12 @@ fun MonthViewScreen(
                 subtitle = "Renewal & Expiry Schedule",
                 onNavigateBack = onNavigateBack,
                 actions = {
-                    TextButton(
+                    CupertinoTopBarAction(
+                        text = "Today",
                         onClick = viewModel::onToday,
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-                        modifier = Modifier.height(34.dp)
-                    ) {
-                        Text(
-                            text = "Today",
-                            fontWeight = FontWeight.SemiBold,
-                            color = actionTint,
-                            fontSize = 14.sp
-                        )
-                    }
+                        isProminent = true,
+                        tint = actionTint
+                    )
                 }
             )
         },

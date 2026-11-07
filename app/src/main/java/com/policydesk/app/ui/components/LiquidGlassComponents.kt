@@ -29,10 +29,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBackIos
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -399,7 +395,7 @@ fun LiquidGlassTopBar(
                         modifier = Modifier.size(36.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBackIos,
+                            imageVector = AppleIcons.ChevronLeft,
                             contentDescription = "Back",
                             tint = accentBlue,
                             modifier = Modifier.size(18.dp)
@@ -1773,6 +1769,78 @@ fun LiquidGlassSelectionBar(
                 }
             }
         }
+    }
+}
+
+/**
+ * Apple iOS modal sheet grabber / drag handle (36dp x 5dp pill).
+ */
+@Composable
+fun AppleSheetGrabber(
+    modifier: Modifier = Modifier,
+    color: Color? = null
+) {
+    val isDark = isSystemInDarkTheme()
+    val grabberColor = color ?: if (isDark) Color(0xFF545458).copy(alpha = 0.65f) else Color(0xFF3C3C43).copy(alpha = 0.3f)
+    Box(
+        modifier = modifier
+            .padding(top = 8.dp, bottom = 4.dp)
+            .size(width = 36.dp, height = 5.dp)
+            .clip(RoundedCornerShape(2.5.dp))
+            .background(grabberColor)
+    )
+}
+
+/**
+ * Apple iOS standard Navigation Bar Text Action (e.g., "Select", "Select All", "Done", "Cancel").
+ */
+@Composable
+fun CupertinoTopBarAction(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    isProminent: Boolean = false,
+    enabled: Boolean = true,
+    tint: Color? = null
+) {
+    val isDark = isSystemInDarkTheme()
+    val haptic = LocalHapticFeedback.current
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val actionTint = tint ?: if (isDark) AppleDarkSystemBlue else AppleSystemBlue
+
+    val alpha by animateFloatAsState(
+        targetValue = when {
+            !enabled -> 0.38f
+            isPressed -> 0.45f
+            else -> 1f
+        },
+        label = "cupertino_action_alpha"
+    )
+
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                enabled = enabled,
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onClick()
+                }
+            )
+            .padding(horizontal = 8.dp, vertical = 6.dp)
+            .graphicsLayer { this.alpha = alpha },
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = text,
+            color = actionTint,
+            fontSize = 17.sp,
+            fontWeight = if (isProminent) FontWeight.SemiBold else FontWeight.Normal,
+            letterSpacing = (-0.4).sp
+        )
     }
 }
 

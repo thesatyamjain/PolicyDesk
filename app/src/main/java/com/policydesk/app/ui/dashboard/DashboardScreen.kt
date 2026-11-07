@@ -40,29 +40,12 @@ import com.policydesk.app.ui.components.BindBackToTop
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Assessment
-import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.CloudDone
-import androidx.compose.material.icons.filled.DirectionsCar
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.People
-import androidx.compose.material.icons.filled.PictureAsPdf
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.filled.TableChart
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -88,6 +71,8 @@ import com.policydesk.app.domain.model.VehicleWithPolicies
 import com.policydesk.app.ui.components.AppleAlertDialog
 import com.policydesk.app.ui.components.AppleButton
 import com.policydesk.app.ui.components.AppleSecondaryButton
+import com.policydesk.app.ui.components.AppleSheetGrabber
+import com.policydesk.app.ui.components.CupertinoTopBarAction
 import com.policydesk.app.ui.components.DaysRemainingBadge
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -207,7 +192,8 @@ fun DashboardScreen(
             onDismissRequest = { showAddChooserSheet = false },
             sheetState = sheetState,
             containerColor = if (isDark) Color(0xFF1C1C1E) else Color(0xFFF2F2F7),
-            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+            shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp),
+            dragHandle = { AppleSheetGrabber() }
         ) {
             Column(
                 modifier = Modifier
@@ -299,7 +285,7 @@ fun DashboardScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                                imageVector = AppleIcons.ChevronRight,
                                 contentDescription = null,
                                 tint = labelSecondary,
                                 modifier = Modifier.size(13.dp)
@@ -479,37 +465,22 @@ fun DashboardScreen(
                             viewModel.exitSelectionMode()
                         },
                         actions = {
-                            TextButton(
+                            CupertinoTopBarAction(
+                                text = if (allSelected) "Deselect All" else "Select All",
                                 onClick = {
-                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                     viewModel.toggleSelectAll(uiState.filteredList.map { it.vehicle.regNo })
                                 },
-                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-                                modifier = Modifier.height(34.dp)
-                            ) {
-                                Text(
-                                    text = if (allSelected) "Deselect All" else "Select All",
-                                    color = actionTint,
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                            }
+                                tint = actionTint
+                            )
 
-                            TextButton(
+                            CupertinoTopBarAction(
+                                text = "Done",
                                 onClick = {
-                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                     viewModel.exitSelectionMode()
                                 },
-                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-                                modifier = Modifier.height(34.dp)
-                            ) {
-                                Text(
-                                    text = "Done",
-                                    color = actionTint,
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
+                                isProminent = true,
+                                tint = actionTint
+                            )
                         }
                     )
                 } else {
@@ -518,21 +489,13 @@ fun DashboardScreen(
                         subtitle = "Vehicle Insurance Advisor",
                         actions = {
                             if (uiState.filteredList.isNotEmpty()) {
-                                TextButton(
+                                CupertinoTopBarAction(
+                                    text = "Select",
                                     onClick = {
-                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                         viewModel.enterSelectionMode()
                                     },
-                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-                                    modifier = Modifier.height(34.dp)
-                                ) {
-                                    Text(
-                                        text = "Select",
-                                        color = actionTint,
-                                        fontSize = 14.sp,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                }
+                                    tint = actionTint
+                                )
                             }
 
                             // Prominent Apple Glass Add Button (Primary Action)
@@ -1315,7 +1278,7 @@ fun EmptyStateView(
                 AppleSecondaryButton(
                     text = "Restore from Google Drive",
                     onClick = onNavigateToSettings,
-                    icon = Icons.Default.CloudDone,
+                    icon = AppleIcons.CloudDone,
                     height = 42.dp,
                     shape = RoundedCornerShape(14.dp)
                 )

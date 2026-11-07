@@ -26,9 +26,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import com.policydesk.app.ui.components.BindBackToTop
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -446,7 +443,7 @@ fun CustomerCard(
                 )
                 Spacer(modifier = Modifier.width(2.dp))
                 Icon(
-                    imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                    imageVector = if (expanded) AppleIcons.ChevronUp else AppleIcons.ChevronDown,
                     contentDescription = null,
                     tint = if (isDark) AppleDarkSystemBlue else AppleSystemBlue,
                     modifier = Modifier.size(16.dp)

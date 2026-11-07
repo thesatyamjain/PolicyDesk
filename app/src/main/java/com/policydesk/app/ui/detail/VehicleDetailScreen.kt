@@ -29,14 +29,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBackIos
-import androidx.compose.material.icons.automirrored.filled.Chat
-import androidx.compose.material.icons.filled.Call
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Message
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Shield
 import com.policydesk.app.ui.components.AppleAlertDialog
 import com.policydesk.app.ui.components.AppleButton
 import com.policydesk.app.ui.components.BindBackToTop
@@ -260,7 +252,7 @@ fun VehicleDetailScreen(
                     }
                     IconButton(onClick = { showMenu = true }) {
                         Icon(
-                            imageVector = Icons.Default.MoreVert,
+                            imageVector = AppleIcons.Ellipsis,
                             contentDescription = "Options",
                             tint = labelPrimary
                         )
