@@ -22,9 +22,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import com.policydesk.app.ui.components.BindBackToTop
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBackIos
-import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import com.policydesk.app.ui.theme.AppleIcons
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -133,19 +130,20 @@ fun MonthViewScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(
-                    onClick = {
-                        selectedCalendarDay = null
-                        viewModel.onPreviousMonth()
-                    },
+                Box(
                     modifier = Modifier
                         .size(36.dp)
                         .clip(CircleShape)
                         .background(if (isDark) Color(0x33545458) else Color.White.copy(alpha = 0.8f))
                         .border(1.dp, if (isDark) Color(0x33FFFFFF) else Color.White, CircleShape)
+                        .clickable {
+                            selectedCalendarDay = null
+                            viewModel.onPreviousMonth()
+                        },
+                    contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBackIos,
+                        imageVector = AppleIcons.ChevronLeft,
                         contentDescription = "Previous Month",
                         tint = AppleSystemBlue,
                         modifier = Modifier.size(16.dp)
@@ -160,19 +158,20 @@ fun MonthViewScreen(
                     letterSpacing = (-0.3).sp
                 )
 
-                IconButton(
-                    onClick = {
-                        selectedCalendarDay = null
-                        viewModel.onNextMonth()
-                    },
+                Box(
                     modifier = Modifier
                         .size(36.dp)
                         .clip(CircleShape)
                         .background(if (isDark) Color(0x33545458) else Color.White.copy(alpha = 0.8f))
                         .border(1.dp, if (isDark) Color(0x33FFFFFF) else Color.White, CircleShape)
+                        .clickable {
+                            selectedCalendarDay = null
+                            viewModel.onNextMonth()
+                        },
+                    contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                        imageVector = AppleIcons.ChevronRight,
                         contentDescription = "Next Month",
                         tint = AppleSystemBlue,
                         modifier = Modifier.size(16.dp)
