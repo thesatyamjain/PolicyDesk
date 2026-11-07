@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -280,16 +281,106 @@ fun SalesTabContent(
             }
         }
 
-        // Split by Insurer
-        if (sales.splitByInsurer.isNotEmpty()) {
+        // Companies & Insurer Breakdown
+        if (sales.insurerBreakdown.isNotEmpty() || sales.splitByInsurer.isNotEmpty()) {
             item {
                 LiquidGlassCard(
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Premium by Insurer", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = labelPrimary)
-                        sales.splitByInsurer.forEach { (insurer, prem) ->
-                            DetailRow(label = insurer, value = UiFormatters.formatCurrency(prem))
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Companies Breakdown", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = labelPrimary)
+                            val companyCount = sales.insurerBreakdown.size.takeIf { it > 0 } ?: sales.splitByInsurer.size
+                            Text(
+                                text = "$companyCount ${if (companyCount == 1) "Company" else "Companies"}",
+                                fontSize = 11.sp,
+                                color = labelSecondary
+                            )
+                        }
+
+                        if (sales.insurerBreakdown.isNotEmpty()) {
+                            sales.insurerBreakdown.forEachIndexed { index, item ->
+                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = item.insurer,
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = labelPrimary,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        Text(
+                                            text = UiFormatters.formatCurrency(item.totalPremium),
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = SapphireBlue
+                                        )
+                                    }
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        val policyCountStr = "${item.policyCount} ${if (item.policyCount == 1) "policy" else "policies"}"
+                                        val shareStr = "${String.format(java.util.Locale.US, "%.1f", item.sharePercent)}% share"
+                                        Text(
+                                            text = "$policyCountStr • $shareStr",
+                                            fontSize = 11.sp,
+                                            color = labelSecondary
+                                        )
+
+                                        if (item.totalCommission > 0.0) {
+                                            val effPct = if (item.totalPremium > 0.0) (item.totalCommission / item.totalPremium) * 100.0 else 0.0
+                                            val commStr = UiFormatters.formatCurrency(item.totalCommission)
+                                            val pctStr = String.format(java.util.Locale.US, "%.1f", effPct)
+                                            Text(
+                                                text = "Comm: $commStr ($pctStr%)",
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = if (isDark) AppleDarkSystemGreen else AppleSystemGreen
+                                            )
+                                        }
+                                    }
+
+                                    // Subtle visual share track
+                                    val trackProgress = (item.sharePercent / 100.0).toFloat().coerceIn(0.02f, 1f)
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(3.dp)
+                                            .clip(RoundedCornerShape(1.5.dp))
+                                            .background(if (isDark) Color(0xFF2C2C2E) else Color(0xFFE5E5EA))
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth(trackProgress)
+                                                .fillMaxHeight()
+                                                .clip(RoundedCornerShape(1.5.dp))
+                                                .background(SapphireBlue)
+                                        )
+                                    }
+                                }
+
+                                if (index < sales.insurerBreakdown.size - 1) {
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                }
+                            }
+                        } else {
+                            sales.splitByInsurer.forEach { (insurer, prem) ->
+                                DetailRow(label = insurer, value = UiFormatters.formatCurrency(prem))
+                            }
                         }
                     }
                 }

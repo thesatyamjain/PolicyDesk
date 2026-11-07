@@ -207,6 +207,8 @@ class VehicleRepositoryImpl @Inject constructor(
             var newBusinessCount = 0
             var renewalCount = 0
             val insurerSplit = mutableMapOf<String, Double>()
+            val insurerCommission = mutableMapOf<String, Double>()
+            val insurerCount = mutableMapOf<String, Int>()
             val sectorSplit = mutableMapOf<com.policydesk.app.domain.model.Sector, Double>()
 
             // 2. Missed Renewals
@@ -286,6 +288,8 @@ class VehicleRepositoryImpl @Inject constructor(
                             renewalCount++
                         }
                         insurerSplit[p.insurer] = (insurerSplit[p.insurer] ?: 0.0) + p.totalPremium
+                        insurerCommission[p.insurer] = (insurerCommission[p.insurer] ?: 0.0) + comm
+                        insurerCount[p.insurer] = (insurerCount[p.insurer] ?: 0) + 1
                         sectorSplit[p.companySector] = (sectorSplit[p.companySector] ?: 0.0) + p.totalPremium
                     }
 
@@ -344,6 +348,19 @@ class VehicleRepositoryImpl @Inject constructor(
                 )
             }
 
+            val insurerBreakdown = insurerSplit.map { (insurer, prem) ->
+                val comm = insurerCommission[insurer] ?: 0.0
+                val count = insurerCount[insurer] ?: 0
+                val share = if (salesTotalPremium > 0) (prem / salesTotalPremium) * 100.0 else 0.0
+                com.policydesk.app.domain.model.InsurerPerformance(
+                    insurer = insurer,
+                    totalPremium = prem,
+                    totalCommission = comm,
+                    policyCount = count,
+                    sharePercent = share
+                )
+            }.sortedByDescending { it.totalPremium }
+
             val salesSummary = com.policydesk.app.domain.model.SalesSummary(
                 totalPremium = salesTotalPremium,
                 totalCommission = salesTotalCommission,
@@ -352,6 +369,7 @@ class VehicleRepositoryImpl @Inject constructor(
                 renewalCount = renewalCount,
                 splitByInsurer = insurerSplit,
                 splitBySector = sectorSplit,
+                insurerBreakdown = insurerBreakdown,
                 soldPolicies = soldItems,
                 monthlyTrends = trendBuckets
             )

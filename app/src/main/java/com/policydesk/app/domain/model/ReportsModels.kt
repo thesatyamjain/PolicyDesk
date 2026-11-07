@@ -42,6 +42,14 @@ data class MonthlyTrendItem(
     val totalCommission: Double = 0.0
 )
 
+data class InsurerPerformance(
+    val insurer: String,
+    val totalPremium: Double = 0.0,
+    val totalCommission: Double = 0.0,
+    val policyCount: Int = 0,
+    val sharePercent: Double = 0.0
+)
+
 data class SalesSummary(
     val totalPremium: Double = 0.0,
     val totalCommission: Double = 0.0,
@@ -50,6 +58,7 @@ data class SalesSummary(
     val renewalCount: Int = 0,
     val splitByInsurer: Map<String, Double> = emptyMap(),
     val splitBySector: Map<Sector, Double> = emptyMap(),
+    val insurerBreakdown: List<InsurerPerformance> = emptyList(),
     val soldPolicies: List<VehicleWithPolicies> = emptyList(),
     val monthlyTrends: List<MonthlyTrendItem> = emptyList()
 )

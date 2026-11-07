@@ -148,4 +148,33 @@ class CommissionCalculationTest {
         )
         assertEquals(5175.0, monthView.totalCommission, 0.001)
     }
+
+    @Test
+    fun testInsurerBreakdownPerformance() {
+        val hdfc = com.policydesk.app.domain.model.InsurerPerformance(
+            insurer = "HDFC ERGO",
+            totalPremium = 20000.0,
+            totalCommission = 3000.0,
+            policyCount = 2,
+            sharePercent = 66.7
+        )
+        val nia = com.policydesk.app.domain.model.InsurerPerformance(
+            insurer = "New India Assurance",
+            totalPremium = 10000.0,
+            totalCommission = 1000.0,
+            policyCount = 1,
+            sharePercent = 33.3
+        )
+        val sales = com.policydesk.app.domain.model.SalesSummary(
+            totalPremium = 30000.0,
+            totalCommission = 4000.0,
+            totalCount = 3,
+            insurerBreakdown = listOf(hdfc, nia)
+        )
+        assertEquals(2, sales.insurerBreakdown.size)
+        assertEquals("HDFC ERGO", sales.insurerBreakdown[0].insurer)
+        assertEquals(3000.0, sales.insurerBreakdown[0].totalCommission, 0.001)
+        val hdfcRate = (sales.insurerBreakdown[0].totalCommission / sales.insurerBreakdown[0].totalPremium) * 100.0
+        assertEquals(15.0, hdfcRate, 0.001)
+    }
 }
