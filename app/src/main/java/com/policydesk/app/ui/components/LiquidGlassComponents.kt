@@ -3,6 +3,7 @@ package com.policydesk.app.ui.components
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -42,6 +43,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeStyle
@@ -1315,17 +1317,18 @@ fun HsrpNumberPlate(
         VehiclePlateClassifier.detectStyle(makeModel)
     }
 
-    val plateShape = RoundedCornerShape(6.dp)
+    val plateShape = RoundedCornerShape(5.dp)
 
+    // Accurate RTO colors according to MoRTH specifications
     val (plateBg, plateTextColor, plateBorderColor) = when (resolvedStyle) {
         NumberPlateStyle.PRIVATE_WHITE -> Triple(
-            Color(0xFFF8FAFC),
-            Color(0xFF0F172A),
+            Color(0xFFFAFAFA),
+            Color(0xFF111827),
             Color(0xFF94A3B8)
         )
         NumberPlateStyle.COMMERCIAL_YELLOW -> Triple(
-            Color(0xFFFACC15),
-            Color(0xFF0F172A),
+            Color(0xFFFFD600), // Pure Indian Commercial Yellow
+            Color(0xFF111827),
             Color(0xFFCA8A04)
         )
         NumberPlateStyle.EV_GREEN -> Triple(
@@ -1335,7 +1338,7 @@ fun HsrpNumberPlate(
         )
         NumberPlateStyle.COMMERCIAL_EV -> Triple(
             Color(0xFF15803D),
-            Color(0xFFFDE047),
+            Color(0xFFFFD600),
             Color(0xFF166534)
         )
     }
@@ -1345,62 +1348,152 @@ fun HsrpNumberPlate(
         RegistrationNormalizer.formatForDisplay(clean)
     }
 
+    // Deterministic 10-digit laser PIN derived from regNo (e.g. AA 10294812)
+    val laserPin = remember(clean) {
+        val hash = (clean.hashCode().toLong() and 0xFFFFFFFFL).toString().padStart(8, '0').takeLast(8)
+        "AA$hash"
+    }
+
     Row(
         modifier = modifier
             .clip(plateShape)
             .background(plateBg, plateShape)
             .border(
-                width = 1.dp,
+                width = 1.2.dp,
                 color = plateBorderColor,
                 shape = plateShape
             )
-            .height(28.dp),
+            .height(29.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Left Blue IND Stripe
+        // Left Blue IND Stripe with Ashoka Chakra & Hologram
         Box(
             modifier = Modifier
-                .width(18.dp)
+                .width(20.dp)
                 .fillMaxHeight()
-                .background(Color(0xFF003399)),
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color(0xFF0038A8), // Deep International Optical Blue
+                            Color(0xFF002277)
+                        )
+                    )
+                ),
             contentAlignment = Alignment.Center
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(4.dp)
-                        .background(Color(0xFFFDE047), CircleShape)
-                )
-                Spacer(modifier = Modifier.height(1.dp))
+                // Chromium Ashoka Chakra Hologram Badge (Hot-stamped)
+                Canvas(modifier = Modifier.size(7.dp)) {
+                    val radius = size.minDimension / 2f
+                    val center = Offset(size.width / 2f, size.height / 2f)
+
+                    // Outer chromium reflective ring
+                    drawCircle(
+                        color = Color(0xFFFDE047),
+                        radius = radius,
+                        center = center
+                    )
+                    drawCircle(
+                        color = Color(0xFF002277),
+                        radius = radius * 0.72f,
+                        center = center
+                    )
+                    drawCircle(
+                        color = Color(0xFFFDE047),
+                        radius = radius * 0.32f,
+                        center = center
+                    )
+
+                    // 12 spokes for high-density miniature representation
+                    val spokeCount = 12
+                    for (i in 0 until spokeCount) {
+                        val angle = (i * 360f / spokeCount) * (Math.PI / 180.0)
+                        val start = Offset(
+                            x = center.x + (radius * 0.35f * kotlin.math.cos(angle)).toFloat(),
+                            y = center.y + (radius * 0.35f * kotlin.math.sin(angle)).toFloat()
+                        )
+                        val end = Offset(
+                            x = center.x + (radius * 0.72f * kotlin.math.cos(angle)).toFloat(),
+                            y = center.y + (radius * 0.72f * kotlin.math.sin(angle)).toFloat()
+                        )
+                        drawLine(
+                            color = Color(0xFFFDE047),
+                            start = start,
+                            end = end,
+                            strokeWidth = 0.8f
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(1.5.dp))
+
+                // Embossed "IND" Text
                 Text(
                     text = "IND",
-                    fontSize = 6.sp,
+                    fontSize = 6.5.sp,
                     fontWeight = FontWeight.Black,
+                    fontFamily = androidx.compose.ui.text.font.FontFamily.SansSerif,
                     color = Color.White,
-                    letterSpacing = 0.5.sp,
+                    letterSpacing = 0.4.sp,
                     lineHeight = 7.sp
                 )
             }
         }
 
-        // Registration Plate Numbers
+        // Center Registration Plate Text & Laser Watermark
         Box(
             modifier = Modifier
-                .padding(horizontal = 8.dp),
-            contentAlignment = Alignment.Center
+                .padding(start = 7.dp, end = 5.dp)
+                .fillMaxHeight(),
+            contentAlignment = Alignment.CenterStart
         ) {
-            Text(
-                text = formatted,
-                fontSize = 13.sp,
-                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                fontWeight = FontWeight.ExtraBold,
-                color = plateTextColor,
-                letterSpacing = 1.sp
-            )
+            Column(
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.Start
+            ) {
+                // Main Registration Display (DIN 1451 geometric monoline styling)
+                Text(
+                    text = formatted,
+                    fontSize = 13.5.sp,
+                    fontFamily = androidx.compose.ui.text.font.FontFamily.SansSerif,
+                    fontWeight = FontWeight.Black,
+                    color = plateTextColor,
+                    letterSpacing = 1.4.sp,
+                    style = TextStyle(
+                        shadow = Shadow(
+                            color = plateBorderColor.copy(alpha = 0.35f),
+                            offset = Offset(0.5f, 0.8f),
+                            blurRadius = 0.5f
+                        )
+                    )
+                )
+
+                // Laser-etched Serial / PIN watermark (Bottom border)
+                Text(
+                    text = laserPin,
+                    fontSize = 4.5.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                    color = plateTextColor.copy(alpha = 0.45f),
+                    letterSpacing = 0.3.sp,
+                    lineHeight = 5.sp
+                )
+            }
         }
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        // Right Snap-Lock Rivet Screw Simulation
+        Box(
+            modifier = Modifier
+                .padding(end = 5.dp)
+                .size(4.dp)
+                .clip(CircleShape)
+                .background(plateBorderColor.copy(alpha = 0.65f))
+        )
     }
 }
 
@@ -1531,26 +1624,70 @@ fun HsrpRegistrationTextField(
                 // Left Authentic Blue IND Stripe
                 Box(
                     modifier = Modifier
-                        .width(28.dp)
+                        .width(30.dp)
                         .fillMaxHeight()
-                        .background(Color(0xFF003399)),
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    Color(0xFF0038A8),
+                                    Color(0xFF002277)
+                                )
+                            )
+                        ),
                     contentAlignment = Alignment.Center
                 ) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(6.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFFFDE047))
-                        )
+                        // Hot-stamped Chromium Ashoka Chakra Hologram Badge
+                        Canvas(modifier = Modifier.size(9.dp)) {
+                            val radius = size.minDimension / 2f
+                            val center = Offset(size.width / 2f, size.height / 2f)
+
+                            drawCircle(
+                                color = Color(0xFFFDE047),
+                                radius = radius,
+                                center = center
+                            )
+                            drawCircle(
+                                color = Color(0xFF002277),
+                                radius = radius * 0.72f,
+                                center = center
+                            )
+                            drawCircle(
+                                color = Color(0xFFFDE047),
+                                radius = radius * 0.32f,
+                                center = center
+                            )
+
+                            val spokeCount = 12
+                            for (i in 0 until spokeCount) {
+                                val angle = (i * 360f / spokeCount) * (Math.PI / 180.0)
+                                val start = Offset(
+                                    x = center.x + (radius * 0.35f * kotlin.math.cos(angle)).toFloat(),
+                                    y = center.y + (radius * 0.35f * kotlin.math.sin(angle)).toFloat()
+                                )
+                                val end = Offset(
+                                    x = center.x + (radius * 0.72f * kotlin.math.cos(angle)).toFloat(),
+                                    y = center.y + (radius * 0.72f * kotlin.math.sin(angle)).toFloat()
+                                )
+                                drawLine(
+                                    color = Color(0xFFFDE047),
+                                    start = start,
+                                    end = end,
+                                    strokeWidth = 1f
+                                )
+                            }
+                        }
+
                         Spacer(modifier = Modifier.height(2.dp))
+
                         Text(
                             text = "IND",
-                            fontSize = 8.sp,
+                            fontSize = 8.5.sp,
                             fontWeight = FontWeight.Black,
+                            fontFamily = androidx.compose.ui.text.font.FontFamily.SansSerif,
                             color = Color.White,
                             letterSpacing = 0.5.sp,
                             lineHeight = 9.sp
