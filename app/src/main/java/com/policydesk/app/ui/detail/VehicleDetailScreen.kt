@@ -352,9 +352,10 @@ fun VehicleDetailScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // Authentic Indian HSRP Number Plate
+                            // Authentic Indian HSRP Number Plate (Private, Commercial or EV)
                             HsrpNumberPlate(
-                                regNo = vehicle.regNo
+                                regNo = vehicle.regNo,
+                                makeModel = vehicle.makeModel
                             )
 
                             DaysRemainingBadge(

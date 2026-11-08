@@ -544,6 +544,7 @@ fun PdfReviewScreen(
                     )
 
                     if (state.regNo.isNotBlank()) {
+                        val plateStyle = com.policydesk.app.domain.model.VehiclePlateClassifier.detectStyle(state.makeModel)
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -552,16 +553,20 @@ fun PdfReviewScreen(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             HsrpNumberPlate(
-                                regNo = state.regNo
+                                regNo = state.regNo,
+                                makeModel = state.makeModel
                             )
-                            if (RegistrationNormalizer.isStandardFormat(state.regNo)) {
-                                Text(
-                                    text = "Standard Indian Plate",
-                                    style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
-                                    color = StatusActiveGreen,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                            }
+                            Text(
+                                text = plateStyle.displayName,
+                                style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
+                                color = when (plateStyle) {
+                                    com.policydesk.app.domain.model.NumberPlateStyle.EV_GREEN,
+                                    com.policydesk.app.domain.model.NumberPlateStyle.COMMERCIAL_EV -> Color(0xFF16A34A)
+                                    com.policydesk.app.domain.model.NumberPlateStyle.COMMERCIAL_YELLOW -> Color(0xFFCA8A04)
+                                    else -> StatusActiveGreen
+                                },
+                                fontWeight = FontWeight.SemiBold
+                            )
                         }
                     }
 

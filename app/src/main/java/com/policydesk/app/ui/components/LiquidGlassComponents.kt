@@ -48,6 +48,8 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
+import com.policydesk.app.domain.model.NumberPlateStyle
+import com.policydesk.app.domain.model.VehiclePlateClassifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
@@ -1287,16 +1289,50 @@ fun AppleAlertDialog(
 /**
  * Authentic High-Security Registration Plate (HSRP) for Indian Motor Vehicles
  * Renders the blue IND band with emblem and sharp, embossed monospaced vehicle registration.
+ * Dynamically supports:
+ * - Private (White plate, Black text)
+ * - Commercial (Yellow plate, Black text)
+ * - Electric Vehicle / EV (Green plate, White text)
+ * - Commercial EV / E-Rickshaw / EV Taxi (Green plate, Yellow text)
  */
 @Composable
 fun HsrpNumberPlate(
     regNo: String,
     isCommercial: Boolean = false,
+    makeModel: String? = null,
+    style: NumberPlateStyle? = null,
     modifier: Modifier = Modifier
 ) {
+    val resolvedStyle = style ?: if (isCommercial) {
+        NumberPlateStyle.COMMERCIAL_YELLOW
+    } else {
+        VehiclePlateClassifier.detectStyle(makeModel)
+    }
+
     val plateShape = RoundedCornerShape(6.dp)
-    val plateBg = if (isCommercial) Color(0xFFFDE047) else Color(0xFFF8FAFC)
-    val plateTextColor = Color(0xFF0F172A)
+
+    val (plateBg, plateTextColor, plateBorderColor) = when (resolvedStyle) {
+        NumberPlateStyle.PRIVATE_WHITE -> Triple(
+            Color(0xFFF8FAFC),
+            Color(0xFF0F172A),
+            Color(0xFF94A3B8)
+        )
+        NumberPlateStyle.COMMERCIAL_YELLOW -> Triple(
+            Color(0xFFFACC15),
+            Color(0xFF0F172A),
+            Color(0xFFCA8A04)
+        )
+        NumberPlateStyle.EV_GREEN -> Triple(
+            Color(0xFF15803D),
+            Color(0xFFFFFFFF),
+            Color(0xFF166534)
+        )
+        NumberPlateStyle.COMMERCIAL_EV -> Triple(
+            Color(0xFF15803D),
+            Color(0xFFFDE047),
+            Color(0xFF166534)
+        )
+    }
 
     val clean = regNo.replace(" ", "").uppercase()
     val formatted = remember(clean) {
@@ -1309,7 +1345,7 @@ fun HsrpNumberPlate(
             .background(plateBg, plateShape)
             .border(
                 width = 1.dp,
-                color = if (isCommercial) Color(0xFFCA8A04) else Color(0xFF94A3B8),
+                color = plateBorderColor,
                 shape = plateShape
             )
             .height(28.dp),

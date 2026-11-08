@@ -1065,9 +1065,10 @@ fun VehicleExpiryCard(
                     }
                 }
 
-                // Authentic Indian HSRP Number Plate
+                // Authentic Indian HSRP Number Plate (Private, Commercial or EV)
                 HsrpNumberPlate(
-                    regNo = item.vehicle.regNo
+                    regNo = item.vehicle.regNo,
+                    makeModel = item.vehicle.makeModel
                 )
             }
 

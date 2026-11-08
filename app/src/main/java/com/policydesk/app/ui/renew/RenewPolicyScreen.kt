@@ -188,7 +188,8 @@ fun RenewPolicyScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             HsrpNumberPlate(
-                                regNo = vehicle.regNo
+                                regNo = vehicle.regNo,
+                                makeModel = vehicle.makeModel
                             )
                             Text(
                                 text = vehicle.customer.name,
