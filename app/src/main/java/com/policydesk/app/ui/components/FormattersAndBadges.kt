@@ -58,6 +58,27 @@ object UiFormatters {
         return java.time.LocalDate.of(year, month, 1).format(MONTH_YEAR_FORMATTER)
     }
 
+    fun formatMonthYear(epochMillis: Long): String {
+        return java.time.Instant.ofEpochMilli(epochMillis)
+            .atZone(java.time.ZoneId.systemDefault())
+            .format(MONTH_YEAR_FORMATTER)
+    }
+
+    fun formatTenure(sinceEpochMs: Long, nowEpochMs: Long = System.currentTimeMillis()): String {
+        if (sinceEpochMs <= 0L || sinceEpochMs >= nowEpochMs) return "Recent"
+        val days = (nowEpochMs - sinceEpochMs) / (24L * 60 * 60 * 1000L)
+        val years = days / 365
+        val months = (days % 365) / 30
+        return when {
+            years >= 1 -> {
+                if (months > 0) "$years yr, $months mo" else "$years ${if (years == 1L) "year" else "years"}"
+            }
+            months >= 1 -> "$months ${if (months == 1L) "month" else "months"}"
+            days > 0 -> "$days days"
+            else -> "Recent"
+        }
+    }
+
     fun formatCurrency(amount: Double): String {
         if (amount.isNaN() || amount.isInfinite()) return "₹0"
         val rounded = kotlin.math.round(amount).toLong()
@@ -289,8 +310,11 @@ fun ExistingClientRenewalBanner(
                             fontWeight = FontWeight.Bold,
                             color = accentColor
                         )
+                        val tenureExtra = existingInfo.clientSinceEpochMs?.let {
+                            " • Client for ${UiFormatters.formatTenure(it)}"
+                        } ?: ""
                         Text(
-                            text = "Auto-linked to existing customer records in PolicyDesk",
+                            text = "Auto-linked to records$tenureExtra",
                             fontSize = 11.sp,
                             color = labelSecondary
                         )
@@ -304,7 +328,7 @@ fun ExistingClientRenewalBanner(
                         .padding(horizontal = 8.dp, vertical = 3.dp)
                 ) {
                     Text(
-                        text = "Renewal",
+                        text = if (existingInfo.totalPoliciesCount > 1) "Policy #${existingInfo.totalPoliciesCount + 1}" else "Renewal",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = accentColor

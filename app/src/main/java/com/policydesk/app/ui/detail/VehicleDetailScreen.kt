@@ -407,6 +407,14 @@ fun VehicleDetailScreen(
                             }
                         }
                         DetailRow(label = "Residential Address", value = vehicle.customer.address)
+                        DetailRow(
+                            label = "Client Relationship",
+                            value = "Since ${UiFormatters.formatMonthYear(data.earliestDate)} (${UiFormatters.formatTenure(data.earliestDate)})"
+                        )
+                        DetailRow(
+                            label = "Policy Track Record",
+                            value = "${data.policies.size} ${if (data.policies.size == 1) "Policy" else "Policies"} (${data.policyHistory.size} Renewals)"
+                        )
                     }
 
                     // CURRENT POLICY DETAILS GROUP
@@ -712,32 +720,73 @@ fun DetailRow(
 @Composable
 fun PolicyHistoryItem(policy: Policy) {
     val isDark = isSystemInDarkTheme()
+    val green = if (isDark) com.policydesk.app.ui.theme.AppleDarkSystemGreen else AppleSystemGreen
+    val labelSecondary = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(
-            imageVector = AppleIcons.History,
-            contentDescription = null,
-            tint = if (isDark) IosDarkLabelSecondary else IosLabelSecondary,
-            modifier = Modifier.size(16.dp)
-        )
-        Spacer(modifier = Modifier.width(8.dp))
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .background(
+                    if (isDark) Color(0x330A84FF) else Color(0x1F007AFF),
+                    CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = AppleIcons.History,
+                contentDescription = null,
+                tint = if (isDark) AppleDarkSystemBlue else AppleSystemBlue,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+        Spacer(modifier = Modifier.width(10.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = "${policy.insurer} / ${policy.policyNumber}",
-                fontSize = 13.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
-            )
-            Text(
-                text = "Expired ${UiFormatters.formatDate(policy.expiryDate)}, Premium ${UiFormatters.formatCurrency(policy.totalPremium)}",
-                fontSize = 12.sp,
-                color = if (isDark) IosDarkLabelSecondary else IosLabelSecondary,
-                style = TextStyle(fontFeatureSettings = "tnum")
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "${policy.insurer} • ${policy.policyNumber}",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
+                )
+                Text(
+                    text = UiFormatters.formatCurrency(policy.totalPremium),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (isDark) IosDarkLabelPrimary else IosLabelPrimary,
+                    style = TextStyle(fontFeatureSettings = "tnum")
+                )
+            }
+            Spacer(modifier = Modifier.height(2.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Expired: ${UiFormatters.formatDate(policy.expiryDate)}",
+                    fontSize = 12.sp,
+                    color = labelSecondary,
+                    style = TextStyle(fontFeatureSettings = "tnum")
+                )
+                if (policy.renewedOn != null) {
+                    Text(
+                        text = "Renewed",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = green
+                    )
+                }
+            }
         }
     }
 }

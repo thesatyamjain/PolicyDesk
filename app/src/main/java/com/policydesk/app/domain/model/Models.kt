@@ -84,6 +84,17 @@ data class VehicleWithPolicies(
         get() = policies
             .filter { it.id != currentPolicy?.id }
             .sortedByDescending { it.expiryDate }
+
+    val earliestDate: Long
+        get() {
+            val firstPolicyDate = policies.minOfOrNull {
+                it.startDate ?: it.saleDate.takeIf { s -> s > 0 } ?: (it.expiryDate - 365L * 24 * 60 * 60 * 1000L)
+            }
+            return firstPolicyDate ?: vehicle.createdAt
+        }
+
+    val totalLifetimePremium: Double
+        get() = policies.sumOf { it.totalPremium }
 }
 
 data class CustomerGroup(
@@ -94,7 +105,10 @@ data class CustomerGroup(
     val vehicles: List<VehicleWithPolicies>,
     val totalPolicies: Int,
     val totalActivePremium: Double
-)
+) {
+    val clientSinceDate: Long
+        get() = vehicles.minOfOrNull { it.earliestDate } ?: System.currentTimeMillis()
+}
 
 data class ExistingClientInfo(
     val clientName: String,
@@ -103,5 +117,6 @@ data class ExistingClientInfo(
     val previousPolicyNumber: String?,
     val previousExpiryEpochMs: Long?,
     val previousPolicyId: String?,
-    val totalPoliciesCount: Int = 1
+    val totalPoliciesCount: Int = 1,
+    val clientSinceEpochMs: Long? = null
 )

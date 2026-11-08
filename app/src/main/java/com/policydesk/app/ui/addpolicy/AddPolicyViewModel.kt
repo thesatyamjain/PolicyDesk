@@ -420,7 +420,8 @@ class AddPolicyViewModel @Inject constructor(
                     previousPolicyNumber = prevPolicy?.policyNumber,
                     previousExpiryEpochMs = prevPolicy?.expiryDate,
                     previousPolicyId = prevPolicy?.id,
-                    totalPoliciesCount = existing.policies.size
+                    totalPoliciesCount = existing.policies.size,
+                    clientSinceEpochMs = existing.earliestDate
                 )
                 _formState.update { curr ->
                     val useName = curr.name.ifBlank { existing.vehicle.customer.name }

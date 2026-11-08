@@ -186,4 +186,54 @@ class ExistingClientRenewalDetectionTest {
         val saleType = if (isRenewal) SaleType.RENEWAL else SaleType.NEW_BUSINESS
         assertEquals(SaleType.NEW_BUSINESS, saleType)
     }
+
+    @Test
+    fun testClientTenureFormatting() {
+        val now = 1715000000000L
+        val oneYearAgo = now - 365L * 24 * 60 * 60 * 1000L
+        val twoYearsAgo = now - 730L * 24 * 60 * 60 * 1000L
+        val twoYearsThreeMonthsAgo = now - (730L + 90L) * 24 * 60 * 60 * 1000L
+
+        assertEquals("1 year", com.policydesk.app.ui.components.UiFormatters.formatTenure(oneYearAgo, now))
+        assertEquals("2 years", com.policydesk.app.ui.components.UiFormatters.formatTenure(twoYearsAgo, now))
+        assertEquals("2 yr, 3 mo", com.policydesk.app.ui.components.UiFormatters.formatTenure(twoYearsThreeMonthsAgo, now))
+    }
+
+    @Test
+    fun testVehicleWithPoliciesEarliestDateAndHistory() {
+        val regNo = "KA05MK1234"
+        val vehicle = Vehicle(
+            regNo = regNo,
+            customer = Customer(name = "Amit Kumar", mobile = "9876543210", address = "Bengaluru"),
+            createdAt = 1609459200000L // 2021-01-01
+        )
+        val p1 = Policy(
+            id = "pol-1",
+            vehicleRegNo = regNo,
+            companySector = Sector.PRIVATE,
+            insurer = "Bajaj Allianz",
+            policyNumber = "BA/2021/1",
+            expiryDate = 1640995200000L, // 2022-01-01
+            startDate = 1609459200000L,
+            totalPremium = 10000.0,
+            renewedOn = 1640995200000L
+        )
+        val p2 = Policy(
+            id = "pol-2",
+            vehicleRegNo = regNo,
+            companySector = Sector.PRIVATE,
+            insurer = "Bajaj Allianz",
+            policyNumber = "BA/2022/2",
+            expiryDate = 1672531200000L, // 2023-01-01
+            startDate = 1640995200000L,
+            totalPremium = 12000.0
+        )
+        val vwp = VehicleWithPolicies(vehicle = vehicle, policies = listOf(p1, p2))
+
+        assertEquals(1609459200000L, vwp.earliestDate)
+        assertEquals(2, vwp.policies.size)
+        assertEquals(1, vwp.policyHistory.size)
+        assertEquals("pol-1", vwp.policyHistory.first().id)
+        assertEquals(22000.0, vwp.totalLifetimePremium, 0.001)
+    }
 }

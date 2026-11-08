@@ -55,6 +55,7 @@ import com.policydesk.app.ui.components.HsrpNumberPlate
 import com.policydesk.app.ui.components.LiquidGlassCard
 import com.policydesk.app.ui.components.LiquidGlassSearchBar
 import com.policydesk.app.ui.components.LiquidGlassTopBar
+import com.policydesk.app.ui.components.UiFormatters
 import com.policydesk.app.ui.theme.AppleDarkSystemBlue
 import com.policydesk.app.ui.theme.AppleDarkSystemGreen
 import com.policydesk.app.ui.theme.AppleIcons
@@ -309,7 +310,7 @@ fun CustomerCard(
                     )
                     Spacer(modifier = Modifier.height(1.dp))
                     Text(
-                        text = customer.mobile,
+                        text = "${customer.mobile} • Client for ${UiFormatters.formatTenure(customer.clientSinceDate)}",
                         fontSize = 12.sp,
                         color = labelSecondary,
                         style = TextStyle(fontFeatureSettings = "tnum")

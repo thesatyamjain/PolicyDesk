@@ -182,7 +182,8 @@ class PdfReviewViewModel @Inject constructor(
                             previousPolicyNumber = prevPolicy?.policyNumber,
                             previousExpiryEpochMs = prevPolicy?.expiryDate,
                             previousPolicyId = prevPolicy?.id,
-                            totalPoliciesCount = existing.policies.size
+                            totalPoliciesCount = existing.policies.size,
+                            clientSinceEpochMs = existing.earliestDate
                         )
                     } else null
 
@@ -324,7 +325,8 @@ class PdfReviewViewModel @Inject constructor(
                     previousPolicyNumber = prevPolicy?.policyNumber,
                     previousExpiryEpochMs = prevPolicy?.expiryDate,
                     previousPolicyId = prevPolicy?.id,
-                    totalPoliciesCount = existing.policies.size
+                    totalPoliciesCount = existing.policies.size,
+                    clientSinceEpochMs = existing.earliestDate
                 )
                 _uiState.update { curr ->
                     val isCurrMobileInvalid = curr.mobile.isBlank() ||
