@@ -489,7 +489,8 @@ fun CustomerCard(
                         ) {
                             HsrpNumberPlate(
                                 regNo = vehicle.regNo,
-                                makeModel = vehicle.makeModel
+                                makeModel = vehicle.makeModel,
+                                style = vehicle.plateStyle
                             )
                             Text(
                                 text = "${vehicle.makeModel ?: "Vehicle"} / ${policy?.insurer ?: "No Policy"}",

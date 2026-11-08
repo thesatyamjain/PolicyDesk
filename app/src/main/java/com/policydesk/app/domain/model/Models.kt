@@ -24,7 +24,8 @@ data class Vehicle(
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
     val isClosed: Boolean = false,
-    val closeReason: String? = null
+    val closeReason: String? = null,
+    val plateStyle: NumberPlateStyle? = null
 )
 
 data class Policy(

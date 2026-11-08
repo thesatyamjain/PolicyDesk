@@ -6,6 +6,7 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.policydesk.app.domain.model.Customer
+import com.policydesk.app.domain.model.NumberPlateStyle
 import com.policydesk.app.domain.model.Policy
 import com.policydesk.app.domain.model.PolicySource
 import com.policydesk.app.domain.model.PolicyStatus
@@ -60,7 +61,8 @@ data class VehicleEntity(
     val updatedAt: Long = System.currentTimeMillis(),
     val isClosed: Boolean = false,
     val closeReason: String? = null,
-    val deletedAt: Long? = null // For soft deletion / sync tracking
+    val deletedAt: Long? = null, // For soft deletion / sync tracking
+    val plateStyle: String? = null
 ) {
     fun toDomain() = Vehicle(
         regNo = regNo,
@@ -72,7 +74,8 @@ data class VehicleEntity(
         createdAt = createdAt,
         updatedAt = updatedAt,
         isClosed = isClosed,
-        closeReason = closeReason
+        closeReason = closeReason,
+        plateStyle = plateStyle?.let { runCatching { NumberPlateStyle.valueOf(it) }.getOrNull() }
     )
 
     companion object {
@@ -87,7 +90,8 @@ data class VehicleEntity(
             updatedAt = v.updatedAt,
             isClosed = v.isClosed,
             closeReason = v.closeReason,
-            deletedAt = deletedAt
+            deletedAt = deletedAt,
+            plateStyle = v.plateStyle?.name
         )
     }
 }

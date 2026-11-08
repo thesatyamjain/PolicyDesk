@@ -92,6 +92,7 @@ import com.policydesk.app.ui.components.ExistingClientRenewalBanner
 import com.policydesk.app.ui.components.HsrpNumberPlate
 import com.policydesk.app.ui.components.RegistrationPlateVisualTransformation
 import com.policydesk.app.ui.components.UiFormatters
+import com.policydesk.app.ui.components.VehicleCategoryPicker
 import com.policydesk.app.ui.theme.SapphireBlue
 import com.policydesk.app.ui.theme.StatusActiveGreen
 import com.policydesk.app.ui.theme.StatusExpiringAmber
@@ -330,9 +331,11 @@ fun AddPolicyScreen(
                     colors = formFieldColors()
                 )
 
-                // Live HSRP Number Plate Preview
+                // Live HSRP Number Plate Preview & Category Selection
+                val detectedStyle = com.policydesk.app.domain.model.VehiclePlateClassifier.detectStyle(state.makeModel)
+                val effectiveStyle = state.selectedPlateStyle ?: detectedStyle
+
                 if (state.regNo.isNotBlank()) {
-                    val plateStyle = com.policydesk.app.domain.model.VehiclePlateClassifier.detectStyle(state.makeModel)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -342,12 +345,13 @@ fun AddPolicyScreen(
                     ) {
                         HsrpNumberPlate(
                             regNo = state.regNo,
-                            makeModel = state.makeModel
+                            makeModel = state.makeModel,
+                            style = effectiveStyle
                         )
                         Text(
-                            text = plateStyle.displayName,
+                            text = effectiveStyle.displayName,
                             style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
-                            color = when (plateStyle) {
+                            color = when (effectiveStyle) {
                                 com.policydesk.app.domain.model.NumberPlateStyle.EV_GREEN,
                                 com.policydesk.app.domain.model.NumberPlateStyle.COMMERCIAL_EV -> Color(0xFF16A34A)
                                 com.policydesk.app.domain.model.NumberPlateStyle.COMMERCIAL_YELLOW -> Color(0xFFCA8A04)
@@ -357,6 +361,14 @@ fun AddPolicyScreen(
                         )
                     }
                 }
+
+                // Interactive Vehicle Category Selector (Auto, Private, Commercial, EV, Comm EV)
+                VehicleCategoryPicker(
+                    selectedStyle = state.selectedPlateStyle,
+                    detectedStyle = detectedStyle,
+                    onStyleSelected = viewModel::onPlateStyleSelected,
+                    modifier = Modifier.padding(top = 2.dp, bottom = 4.dp)
+                )
 
                 val existingClient = state.existingClientInfo
                 if (state.isRenewalDetected && existingClient != null && !state.isEditMode) {

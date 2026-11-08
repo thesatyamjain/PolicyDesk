@@ -355,7 +355,8 @@ fun VehicleDetailScreen(
                             // Authentic Indian HSRP Number Plate (Private, Commercial or EV)
                             HsrpNumberPlate(
                                 regNo = vehicle.regNo,
-                                makeModel = vehicle.makeModel
+                                makeModel = vehicle.makeModel,
+                                style = vehicle.plateStyle
                             )
 
                             DaysRemainingBadge(

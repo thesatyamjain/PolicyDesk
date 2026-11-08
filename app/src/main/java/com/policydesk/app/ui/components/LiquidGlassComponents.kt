@@ -8,9 +8,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -1394,6 +1396,159 @@ fun HsrpNumberPlate(
                 color = plateTextColor,
                 letterSpacing = 1.sp
             )
+        }
+    }
+}
+
+/**
+ * Interactive Vehicle Category & HSRP Plate Style Selector
+ * Allows advisor to choose between Auto-Detect, Private, Commercial, EV, and Commercial EV.
+ */
+@Composable
+fun VehicleCategoryPicker(
+    selectedStyle: NumberPlateStyle?,
+    detectedStyle: NumberPlateStyle,
+    onStyleSelected: (NumberPlateStyle?) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val isDark = isSystemInDarkTheme()
+    val haptic = LocalHapticFeedback.current
+
+    val options = listOf<Pair<NumberPlateStyle?, String>>(
+        null to "Auto",
+        NumberPlateStyle.PRIVATE_WHITE to "Private",
+        NumberPlateStyle.COMMERCIAL_YELLOW to "Commercial",
+        NumberPlateStyle.EV_GREEN to "Electric EV",
+        NumberPlateStyle.COMMERCIAL_EV to "Comm EV"
+    )
+
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Vehicle Category & Plate Type",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = if (isDark) IosDarkLabelSecondary else IosLabelSecondary,
+                letterSpacing = (-0.1).sp
+            )
+            Text(
+                text = if (selectedStyle == null) "Auto: ${detectedStyle.displayName}" else selectedStyle.displayName,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium,
+                color = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
+            )
+        }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            options.forEach { (style, label) ->
+                val isSelected = (selectedStyle == style)
+                val activeBg = if (isDark) AppleDarkSystemBlue.copy(alpha = 0.20f) else AppleSystemBlue.copy(alpha = 0.12f)
+                val inactiveBg = if (isDark) Color(0xFF2C2C2E) else Color.White
+                val activeBorder = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
+                val inactiveBorder = if (isDark) Color(0x38FFFFFF) else Color(0x24000000)
+                val textColor = if (isSelected) {
+                    if (isDark) AppleDarkSystemBlue else AppleSystemBlue
+                } else {
+                    if (isDark) IosDarkLabelPrimary else IosLabelPrimary
+                }
+
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(if (isSelected) activeBg else inactiveBg)
+                        .border(
+                            width = if (isSelected) 1.5.dp else 1.dp,
+                            color = if (isSelected) activeBorder else inactiveBorder,
+                            shape = RoundedCornerShape(10.dp)
+                        )
+                        .clickable {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            onStyleSelected(style)
+                        }
+                        .padding(horizontal = 12.dp, vertical = 7.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        when (style) {
+                            null -> {
+                                Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .clip(CircleShape)
+                                        .background(if (isDark) AppleDarkSystemBlue else AppleSystemBlue)
+                                )
+                            }
+                            NumberPlateStyle.PRIVATE_WHITE -> {
+                                Box(
+                                    modifier = Modifier
+                                        .size(9.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0xFFF8FAFC))
+                                        .border(1.dp, Color(0xFF94A3B8), CircleShape)
+                                )
+                            }
+                            NumberPlateStyle.COMMERCIAL_YELLOW -> {
+                                Box(
+                                    modifier = Modifier
+                                        .size(9.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0xFFFACC15))
+                                        .border(1.dp, Color(0xFFCA8A04), CircleShape)
+                                )
+                            }
+                            NumberPlateStyle.EV_GREEN -> {
+                                Box(
+                                    modifier = Modifier
+                                        .size(9.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0xFF15803D))
+                                        .border(1.dp, Color(0xFF166534), CircleShape)
+                                )
+                            }
+                            NumberPlateStyle.COMMERCIAL_EV -> {
+                                Box(
+                                    modifier = Modifier
+                                        .size(9.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0xFF15803D))
+                                        .border(1.dp, Color(0xFFFDE047), CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(3.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(0xFFFDE047))
+                                    )
+                                }
+                            }
+                        }
+
+                        Text(
+                            text = label,
+                            fontSize = 12.sp,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                            color = textColor
+                        )
+                    }
+                }
+            }
         }
     }
 }

@@ -6,6 +6,7 @@ import com.policydesk.app.domain.model.Customer
 import com.policydesk.app.domain.model.ExistingClientInfo
 import com.policydesk.app.domain.model.FieldValidators
 import com.policydesk.app.domain.model.InsurerCatalog
+import com.policydesk.app.domain.model.NumberPlateStyle
 import com.policydesk.app.domain.model.Policy
 import com.policydesk.app.domain.model.PolicySource
 import com.policydesk.app.domain.model.RegistrationNormalizer
@@ -54,6 +55,7 @@ data class AddPolicyFormState(
     val makeModel: String = "",
     val vin: String = "",
     val engineNo: String = "",
+    val selectedPlateStyle: NumberPlateStyle? = null,
 
     // Notes
     val notes: String = "",
@@ -456,6 +458,7 @@ class AddPolicyViewModel @Inject constructor(
                         makeModel = useMakeModel,
                         vin = useVin,
                         engineNo = useEngineNo,
+                        selectedPlateStyle = curr.selectedPlateStyle ?: existing.vehicle.plateStyle,
                         commissionPercentage = useCommPct,
                         commissionAmount = useCommAmt
                     )
@@ -493,6 +496,7 @@ class AddPolicyViewModel @Inject constructor(
                     makeModel = v.makeModel ?: "",
                     vin = v.vin ?: "",
                     engineNo = v.engineNo ?: "",
+                    selectedPlateStyle = v.plateStyle,
                     notes = v.notes ?: "",
                     title = c.title ?: "",
                     name = c.name,
@@ -544,6 +548,10 @@ class AddPolicyViewModel @Inject constructor(
 
     fun onEngineNoChanged(engineNo: String) {
         _formState.update { it.copy(engineNo = engineNo.uppercase().trim()) }
+    }
+
+    fun onPlateStyleSelected(style: NumberPlateStyle?) {
+        _formState.update { it.copy(selectedPlateStyle = style) }
     }
 
     fun onNotesChanged(notes: String) {
@@ -604,6 +612,7 @@ class AddPolicyViewModel @Inject constructor(
                 makeModel = state.makeModel.trim().ifBlank { null },
                 vin = state.vin.trim().ifBlank { null },
                 engineNo = state.engineNo.trim().ifBlank { null },
+                plateStyle = state.selectedPlateStyle,
                 notes = state.notes.trim().ifBlank { null },
                 createdAt = state.existingCreatedAt ?: System.currentTimeMillis(),
                 isClosed = state.existingIsClosed,

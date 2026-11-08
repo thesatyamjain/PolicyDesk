@@ -12,6 +12,7 @@ import com.policydesk.app.data.security.SecureKeyStorage
 import com.policydesk.app.domain.model.Customer
 import com.policydesk.app.domain.model.FieldValidators
 import com.policydesk.app.domain.model.InsurerCatalog
+import com.policydesk.app.domain.model.NumberPlateStyle
 import com.policydesk.app.domain.model.Policy
 import com.policydesk.app.domain.model.PolicySource
 import com.policydesk.app.domain.model.PolicyStatus
@@ -65,6 +66,7 @@ data class PdfReviewUiState(
     val makeModel: String = "",
     val vin: String = "",
     val engineNo: String = "",
+    val selectedPlateStyle: NumberPlateStyle? = null,
 
     val isSaving: Boolean = false
 ) {
@@ -367,6 +369,7 @@ class PdfReviewViewModel @Inject constructor(
                         makeModel = useMakeModel,
                         vin = useVin,
                         engineNo = useEngineNo,
+                        selectedPlateStyle = curr.selectedPlateStyle ?: existing.vehicle.plateStyle,
                         commissionPercentage = useCommPct,
                         commissionAmount = useCommAmt
                     )
@@ -454,6 +457,10 @@ class PdfReviewViewModel @Inject constructor(
         _uiState.update { it.copy(insurer = insurer) }
     }
 
+    fun onPlateStyleSelected(style: NumberPlateStyle?) {
+        _uiState.update { it.copy(selectedPlateStyle = style) }
+    }
+
     fun savePolicy() {
         val state = _uiState.value
         if (!state.isValid) return
@@ -488,6 +495,7 @@ class PdfReviewViewModel @Inject constructor(
                 makeModel = state.makeModel.trim().ifBlank { null },
                 vin = state.vin.trim().ifBlank { null },
                 engineNo = state.engineNo.trim().ifBlank { null },
+                plateStyle = state.selectedPlateStyle,
                 updatedAt = now
             )
 

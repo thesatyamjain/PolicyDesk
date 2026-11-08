@@ -13,7 +13,7 @@ import com.policydesk.app.data.local.entity.VehicleEntity
         VehicleEntity::class,
         PolicyEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -26,6 +26,12 @@ abstract class AppDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE policies ADD COLUMN commissionPercentage REAL DEFAULT NULL")
                 db.execSQL("ALTER TABLE policies ADD COLUMN commissionAmount REAL DEFAULT NULL")
+            }
+        }
+
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE vehicles ADD COLUMN plateStyle TEXT DEFAULT NULL")
             }
         }
     }
