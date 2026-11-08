@@ -12,8 +12,12 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
@@ -27,8 +31,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -322,6 +329,32 @@ fun PolicyDeskNavHost(
                     }
                 )
             }
+        }
+
+        // Ambient Bottom Scrim for Floating Dock
+        // Gracefully fades scrolling content into the background behind the floating dock
+        AnimatedVisibility(
+            visible = isTopLevelTab && !isSelectionActive,
+            enter = fadeIn(animationSpec = tween(200)),
+            exit = fadeOut(animationSpec = tween(150)),
+            modifier = Modifier.align(Alignment.BottomCenter)
+        ) {
+            val isDark = isSystemInDarkTheme()
+            val scrimColor = if (isDark) Color(0xFF000000) else Color(0xFFF2F2F7)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(96.dp)
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                scrimColor.copy(alpha = 0.45f),
+                                scrimColor.copy(alpha = 0.85f)
+                            )
+                        )
+                    )
+            )
         }
 
         // True Persistent Floating Liquid Glass Dock (Suspended over content, active across all primary tabs)

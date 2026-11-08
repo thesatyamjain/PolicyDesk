@@ -377,7 +377,7 @@ fun CalendarGridView(
                     state = listState,
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = PaddingValues(bottom = 120.dp)
+                    contentPadding = PaddingValues(bottom = 140.dp)
                 ) {
                     items(
                         items = list,
@@ -441,7 +441,7 @@ fun TimelineListView(
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 120.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 140.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             dateGroupedPolicies.forEach { (day, vehicles) ->

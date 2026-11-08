@@ -1987,12 +1987,12 @@ fun LiquidGlassDock(
 
     val hazeMod = if (activeHaze != null) {
         try {
-            val bg = (if (isDark) Color(0xFF121215) else Color.White).copy(alpha = 0.60f)
+            val bg = (if (isDark) Color(0xFF141418) else Color.White).copy(alpha = 0.88f)
             Modifier.hazeEffect(
                 state = activeHaze,
                 style = HazeStyle(
                     backgroundColor = bg,
-                    blurRadius = 26.dp,
+                    blurRadius = 24.dp,
                     tints = listOf(HazeTint(bg)),
                     noiseFactor = 0.05f
                 )
@@ -2006,7 +2006,7 @@ fun LiquidGlassDock(
         modifier = modifier
             .fillMaxWidth()
             .navigationBarsPadding()
-            .padding(horizontal = 20.dp, vertical = 8.dp),
+            .padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 14.dp),
         contentAlignment = Alignment.Center
     ) {
         Box(
@@ -2034,17 +2034,17 @@ fun LiquidGlassDock(
                     brush = Brush.linearGradient(
                         colors = if (isDark) {
                             listOf(
-                                Color(0xFF242428).copy(alpha = if (activeHaze != null) 0.38f else 0.80f),
-                                Color(0xFF161618).copy(alpha = if (activeHaze != null) 0.28f else 0.50f),
-                                Color(0xFF101012).copy(alpha = if (activeHaze != null) 0.18f else 0.35f),
-                                Color(0xFF1E1E22).copy(alpha = if (activeHaze != null) 0.28f else 0.55f)
+                                Color(0xFF26262B).copy(alpha = 0.94f),
+                                Color(0xFF1C1C20).copy(alpha = 0.92f),
+                                Color(0xFF141417).copy(alpha = 0.90f),
+                                Color(0xFF202024).copy(alpha = 0.94f)
                             )
                         } else {
                             listOf(
-                                Color.White.copy(alpha = if (activeHaze != null) 0.45f else 0.82f),
-                                Color.White.copy(alpha = if (activeHaze != null) 0.30f else 0.46f),
-                                Color.White.copy(alpha = if (activeHaze != null) 0.20f else 0.35f),
-                                Color.White.copy(alpha = if (activeHaze != null) 0.30f else 0.55f)
+                                Color.White.copy(alpha = 0.96f),
+                                Color(0xFFF9F9FB).copy(alpha = 0.94f),
+                                Color(0xFFF2F2F7).copy(alpha = 0.91f),
+                                Color.White.copy(alpha = 0.96f)
                             )
                         },
                         start = Offset.Zero,
@@ -2218,16 +2218,58 @@ fun LiquidGlassSelectionBar(
         modifier = modifier
             .fillMaxWidth()
             .navigationBarsPadding()
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            .padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 14.dp),
         contentAlignment = Alignment.Center
     ) {
         Box(
             modifier = Modifier
                 .widthIn(max = 440.dp)
                 .fillMaxWidth()
-                .height(60.dp)
-                .liquidGlass(shape = barShape, elevation = 8.dp, isDark = isDark)
+                .height(58.dp)
+                .shadow(
+                    elevation = 16.dp,
+                    shape = barShape,
+                    ambientColor = if (isDark) Color(0x66000000) else Color(0x1F0F172A),
+                    spotColor = if (isDark) Color(0x66000000) else Color(0x14000000)
+                )
                 .clip(barShape)
+                .background(
+                    brush = Brush.linearGradient(
+                        colors = if (isDark) {
+                            listOf(
+                                Color(0xFF26262B).copy(alpha = 0.94f),
+                                Color(0xFF1C1C20).copy(alpha = 0.92f),
+                                Color(0xFF141417).copy(alpha = 0.90f),
+                                Color(0xFF202024).copy(alpha = 0.94f)
+                            )
+                        } else {
+                            listOf(
+                                Color.White.copy(alpha = 0.96f),
+                                Color(0xFFF9F9FB).copy(alpha = 0.94f),
+                                Color(0xFFF2F2F7).copy(alpha = 0.91f),
+                                Color.White.copy(alpha = 0.96f)
+                            )
+                        },
+                        start = Offset.Zero,
+                        end = Offset.Infinite
+                    ),
+                    shape = barShape
+                )
+                .border(
+                    width = 1.1.dp,
+                    brush = Brush.verticalGradient(
+                        colors = if (isDark) listOf(
+                            Color.White.copy(alpha = 0.35f),
+                            Color.White.copy(alpha = 0.12f),
+                            Color.White.copy(alpha = 0.04f)
+                        ) else listOf(
+                            Color.White.copy(alpha = 0.90f),
+                            Color.White.copy(alpha = 0.35f),
+                            Color.White.copy(alpha = 0.15f)
+                        )
+                    ),
+                    shape = barShape
+                )
                 .padding(horizontal = 14.dp),
             contentAlignment = Alignment.Center
         ) {

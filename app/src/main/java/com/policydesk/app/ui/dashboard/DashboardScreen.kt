@@ -8,6 +8,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -568,7 +569,7 @@ fun DashboardScreen(
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(top = paddingValues.calculateTopPadding() + 8.dp, bottom = 120.dp),
+            contentPadding = PaddingValues(top = paddingValues.calculateTopPadding() + 8.dp, bottom = 140.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             // 1. Executive Bento Hero Pulse Card (Full-Width, Scrollable)
@@ -927,7 +928,31 @@ fun DashboardScreen(
         }
     }
 
-    // Floating Selection Bar (Slides up when in selection mode)
+        // Ambient Bottom Scrim for Selection Bar
+        AnimatedVisibility(
+            visible = uiState.isSelectionMode,
+            enter = fadeIn(animationSpec = tween(200)),
+            exit = fadeOut(animationSpec = tween(150)),
+            modifier = Modifier.align(Alignment.BottomCenter)
+        ) {
+            val scrimColor = if (isDark) Color(0xFF000000) else Color(0xFFF2F2F7)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(96.dp)
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                scrimColor.copy(alpha = 0.45f),
+                                scrimColor.copy(alpha = 0.85f)
+                            )
+                        )
+                    )
+            )
+        }
+
+        // Floating Selection Bar (Slides up when in selection mode)
         AnimatedVisibility(
             visible = uiState.isSelectionMode,
             enter = slideInVertically(

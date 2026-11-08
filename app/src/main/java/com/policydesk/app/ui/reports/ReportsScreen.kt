@@ -221,7 +221,7 @@ fun SalesTabContent(
     LazyColumn(
         state = listState,
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 120.dp),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 140.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         // Summary Cards Row
@@ -445,7 +445,7 @@ fun MissedRenewalsTabContent(
     LazyColumn(
         state = listState,
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 120.dp),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 140.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         // Summary Cards: Premium at Risk & Overdue Count
@@ -690,7 +690,7 @@ fun AnalyticsTabContent(aggregate: ReportsAggregate) {
     LazyColumn(
         state = listState,
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 120.dp),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 140.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         // Book Size Card
