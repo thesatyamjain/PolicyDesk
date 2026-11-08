@@ -38,7 +38,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
@@ -1395,6 +1399,250 @@ fun HsrpNumberPlate(
                 fontWeight = FontWeight.ExtraBold,
                 color = plateTextColor,
                 letterSpacing = 1.sp
+            )
+        }
+    }
+}
+
+/**
+ * Unified Authentic HSRP Number Plate Text Field
+ * Merges the Indian High-Security Registration Plate (HSRP) and the vehicle registration input into one interactive component.
+ * Features:
+ * - Left authentic deep blue IND stripe with golden chakra dot and "IND" text.
+ * - Dynamic plate background and font color matching Private, Commercial, EV, and Commercial EV.
+ * - Monospaced bold embossed typography with real-time bidirectional spacing transformation.
+ * - Top label with live category badge and colored status indicator.
+ * - 1-tap clear action icon with haptic response.
+ * - Full validation error styling and focus states.
+ */
+@Composable
+fun HsrpRegistrationTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    plateStyle: NumberPlateStyle = NumberPlateStyle.PRIVATE_WHITE,
+    label: String = "Vehicle Registration No *",
+    placeholder: String = "DL 01 AB 1234",
+    isError: Boolean = false,
+    errorMessage: String? = null,
+    onFocusLost: (() -> Unit)? = null,
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
+    imeAction: ImeAction = ImeAction.Next
+) {
+    val isDark = isSystemInDarkTheme()
+    var isFocused by remember { mutableStateOf(false) }
+    val haptic = LocalHapticFeedback.current
+
+    val (plateBg, plateTextColor, plateBorderColor) = when (plateStyle) {
+        NumberPlateStyle.PRIVATE_WHITE -> Triple(
+            Color(0xFFF8FAFC),
+            Color(0xFF0F172A),
+            Color(0xFF94A3B8)
+        )
+        NumberPlateStyle.COMMERCIAL_YELLOW -> Triple(
+            Color(0xFFFACC15),
+            Color(0xFF0F172A),
+            Color(0xFFCA8A04)
+        )
+        NumberPlateStyle.EV_GREEN -> Triple(
+            Color(0xFF15803D),
+            Color(0xFFFFFFFF),
+            Color(0xFF166534)
+        )
+        NumberPlateStyle.COMMERCIAL_EV -> Triple(
+            Color(0xFF15803D),
+            Color(0xFFFDE047),
+            Color(0xFF166534)
+        )
+    }
+
+    val activeBorder = when {
+        isError -> Color(0xFFEF4444)
+        isFocused -> if (isDark) AppleDarkSystemBlue else AppleSystemBlue
+        else -> plateBorderColor
+    }
+
+    val plateShape = RoundedCornerShape(10.dp)
+
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(5.dp)
+    ) {
+        // Top Label Row with Category Badge
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = label,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
+            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(5.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(7.dp)
+                        .clip(CircleShape)
+                        .background(
+                            when (plateStyle) {
+                                NumberPlateStyle.COMMERCIAL_YELLOW -> Color(0xFFEAB308)
+                                NumberPlateStyle.EV_GREEN,
+                                NumberPlateStyle.COMMERCIAL_EV -> Color(0xFF16A34A)
+                                else -> if (isDark) Color(0xFF94A3B8) else Color(0xFF64748B)
+                            }
+                        )
+                )
+                Text(
+                    text = plateStyle.displayName,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = when (plateStyle) {
+                        NumberPlateStyle.COMMERCIAL_YELLOW -> Color(0xFFCA8A04)
+                        NumberPlateStyle.EV_GREEN,
+                        NumberPlateStyle.COMMERCIAL_EV -> Color(0xFF16A34A)
+                        else -> if (isDark) IosDarkLabelSecondary else IosLabelSecondary
+                    }
+                )
+            }
+        }
+
+        // Unified HSRP Plate Input Box
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp)
+                .clip(plateShape)
+                .background(plateBg, plateShape)
+                .border(
+                    width = if (isFocused || isError) 2.dp else 1.2.dp,
+                    color = activeBorder,
+                    shape = plateShape
+                )
+        ) {
+            Row(
+                modifier = Modifier.fillMaxSize(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Left Authentic Blue IND Stripe
+                Box(
+                    modifier = Modifier
+                        .width(28.dp)
+                        .fillMaxHeight()
+                        .background(Color(0xFF003399)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFFFDE047))
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "IND",
+                            fontSize = 8.sp,
+                            fontWeight = FontWeight.Black,
+                            color = Color.White,
+                            letterSpacing = 0.5.sp,
+                            lineHeight = 9.sp
+                        )
+                    }
+                }
+
+                // Center Input Field
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 12.dp),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    if (value.isEmpty()) {
+                        Text(
+                            text = placeholder,
+                            fontSize = 16.sp,
+                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold,
+                            color = plateTextColor.copy(alpha = 0.35f),
+                            letterSpacing = 1.sp
+                        )
+                    }
+
+                    BasicTextField(
+                        value = value,
+                        onValueChange = onValueChange,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .onFocusChanged { focusState ->
+                                isFocused = focusState.isFocused
+                                if (!focusState.isFocused) {
+                                    onFocusLost?.invoke()
+                                }
+                            },
+                        singleLine = true,
+                        textStyle = TextStyle(
+                            color = plateTextColor,
+                            fontSize = 16.sp,
+                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                            fontWeight = FontWeight.ExtraBold,
+                            letterSpacing = 1.2.sp
+                        ),
+                        cursorBrush = SolidColor(
+                            when (plateStyle) {
+                                NumberPlateStyle.EV_GREEN -> Color.White
+                                NumberPlateStyle.COMMERCIAL_EV -> Color(0xFFFDE047)
+                                else -> Color(0xFF0F172A)
+                            }
+                        ),
+                        visualTransformation = RegistrationPlateVisualTransformation,
+                        keyboardOptions = KeyboardOptions(
+                            capitalization = KeyboardCapitalization.Characters,
+                            imeAction = imeAction
+                        ),
+                        keyboardActions = keyboardActions
+                    )
+                }
+
+                // Right Clear Action Button
+                if (value.isNotEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .padding(end = 8.dp)
+                            .size(28.dp)
+                            .clip(CircleShape)
+                            .clickable {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                onValueChange("")
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = AppleIcons.Clear,
+                            contentDescription = "Clear",
+                            tint = plateTextColor.copy(alpha = 0.45f),
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        // Error message if present
+        if (isError && !errorMessage.isNullOrBlank()) {
+            Text(
+                text = errorMessage,
+                fontSize = 11.sp,
+                color = Color(0xFFEF4444),
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.padding(start = 2.dp)
             )
         }
     }

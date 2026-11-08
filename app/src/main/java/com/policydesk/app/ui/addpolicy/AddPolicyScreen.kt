@@ -90,6 +90,7 @@ import com.policydesk.app.domain.model.RegistrationNormalizer
 import com.policydesk.app.domain.model.Sector
 import com.policydesk.app.ui.components.ExistingClientRenewalBanner
 import com.policydesk.app.ui.components.HsrpNumberPlate
+import com.policydesk.app.ui.components.HsrpRegistrationTextField
 import com.policydesk.app.ui.components.RegistrationPlateVisualTransformation
 import com.policydesk.app.ui.components.UiFormatters
 import com.policydesk.app.ui.components.VehicleCategoryPicker
@@ -307,60 +308,18 @@ fun AddPolicyScreen(
 
             // SECTION 1: VEHICLE SPECIFICATIONS
             FormSectionCard(title = "Vehicle Specifications") {
-                // Registration Number
-                OutlinedTextField(
-                    value = state.regNo,
-                    onValueChange = viewModel::onRegNoChanged,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .onFocusChanged { focusState ->
-                            if (!focusState.isFocused) {
-                                viewModel.onRegNoBlur()
-                            }
-                        },
-                    label = { Text("Vehicle Registration No *") },
-                    placeholder = { Text("e.g. MH 12 AB 1234 or 22 BH 1234 AA") },
-                    singleLine = true,
-                    visualTransformation = RegistrationPlateVisualTransformation,
-                    isError = state.hasAttemptedSave && RegistrationNormalizer.normalize(state.regNo).isEmpty(),
-                    supportingText = if (state.hasAttemptedSave && RegistrationNormalizer.normalize(state.regNo).isEmpty()) {
-                        { Text("Registration number is required", color = StatusOverdueRed) }
-                    } else null,
-                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, imeAction = ImeAction.Next),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = formFieldColors()
-                )
-
-                // Live HSRP Number Plate Preview & Category Selection
+                // Unified HSRP Registration Number Plate Input Field
                 val detectedStyle = com.policydesk.app.domain.model.VehiclePlateClassifier.detectStyle(state.makeModel)
                 val effectiveStyle = state.selectedPlateStyle ?: detectedStyle
 
-                if (state.regNo.isNotBlank()) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 2.dp, bottom = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        HsrpNumberPlate(
-                            regNo = state.regNo,
-                            makeModel = state.makeModel,
-                            style = effectiveStyle
-                        )
-                        Text(
-                            text = effectiveStyle.displayName,
-                            style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
-                            color = when (effectiveStyle) {
-                                com.policydesk.app.domain.model.NumberPlateStyle.EV_GREEN,
-                                com.policydesk.app.domain.model.NumberPlateStyle.COMMERCIAL_EV -> Color(0xFF16A34A)
-                                com.policydesk.app.domain.model.NumberPlateStyle.COMMERCIAL_YELLOW -> Color(0xFFCA8A04)
-                                else -> StatusActiveGreen
-                            },
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                }
+                HsrpRegistrationTextField(
+                    value = state.regNo,
+                    onValueChange = viewModel::onRegNoChanged,
+                    plateStyle = effectiveStyle,
+                    isError = state.hasAttemptedSave && RegistrationNormalizer.normalize(state.regNo).isEmpty(),
+                    errorMessage = "Registration number is required",
+                    onFocusLost = viewModel::onRegNoBlur
+                )
 
                 // Interactive Vehicle Category Selector (Auto, Private, Commercial, EV, Comm EV)
                 VehicleCategoryPicker(

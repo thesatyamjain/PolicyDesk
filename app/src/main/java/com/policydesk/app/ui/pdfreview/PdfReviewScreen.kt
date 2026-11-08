@@ -69,6 +69,7 @@ import com.policydesk.app.ui.addpolicy.SectorOptionPill
 import com.policydesk.app.ui.addpolicy.formFieldColors
 import com.policydesk.app.ui.components.ExistingClientRenewalBanner
 import com.policydesk.app.ui.components.HsrpNumberPlate
+import com.policydesk.app.ui.components.HsrpRegistrationTextField
 import com.policydesk.app.ui.components.RegistrationPlateVisualTransformation
 import com.policydesk.app.ui.components.UiFormatters
 import com.policydesk.app.ui.components.VehicleCategoryPicker
@@ -532,47 +533,18 @@ fun PdfReviewScreen(
 
                 // Section 1: Vehicle Details
                 FormSectionCard(title = "Vehicle Information") {
-                    OutlinedTextField(
-                        value = state.regNo,
-                        onValueChange = { viewModel.onFieldChanged("regNo", it) },
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Registration No *") },
-                        singleLine = true,
-                        visualTransformation = RegistrationPlateVisualTransformation,
-                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters),
-                        shape = RoundedCornerShape(10.dp),
-                        colors = formFieldColors()
-                    )
-
+                    // Unified HSRP Registration Number Plate Input Field
                     val detectedStyle = com.policydesk.app.domain.model.VehiclePlateClassifier.detectStyle(state.makeModel)
                     val effectiveStyle = state.selectedPlateStyle ?: detectedStyle
 
-                    if (state.regNo.isNotBlank()) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 2.dp, bottom = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            HsrpNumberPlate(
-                                regNo = state.regNo,
-                                makeModel = state.makeModel,
-                                style = effectiveStyle
-                            )
-                            Text(
-                                text = effectiveStyle.displayName,
-                                style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
-                                color = when (effectiveStyle) {
-                                    com.policydesk.app.domain.model.NumberPlateStyle.EV_GREEN,
-                                    com.policydesk.app.domain.model.NumberPlateStyle.COMMERCIAL_EV -> Color(0xFF16A34A)
-                                    com.policydesk.app.domain.model.NumberPlateStyle.COMMERCIAL_YELLOW -> Color(0xFFCA8A04)
-                                    else -> StatusActiveGreen
-                                },
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-                    }
+                    HsrpRegistrationTextField(
+                        value = state.regNo,
+                        onValueChange = { viewModel.onFieldChanged("regNo", it) },
+                        plateStyle = effectiveStyle,
+                        label = "Registration No *",
+                        isError = state.regNo.isBlank() && state.isSaving,
+                        errorMessage = "Registration number is required"
+                    )
 
                     // Interactive Vehicle Category Selector (Auto, Private, Commercial, EV, Comm EV)
                     VehicleCategoryPicker(
