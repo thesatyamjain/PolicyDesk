@@ -189,18 +189,48 @@ fun LiquidGlassCanvas(
     }
 }
 
+/**
+ * Canonical Apple Spring Motion Archetypes (iOS 17+ / visionOS)
+ * Damped Harmonic Oscillators calibrated for touch responsiveness and settlement.
+ */
+object AppleSprings {
+    /** Smooth: Critically damped (zeta = 1.0), zero overshoot. For sheets, modals, screen transitions. */
+    val Smooth = spring<Float>(dampingRatio = 1.0f, stiffness = 300f)
+    val SmoothDp = spring<Dp>(dampingRatio = 1.0f, stiffness = 300f)
+
+    /** Snappy: High tension with slight sub-audible rebound (zeta = 0.82). For docks, tabs, selection bars. */
+    val Snappy = spring<Float>(dampingRatio = 0.82f, stiffness = 400f)
+    val SnappyDp = spring<Dp>(dampingRatio = 0.82f, stiffness = 400f)
+    val SnappyColor = spring<Color>(dampingRatio = 0.82f, stiffness = 400f)
+
+    /** Bouncy: Expressive elastic overshoot (zeta = 0.55). For badges, confirmations, celebrations. */
+    val Bouncy = spring<Float>(dampingRatio = 0.55f, stiffness = 280f)
+
+    /** Interactive: Rapid responsiveness tracking continuous user touch (zeta = 0.86). */
+    val Interactive = spring<Float>(dampingRatio = 0.86f, stiffness = 600f)
+
+    /** Pop: Micro-scale icon expansion on activation (zeta = 0.52). */
+    val Pop = spring<Float>(dampingRatio = 0.52f, stiffness = Spring.StiffnessMediumLow)
+
+    /** CardPress: Tactile physical compression on tap (zeta = 0.78). */
+    val CardPress = spring<Float>(dampingRatio = 0.78f, stiffness = 380f)
+
+    /** Switch: Fluid thumb slide for toggle switches (zeta = 0.80). */
+    val Switch = spring<Dp>(dampingRatio = 0.80f, stiffness = 340f)
+}
+
 private val DarkMeniscusColors = listOf(
-    Color(0xFF1E1E22).copy(alpha = 0.85f),
-    Color(0xFF141416).copy(alpha = 0.65f),
-    Color(0xFF0F0F12).copy(alpha = 0.50f),
-    Color(0xFF1A1A1E).copy(alpha = 0.70f)
+    Color(0xFF26262B).copy(alpha = 0.94f),
+    Color(0xFF1C1C20).copy(alpha = 0.92f),
+    Color(0xFF141417).copy(alpha = 0.90f),
+    Color(0xFF202024).copy(alpha = 0.94f)
 )
 
 private val LightMeniscusColors = listOf(
-    Color.White.copy(alpha = 0.82f),
-    Color.White.copy(alpha = 0.46f),
-    Color.White.copy(alpha = 0.35f),
-    Color.White.copy(alpha = 0.55f)
+    Color.White.copy(alpha = 0.96f),
+    Color(0xFFF9F9FB).copy(alpha = 0.94f),
+    Color(0xFFF2F2F7).copy(alpha = 0.91f),
+    Color.White.copy(alpha = 0.96f)
 )
 
 private val DarkGlassBrush = Brush.linearGradient(
@@ -216,31 +246,57 @@ private val LightGlassBrush = Brush.linearGradient(
 )
 
 /**
- * Modifier that applies True Apple Liquid Glass (matching My Warranties):
- * 1. Dual-layer ambient & contact edge shadow (Light mode) or pure surface elevation (Dark mode)
- * 2. 4-stop diagonal meniscus refraction gradient
- * 3. 1.1dp 92% white dual-incident specular border
+ * Modifier that applies True Apple Liquid Glass (matching My Warranties / visionOS):
+ * 1. Dual-layer ambient & contact edge shadow with Apple diffuse elevation
+ * 2. 4-stop diagonal meniscus refraction gradient with 90%-95% fail-safe opacity
+ * 3. 1.1dp dual-incident vertical specular border (Zenith highlight -> Nadir catch)
  */
 fun Modifier.liquidGlass(
     shape: Shape = RoundedCornerShape(18.dp),
     elevation: Dp = 4.dp,
     isDark: Boolean = false,
-    fillAlphaTop: Float = if (isDark) 0.68f else 0.82f,
-    fillAlphaBottom: Float = if (isDark) 0.46f else 0.55f,
-    borderAlphaTop: Float = if (isDark) 0.28f else 0.92f,
-    borderAlphaBottom: Float = if (isDark) 0.08f else 0.50f
+    fillAlphaTop: Float = if (isDark) 0.94f else 0.96f,
+    fillAlphaBottom: Float = if (isDark) 0.90f else 0.91f,
+    borderAlphaTop: Float = if (isDark) 0.35f else 0.90f,
+    borderAlphaBottom: Float = if (isDark) 0.06f else 0.20f
 ): Modifier {
-    val borderColor = Color.White.copy(alpha = borderAlphaTop)
-    val brush = if (isDark) DarkGlassBrush else LightGlassBrush
+    // 1. Dual-Incident Specular Border (simulates overhead incident light catching glass bevels)
+    val borderBrush = Brush.verticalGradient(
+        colors = if (isDark) listOf(
+            Color.White.copy(alpha = borderAlphaTop),
+            Color.White.copy(alpha = (borderAlphaTop + borderAlphaBottom) * 0.45f),
+            Color.White.copy(alpha = borderAlphaBottom)
+        ) else listOf(
+            Color.White.copy(alpha = borderAlphaTop),
+            Color.White.copy(alpha = 0.35f),
+            Color.White.copy(alpha = borderAlphaBottom)
+        )
+    )
 
-    // In dark mode, iOS design uses surface luminance hierarchy and specular edge highlights.
-    // Offscreen GPU Gaussian shadows on black backgrounds are invisible and drop scroll frames.
-    val shadowModifier = if (!isDark && elevation > 0.dp) {
+    // 2. Multi-stop Meniscus Gradient
+    val meniscusBrush = Brush.linearGradient(
+        colors = if (isDark) listOf(
+            Color(0xFF26262B).copy(alpha = fillAlphaTop),
+            Color(0xFF1C1C20).copy(alpha = fillAlphaTop * 0.98f),
+            Color(0xFF141417).copy(alpha = fillAlphaBottom),
+            Color(0xFF202024).copy(alpha = fillAlphaTop)
+        ) else listOf(
+            Color.White.copy(alpha = fillAlphaTop),
+            Color(0xFFF9F9FB).copy(alpha = fillAlphaTop * 0.98f),
+            Color(0xFFF2F2F7).copy(alpha = fillAlphaBottom),
+            Color.White.copy(alpha = fillAlphaTop)
+        ),
+        start = Offset.Zero,
+        end = Offset.Infinite
+    )
+
+    // 3. Apple Ambient + Contact Elevation
+    val shadowModifier = if (elevation > 0.dp) {
         Modifier.shadow(
             elevation = elevation,
             shape = shape,
-            ambientColor = Color(0x140F172A),
-            spotColor = Color(0x140F172A)
+            ambientColor = if (isDark) Color(0x66000000) else Color(0x140F172A),
+            spotColor = if (isDark) Color(0x66000000) else Color(0x14000000)
         )
     } else {
         Modifier
@@ -250,12 +306,12 @@ fun Modifier.liquidGlass(
         .then(shadowModifier)
         .clip(shape)
         .background(
-            brush = brush,
+            brush = meniscusBrush,
             shape = shape
         )
         .border(
             width = 1.1.dp,
-            color = borderColor,
+            brush = borderBrush,
             shape = shape
         )
 }
@@ -281,10 +337,7 @@ fun LiquidGlassCard(
 
     val scale by animateFloatAsState(
         targetValue = if (isPressed && (onClick != null || onLongClick != null)) 0.962f else 1f,
-        animationSpec = spring(
-            dampingRatio = 0.78f,
-            stiffness = 380f
-        ),
+        animationSpec = AppleSprings.CardPress,
         label = "glass_card_spring"
     )
 
@@ -862,10 +915,7 @@ fun AppleButton(
 
     val scale by animateFloatAsState(
         targetValue = if (isPressed && enabled && !isLoading) 0.965f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMediumLow
-        ),
+        animationSpec = AppleSprings.CardPress,
         label = "apple_button_spring"
     )
 
@@ -999,10 +1049,7 @@ fun AppleSecondaryButton(
 
     val scale by animateFloatAsState(
         targetValue = if (isPressed && enabled) 0.97f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMediumLow
-        ),
+        animationSpec = AppleSprings.CardPress,
         label = "apple_sec_button_spring"
     )
 
@@ -1112,10 +1159,7 @@ fun AppleSwitch(
 
     val thumbOffset by animateDpAsState(
         targetValue = if (checked) 22.dp else 2.dp,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMediumLow
-        ),
+        animationSpec = AppleSprings.Switch,
         label = "switch_thumb_offset"
     )
 
@@ -2073,10 +2117,7 @@ fun LiquidGlassDock(
                 val itemWidth = maxWidth / tabs.size
                 val animatedPillOffset by animateDpAsState(
                     targetValue = itemWidth * selectedIndex,
-                    animationSpec = spring(
-                        dampingRatio = 0.76f,
-                        stiffness = 380f
-                    ),
+                    animationSpec = AppleSprings.SnappyDp,
                     label = "dock_gliding_pill"
                 )
                 val pillOffset = if (pagerPosition != null) {
@@ -2130,10 +2171,7 @@ fun LiquidGlassDock(
 
                         val iconScale by animateFloatAsState(
                             targetValue = if (isSelected) 1.14f else 1.0f,
-                            animationSpec = spring(
-                                dampingRatio = 0.52f,
-                                stiffness = Spring.StiffnessMediumLow
-                            ),
+                            animationSpec = AppleSprings.Pop,
                             label = "dock_icon_pop"
                         )
 

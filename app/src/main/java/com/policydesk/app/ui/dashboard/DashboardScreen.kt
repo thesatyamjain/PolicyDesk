@@ -73,6 +73,7 @@ import com.policydesk.app.ui.components.AppleAlertDialog
 import com.policydesk.app.ui.components.AppleButton
 import com.policydesk.app.ui.components.AppleSecondaryButton
 import com.policydesk.app.ui.components.AppleSheetGrabber
+import com.policydesk.app.ui.components.AppleSprings
 import com.policydesk.app.ui.components.CupertinoTopBarAction
 import com.policydesk.app.ui.components.DaysRemainingBadge
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -779,7 +780,7 @@ fun DashboardScreen(
 
                         val pillScale by animateFloatAsState(
                             targetValue = if (isSelected) 1.04f else 1.0f,
-                            animationSpec = spring(dampingRatio = 0.65f, stiffness = Spring.StiffnessMedium),
+                            animationSpec = AppleSprings.Pop,
                             label = "expiry_pill_scale"
                         )
                         val pillBg by animateColorAsState(
@@ -788,7 +789,7 @@ fun DashboardScreen(
                             } else {
                                 if (isDark) Color(0xFF2C2C2E) else Color.White
                             },
-                            animationSpec = spring(dampingRatio = 0.8f),
+                            animationSpec = AppleSprings.SnappyColor,
                             label = "expiry_pill_bg"
                         )
 
@@ -845,7 +846,7 @@ fun DashboardScreen(
 
                         val pillScale by animateFloatAsState(
                             targetValue = if (isSelected) 1.04f else 1.0f,
-                            animationSpec = spring(dampingRatio = 0.65f, stiffness = Spring.StiffnessMedium),
+                            animationSpec = AppleSprings.Pop,
                             label = "sector_pill_scale"
                         )
                         val pillBg by animateColorAsState(
@@ -854,7 +855,7 @@ fun DashboardScreen(
                             } else {
                                 if (isDark) Color(0xFF2C2C2E) else Color.White
                             },
-                            animationSpec = spring(dampingRatio = 0.8f),
+                            animationSpec = AppleSprings.SnappyColor,
                             label = "sector_pill_bg"
                         )
 
