@@ -201,7 +201,7 @@ class PdfReviewViewModel @Inject constructor(
                         extractedMobileNorm
                     }
 
-                    val resolvedName = data.customerName.ifBlank { existing?.vehicle?.customer?.name ?: "" }
+                    val resolvedName = FieldValidators.formatNameTitleCase(data.customerName.ifBlank { existing?.vehicle?.customer?.name ?: "" })
                     val resolvedTitle = data.title.ifBlank { existing?.vehicle?.customer?.title ?: "" }
                     val resolvedEmail = data.email.ifBlank { existing?.vehicle?.customer?.email ?: "" }
                     val resolvedAddress = data.address.ifBlank { existing?.vehicle?.customer?.address ?: "" }
@@ -449,6 +449,18 @@ class PdfReviewViewModel @Inject constructor(
         }
     }
 
+    fun onFieldBlur(fieldKey: String) {
+        if (fieldKey == "customerName") {
+            val current = _uiState.value.customerName
+            if (current.isNotBlank()) {
+                val formatted = FieldValidators.formatNameTitleCase(current)
+                if (formatted != current) {
+                    _uiState.update { it.copy(customerName = formatted) }
+                }
+            }
+        }
+    }
+
     fun onSectorSelected(sector: Sector) {
         _uiState.update { it.copy(sector = sector) }
     }
@@ -483,7 +495,7 @@ class PdfReviewViewModel @Inject constructor(
 
             val customer = Customer(
                 title = state.title.ifBlank { null },
-                name = state.customerName.trim(),
+                name = FieldValidators.formatNameTitleCase(state.customerName),
                 mobile = FieldValidators.normalizeMobile(state.mobile),
                 email = state.email.trim().ifBlank { null },
                 address = state.address.trim()

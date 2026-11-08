@@ -572,7 +572,13 @@ fun AddPolicyScreen(
                     OutlinedTextField(
                         value = state.name,
                         onValueChange = viewModel::onNameChanged,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .onFocusChanged { focusState ->
+                                if (!focusState.isFocused) {
+                                    viewModel.onNameBlur()
+                                }
+                            },
                         label = { Text("Customer Name *") },
                         placeholder = { Text("Full Name") },
                         trailingIcon = {

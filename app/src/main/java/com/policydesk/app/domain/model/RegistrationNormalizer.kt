@@ -219,12 +219,41 @@ object FieldValidators {
         }
 
         // Title case formatting for customer name
-        val formattedName = clean.split(Regex("\\s+")).filter { it.isNotBlank() }.joinToString(" ") { word ->
-            if (word.all { it.isUpperCase() } && word.length <= 4) word // Preserves business acronyms (e.g. PVT, LTD, LLP)
-            else word.lowercase().replaceFirstChar { it.uppercase() }
-        }
+        val formattedName = formatNameTitleCase(clean)
 
         return Pair(formattedName, title)
+    }
+
+    /**
+     * Normalizes a customer or company name into clean Title Case (e.g., "Ramesh Kumar Sharma").
+     * - Preserves common business abbreviations like PVT, LTD, LLP
+     * - Capitalizes dotted initials (e.g. "A.K.", "Dr.")
+     * - Handles both ALL CAPS and all lowercase inputs cleanly
+     */
+    fun formatNameTitleCase(name: String): String {
+        val trimmed = name.trim()
+        if (trimmed.isEmpty()) return ""
+
+        val businessAcronyms = setOf("PVT", "LTD", "LLP", "INC", "CORP", "CO", "MFG", "IND", "ENGG", "M/S")
+        val romanNumerals = setOf("I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X")
+
+        return trimmed.split(Regex("\\s+")).filter { it.isNotBlank() }.joinToString(" ") { word ->
+            val upper = word.uppercase()
+            if (upper in businessAcronyms) {
+                upper
+            } else if (upper in romanNumerals) {
+                upper
+            } else if (word.contains('.')) {
+                word.split('.').joinToString(".") { subToken ->
+                    if (subToken.isBlank()) ""
+                    else if (subToken.uppercase() in businessAcronyms) subToken.uppercase()
+                    else if (subToken.length == 1) subToken.uppercase()
+                    else subToken.lowercase().replaceFirstChar { it.uppercase() }
+                }
+            } else {
+                word.lowercase().replaceFirstChar { it.uppercase() }
+            }
+        }
     }
 
     fun extractCleanEmail(rawEmail: String): String {

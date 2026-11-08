@@ -154,6 +154,16 @@ class AddPolicyViewModel @Inject constructor(
         _formState.update { it.copy(name = name) }
     }
 
+    fun onNameBlur() {
+        val current = _formState.value.name
+        if (current.isNotBlank()) {
+            val formatted = FieldValidators.formatNameTitleCase(current)
+            if (formatted != current) {
+                _formState.update { it.copy(name = formatted) }
+            }
+        }
+    }
+
     fun onMobileChanged(mobile: String) {
         _formState.update { it.copy(mobile = mobile) }
     }
@@ -600,7 +610,7 @@ class AddPolicyViewModel @Inject constructor(
         viewModelScope.launch {
             val customer = Customer(
                 title = state.title.ifBlank { null },
-                name = state.name.trim(),
+                name = FieldValidators.formatNameTitleCase(state.name),
                 mobile = FieldValidators.normalizeMobile(state.mobile),
                 email = state.email.trim().ifBlank { null },
                 address = state.address.trim()

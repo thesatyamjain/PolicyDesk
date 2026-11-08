@@ -402,7 +402,8 @@ object SpreadsheetParser {
             }
 
             val regRaw = data["regNo"] ?: ""
-            val name = data["name"] ?: ""
+            val rawName = data["name"] ?: ""
+            val name = FieldValidators.formatNameTitleCase(rawName)
             val title = data["title"]?.ifBlank { null }
             val mobile = data["mobile"] ?: ""
             val email = data["email"]?.ifBlank { null }

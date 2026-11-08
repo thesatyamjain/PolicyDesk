@@ -49,11 +49,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.core.content.FileProvider
 import java.io.File
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -705,9 +707,16 @@ fun PdfReviewScreen(
                     OutlinedTextField(
                         value = state.customerName,
                         onValueChange = { viewModel.onFieldChanged("customerName", it) },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .onFocusChanged { focusState ->
+                                if (!focusState.isFocused) {
+                                    viewModel.onFieldBlur("customerName")
+                                }
+                            },
                         label = { Text("Customer Name *") },
                         singleLine = true,
+                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
                         shape = RoundedCornerShape(10.dp),
                         colors = formFieldColors()
                     )

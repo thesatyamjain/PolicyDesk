@@ -238,4 +238,38 @@ class RegistrationNormalizerTest {
         val renewedPolicy = activePolicy.copy(renewedOn = System.currentTimeMillis())
         assertEquals(PolicyStatus.RENEWED, renewedPolicy.computeCurrentStatus(todayEpochDay))
     }
+
+    @Test
+    fun formatNameTitleCase_normalizes_casing_properly() {
+        // 1. ALL CAPS to Title Case
+        assertEquals("Ramesh Kumar Sharma", FieldValidators.formatNameTitleCase("RAMESH KUMAR SHARMA"))
+        assertEquals("Anil Agarwal", FieldValidators.formatNameTitleCase("ANIL AGARWAL"))
+
+        // 2. all lowercase to Title Case
+        assertEquals("Ramesh Kumar Sharma", FieldValidators.formatNameTitleCase("ramesh kumar sharma"))
+        assertEquals("Sunita Verma", FieldValidators.formatNameTitleCase("sunita verma"))
+
+        // 3. Mixed/Irregular casing
+        assertEquals("Ramesh Kumar", FieldValidators.formatNameTitleCase("rAmEsH kUmAr"))
+
+        // 4. Excess spacing
+        assertEquals("Ramesh Kumar Sharma", FieldValidators.formatNameTitleCase("   RAMESH    KUMAR   SHARMA  "))
+
+        // 5. Preserves business acronyms (PVT, LTD, LLP)
+        assertEquals("Sharma Enterprises PVT LTD", FieldValidators.formatNameTitleCase("SHARMA ENTERPRISES PVT LTD"))
+        assertEquals("Apex Logistics PVT LTD", FieldValidators.formatNameTitleCase("apex logistics pvt ltd"))
+        assertEquals("Tech Solutions LLP", FieldValidators.formatNameTitleCase("tech solutions llp"))
+
+        // 6. Dotted initials & honorifics
+        assertEquals("Dr. Ramesh Kumar", FieldValidators.formatNameTitleCase("dr. ramesh kumar"))
+        assertEquals("A.K. Sharma", FieldValidators.formatNameTitleCase("A.K. SHARMA"))
+        assertEquals("A.K. Sharma", FieldValidators.formatNameTitleCase("a.k. sharma"))
+
+        // 7. Hindi / Devanagari script preserved intact
+        assertEquals("श्री सुरेश कुमार शर्मा", FieldValidators.formatNameTitleCase("श्री सुरेश कुमार शर्मा"))
+
+        // 8. Empty & blank
+        assertEquals("", FieldValidators.formatNameTitleCase(""))
+        assertEquals("", FieldValidators.formatNameTitleCase("   "))
+    }
 }
