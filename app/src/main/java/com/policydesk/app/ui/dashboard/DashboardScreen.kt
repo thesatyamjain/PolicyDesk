@@ -102,6 +102,7 @@ import com.policydesk.app.ui.theme.GlassBorderBottom
 import com.policydesk.app.ui.theme.GlassBorderTop
 import com.policydesk.app.ui.theme.IosDarkLabelPrimary
 import com.policydesk.app.ui.theme.IosDarkLabelSecondary
+import com.policydesk.app.ui.theme.IosDarkLabelTertiary
 import com.policydesk.app.ui.theme.IosDarkSeparator
 import com.policydesk.app.ui.theme.IosLabelPrimary
 import com.policydesk.app.ui.theme.IosLabelSecondary
@@ -137,6 +138,10 @@ fun DashboardScreen(
     val actionTint = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
 
     val allSelected = uiState.filteredList.isNotEmpty() && uiState.selectedRegNos.size == uiState.filteredList.size
+
+    LaunchedEffect(Unit) {
+        viewModel.refreshDriveStatus()
+    }
 
     LaunchedEffect(uiState.isSelectionMode) {
         onSelectionModeChange(uiState.isSelectionMode)
@@ -750,6 +755,103 @@ fun DashboardScreen(
                             fontWeight = FontWeight.Bold,
                             color = AppleSystemOrange
                         )
+                    }
+                }
+            }
+
+            // 3.5. Smart Google Drive Cloud Backup Nudge (Prompt if >= 5 policies & not linked)
+            if (uiState.showBackupNudge) {
+                item(key = "smart_backup_nudge") {
+                    LiquidGlassCard(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        elevation = 2.dp,
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            onNavigateToSettings()
+                        }
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(
+                                modifier = Modifier.weight(1f),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(38.dp)
+                                        .clip(CircleShape)
+                                        .background((if (isDark) AppleDarkSystemBlue else AppleSystemBlue).copy(alpha = 0.16f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = AppleIcons.Cloud,
+                                        contentDescription = null,
+                                        tint = if (isDark) AppleDarkSystemBlue else AppleSystemBlue,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "Protect ${uiState.summary.totalActiveCount} policies",
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = labelPrimary,
+                                        letterSpacing = (-0.2).sp
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = "Enable Google Drive backup to prevent data loss.",
+                                        fontSize = 11.sp,
+                                        color = labelSecondary,
+                                        lineHeight = 15.sp
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.width(8.dp))
+
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(if (isDark) AppleDarkSystemBlue else AppleSystemBlue)
+                                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                                ) {
+                                    Text(
+                                        text = "Enable",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                }
+
+                                IconButton(
+                                    onClick = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        viewModel.dismissBackupNudge()
+                                    },
+                                    modifier = Modifier.size(28.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = AppleIcons.Clear,
+                                        contentDescription = "Dismiss",
+                                        tint = if (isDark) IosDarkLabelTertiary else IosLabelTertiary,
+                                        modifier = Modifier.size(13.dp)
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }

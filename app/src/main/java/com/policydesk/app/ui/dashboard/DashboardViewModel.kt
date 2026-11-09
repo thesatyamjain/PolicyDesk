@@ -1,13 +1,16 @@
 package com.policydesk.app.ui.dashboard
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.policydesk.app.data.drive.GoogleDriveManager
 import com.policydesk.app.domain.model.DashboardSummary
 import com.policydesk.app.domain.model.PolicyStatus
 import com.policydesk.app.domain.model.RegistrationNormalizer
 import com.policydesk.app.domain.model.VehicleWithPolicies
 import com.policydesk.app.domain.repository.VehicleRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -38,12 +41,18 @@ data class DashboardUiState(
     val filteredList: List<VehicleWithPolicies> = emptyList(),
     val isLoading: Boolean = false,
     val isSelectionMode: Boolean = false,
-    val selectedRegNos: Set<String> = emptySet()
-)
+    val selectedRegNos: Set<String> = emptySet(),
+    val isDriveLinked: Boolean = true,
+    val isBackupNudgeDismissed: Boolean = false
+) {
+    val showBackupNudge: Boolean
+        get() = !isDriveLinked && !isBackupNudgeDismissed && summary.totalActiveCount >= 5 && !isSelectionMode
+}
 
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
-    private val repository: VehicleRepository
+    private val repository: VehicleRepository,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
@@ -51,6 +60,8 @@ class DashboardViewModel @Inject constructor(
     private val _sectorFilter = MutableStateFlow(SectorFilter.ALL)
     private val _isSelectionMode = MutableStateFlow(false)
     private val _selectedRegNos = MutableStateFlow<Set<String>>(emptySet())
+    private val _isDriveLinked = MutableStateFlow(GoogleDriveManager.isDriveLinked(context))
+    private val _isBackupNudgeDismissed = MutableStateFlow(false)
 
     private val _filterState = combine(
         repository.getDashboardSummary(),
@@ -105,17 +116,29 @@ class DashboardViewModel @Inject constructor(
     val uiState: StateFlow<DashboardUiState> = combine(
         _filterState,
         _isSelectionMode,
-        _selectedRegNos
-    ) { baseState, isSelectionMode, selectedRegNos ->
+        _selectedRegNos,
+        _isDriveLinked,
+        _isBackupNudgeDismissed
+    ) { baseState, isSelectionMode, selectedRegNos, isDriveLinked, isBackupNudgeDismissed ->
         baseState.copy(
             isSelectionMode = isSelectionMode,
-            selectedRegNos = selectedRegNos
+            selectedRegNos = selectedRegNos,
+            isDriveLinked = isDriveLinked,
+            isBackupNudgeDismissed = isBackupNudgeDismissed
         )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = DashboardUiState(isLoading = true)
     )
+
+    fun refreshDriveStatus() {
+        _isDriveLinked.value = GoogleDriveManager.isDriveLinked(context)
+    }
+
+    fun dismissBackupNudge() {
+        _isBackupNudgeDismissed.value = true
+    }
 
     fun onSearchQueryChanged(query: String) {
         _searchQuery.value = query
