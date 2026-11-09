@@ -1,5 +1,11 @@
 package com.policydesk.app.ui.onboarding
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
@@ -139,7 +145,13 @@ fun OnboardingScreen(
     var advisorName by remember { mutableStateOf(existingProfile.advisorName) }
     var agencyName by remember { mutableStateOf(existingProfile.agencyName) }
 
-    fun completeOnboarding() {
+    val notifPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { _ ->
+        onFinish()
+    }
+
+    fun completeOnboarding(requestNotification: Boolean = true) {
         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
         if (advisorName.isNotBlank() || agencyName.isNotBlank()) {
             val formattedName = FieldValidators.formatNameTitleCase(advisorName)
@@ -150,6 +162,18 @@ fun OnboardingScreen(
             AdvisorProfileManager.saveProfile(context, updated)
         }
         OnboardingManager.setOnboardingCompleted(context, true)
+
+        if (requestNotification && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val isGranted = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+
+            if (!isGranted) {
+                notifPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                return
+            }
+        }
         onFinish()
     }
 
@@ -199,7 +223,7 @@ fun OnboardingScreen(
 
                 if (pagerState.currentPage < pages.size - 1) {
                     TextButton(
-                        onClick = { completeOnboarding() },
+                        onClick = { completeOnboarding(requestNotification = false) },
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Text(
@@ -443,7 +467,7 @@ fun OnboardingScreen(
                     text = if (isLast) "Get Started" else "Continue",
                     onClick = {
                         if (isLast) {
-                            completeOnboarding()
+                            completeOnboarding(requestNotification = true)
                         } else {
                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             scope.launch {
