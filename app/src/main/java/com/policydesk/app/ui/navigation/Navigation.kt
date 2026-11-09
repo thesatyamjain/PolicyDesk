@@ -79,6 +79,7 @@ sealed class Screen(val route: String) {
     object RenewPolicy : Screen("renew_policy/{regNo}") {
         fun createRoute(regNo: String) = "renew_policy/$regNo"
     }
+    object Onboarding : Screen("onboarding")
 }
 
 @Composable
@@ -90,10 +91,13 @@ fun PolicyDeskNavHost(
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val isOnboardingDone = remember { com.policydesk.app.data.onboarding.OnboardingManager.isOnboardingCompleted(context) }
 
     val startDestination = when {
         initialPdfUri != null -> Screen.PdfReview.route
         !initialRegNo.isNullOrBlank() -> Screen.VehicleDetail.createRoute(initialRegNo)
+        !isOnboardingDone -> Screen.Onboarding.route
         else -> Screen.Dashboard.route
     }
 
@@ -297,9 +301,20 @@ fun PolicyDeskNavHost(
                 )
             }
 
+            composable(Screen.Onboarding.route) {
+                com.policydesk.app.ui.onboarding.OnboardingScreen(
+                    onFinish = {
+                        navController.navigate(Screen.Dashboard.route) {
+                            popUpTo(Screen.Onboarding.route) { inclusive = true }
+                        }
+                    }
+                )
+            }
+
             composable(Screen.Settings.route) {
                 SettingsScreen(
-                    onNavigateBack = { navController.popBackStack() }
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToOnboarding = { navController.navigate(Screen.Onboarding.route) }
                 )
             }
 

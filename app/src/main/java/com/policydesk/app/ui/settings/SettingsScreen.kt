@@ -91,6 +91,7 @@ import java.io.File
 @Composable
 fun SettingsScreen(
     onNavigateBack: () -> Unit,
+    onNavigateToOnboarding: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -832,6 +833,23 @@ fun SettingsScreen(
                             else -> viewModel.checkForUpdates(manual = true)
                         }
                     }
+                )
+
+                // Welcome Tour
+                LiquidGlassListRow(
+                    title = "Welcome Tour",
+                    subtitle = "Review app features & quick advisor setup",
+                    icon = AppleIcons.Brain,
+                    iconBgColor = Color(0xFF5856D6),
+                    trailingContent = {
+                        Icon(
+                            imageVector = AppleIcons.ChevronRight,
+                            contentDescription = null,
+                            tint = labelTertiary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    },
+                    onClick = onNavigateToOnboarding
                 )
 
                 // The Software Labs
