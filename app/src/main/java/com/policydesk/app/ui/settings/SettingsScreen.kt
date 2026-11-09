@@ -491,10 +491,10 @@ fun SettingsScreen(
 
                 // Advisor & Agency Profile Row
                 val advisorDisplayName = state.advisorProfile.advisorName.ifBlank { "Personalize identity" }
-                val agencySubtext = if (state.advisorProfile.agencyName.isNotBlank()) {
-                    "${state.advisorProfile.agencyName} • WhatsApp templates & branding"
-                } else {
-                    "Agency name, phone & WhatsApp templates"
+                val agencySubtext = when {
+                    state.advisorProfile.agencyName.isNotBlank() -> "${state.advisorProfile.agencyName} • WhatsApp templates & branding"
+                    state.advisorProfile.advisorEmail.isNotBlank() -> "${state.advisorProfile.advisorEmail} • WhatsApp branding ready"
+                    else -> "Agency name, phone & WhatsApp templates"
                 }
 
                 LiquidGlassListRow(

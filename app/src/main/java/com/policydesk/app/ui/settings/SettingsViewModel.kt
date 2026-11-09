@@ -95,7 +95,12 @@ class SettingsViewModel @Inject constructor(
                 .format(java.time.format.DateTimeFormatter.ofPattern("dd MMM, hh:mm a"))
         } else "Not synced yet"
 
-        val profile = AdvisorProfileManager.getProfile(context)
+        val rawProfile = AdvisorProfileManager.getProfile(context)
+        val profile = if (isLinked && (rawProfile.advisorName.isBlank() || rawProfile.advisorEmail.isBlank())) {
+            AdvisorProfileManager.syncFromGoogleAccount(context, connectedDisplayName, connectedAccount, connectedPhotoUrl)
+        } else {
+            rawProfile
+        }
         val notifEnabled = NotificationPreferenceManager.areNotificationsEnabled(context)
         val hasPerm = NotificationManagerCompat.from(context).areNotificationsEnabled()
         val pkgInfo = try {
@@ -449,11 +454,13 @@ class SettingsViewModel @Inject constructor(
             val photoUrl = account.photoUrl?.toString()
             if (!email.isNullOrBlank()) {
                 com.policydesk.app.data.drive.GoogleDriveManager.setConnectedAccount(context, email, displayName, photoUrl)
+                val syncedProfile = AdvisorProfileManager.syncFromGoogleAccount(context, displayName, email, photoUrl)
                 _uiState.update {
                     it.copy(
                         googleAccountEmail = email,
                         googleAccountDisplayName = displayName,
                         googleAccountPhotoUrl = photoUrl,
+                        advisorProfile = syncedProfile,
                         isDriveLinked = true,
                         syncStatusText = "Google Drive Connected",
                         syncMessage = "Connected as $email. Checking cloud vault..."

@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -129,6 +130,32 @@ fun SettingsAdvisorProfileSheet(
                 )
             }
 
+            if (initialProfile.advisorEmail.isNotBlank()) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(activeBlue.copy(alpha = 0.1f))
+                        .border(1.dp, activeBlue.copy(alpha = 0.25f), RoundedCornerShape(10.dp))
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                ) {
+                    Icon(
+                        imageVector = AppleIcons.Checkmark,
+                        contentDescription = null,
+                        tint = activeBlue,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Linked with Google: ${initialProfile.advisorEmail}",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = activeBlue
+                    )
+                }
+            }
+
             OutlinedTextField(
                 value = advisorName,
                 onValueChange = { advisorName = it; savedFeedback = false },
@@ -197,7 +224,7 @@ fun SettingsAdvisorProfileSheet(
                     text = if (savedFeedback) "Saved ✓" else "Save Profile",
                     onClick = {
                         onSaveProfile(
-                            AdvisorProfile(
+                            initialProfile.copy(
                                 advisorName = advisorName.trim(),
                                 agencyName = agencyName.trim(),
                                 advisorPhone = advisorPhone.trim(),

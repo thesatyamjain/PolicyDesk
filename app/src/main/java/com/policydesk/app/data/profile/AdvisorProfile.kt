@@ -2,12 +2,15 @@ package com.policydesk.app.data.profile
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.policydesk.app.domain.model.FieldValidators
 import com.policydesk.app.domain.model.RegistrationNormalizer
 
 data class AdvisorProfile(
     val advisorName: String = "",
     val agencyName: String = "",
     val advisorPhone: String = "",
+    val advisorEmail: String = "",
+    val advisorPhotoUrl: String = "",
     val customWhatsappTemplate: String = ""
 ) {
     val signature: String
@@ -24,6 +27,8 @@ object AdvisorProfileManager {
     private const val KEY_NAME = "advisor_name"
     private const val KEY_AGENCY = "agency_name"
     private const val KEY_PHONE = "advisor_phone"
+    private const val KEY_EMAIL = "advisor_email"
+    private const val KEY_PHOTO_URL = "advisor_photo_url"
     private const val KEY_TEMPLATE = "custom_whatsapp_template"
 
     const val DEFAULT_TEMPLATE =
@@ -39,6 +44,8 @@ object AdvisorProfileManager {
             advisorName = prefs.getString(KEY_NAME, "") ?: "",
             agencyName = prefs.getString(KEY_AGENCY, "") ?: "",
             advisorPhone = prefs.getString(KEY_PHONE, "") ?: "",
+            advisorEmail = prefs.getString(KEY_EMAIL, "") ?: "",
+            advisorPhotoUrl = prefs.getString(KEY_PHOTO_URL, "") ?: "",
             customWhatsappTemplate = prefs.getString(KEY_TEMPLATE, "") ?: ""
         )
     }
@@ -48,8 +55,34 @@ object AdvisorProfileManager {
             .putString(KEY_NAME, profile.advisorName)
             .putString(KEY_AGENCY, profile.agencyName)
             .putString(KEY_PHONE, profile.advisorPhone)
+            .putString(KEY_EMAIL, profile.advisorEmail)
+            .putString(KEY_PHOTO_URL, profile.advisorPhotoUrl)
             .putString(KEY_TEMPLATE, profile.customWhatsappTemplate)
             .apply()
+    }
+
+    /**
+     * Auto-populates empty advisor profile fields from connected Google Account.
+     * Automatically applies Title Case to Google display name.
+     * Preserves existing custom advisor name or agency if already configured.
+     */
+    fun syncFromGoogleAccount(
+        context: Context,
+        displayName: String?,
+        email: String?,
+        photoUrl: String?
+    ): AdvisorProfile {
+        val current = getProfile(context)
+        val candidateName = displayName?.takeIf { it.isNotBlank() } ?: email?.substringBefore("@")
+        val formattedName = candidateName?.let { FieldValidators.formatNameTitleCase(it) } ?: ""
+
+        val updated = current.copy(
+            advisorName = if (current.advisorName.isBlank() && formattedName.isNotBlank()) formattedName else current.advisorName,
+            advisorEmail = if (current.advisorEmail.isBlank() && !email.isNullOrBlank()) email else current.advisorEmail,
+            advisorPhotoUrl = if (current.advisorPhotoUrl.isBlank() && !photoUrl.isNullOrBlank()) photoUrl else current.advisorPhotoUrl
+        )
+        saveProfile(context, updated)
+        return updated
     }
 
     fun formatRenewalMessage(
