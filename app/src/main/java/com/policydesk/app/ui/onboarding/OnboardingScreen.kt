@@ -13,6 +13,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -51,17 +52,21 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.policydesk.app.R
 import com.policydesk.app.data.onboarding.OnboardingManager
 import com.policydesk.app.data.profile.AdvisorProfile
 import com.policydesk.app.data.profile.AdvisorProfileManager
@@ -195,20 +200,31 @@ fun OnboardingScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    val iconShape = RoundedCornerShape(9.dp)
                     Box(
                         modifier = Modifier
-                            .size(32.dp)
+                            .size(34.dp)
+                            .clip(iconShape)
                             .background(
-                                brush = Brush.linearGradient(listOf(SapphireBlue, Color(0xFF5856D6))),
-                                shape = RoundedCornerShape(8.dp)
+                                brush = Brush.radialGradient(
+                                    colors = listOf(Color(0xFF1E1E20), Color(0xFF121212))
+                                ),
+                                shape = iconShape
+                            )
+                            .border(
+                                width = 0.8.dp,
+                                color = if (isDark) Color.White.copy(alpha = 0.18f) else Color.Black.copy(alpha = 0.08f),
+                                shape = iconShape
                             ),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = AppleIcons.ShieldCheck,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(18.dp)
+                        Image(
+                            painter = painterResource(id = R.mipmap.ic_launcher_foreground),
+                            contentDescription = "PolicyDesk",
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .scale(1.5f)
                         )
                     }
                     Spacer(modifier = Modifier.width(10.dp))
