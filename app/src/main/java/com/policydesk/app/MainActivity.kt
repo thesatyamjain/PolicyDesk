@@ -3,6 +3,7 @@ package com.policydesk.app
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -53,6 +54,7 @@ class MainActivity : FragmentActivity() {
     private var currentPdfUri by mutableStateOf<android.net.Uri?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
         ThemeManager.init(this)
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
