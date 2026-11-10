@@ -6,10 +6,20 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.TextStyle
@@ -18,6 +28,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -31,7 +42,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import com.policydesk.app.ui.components.AppleAlertDialog
 import com.policydesk.app.ui.components.AppleButton
+import com.policydesk.app.ui.components.AppleSprings
 import com.policydesk.app.ui.components.BindBackToTop
+import com.policydesk.app.ui.components.LiquidGlassActionDock
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.ui.text.input.KeyboardType
@@ -80,10 +93,14 @@ import com.policydesk.app.ui.components.HsrpNumberPlate
 import com.policydesk.app.ui.theme.AppleDarkSystemBlue
 import com.policydesk.app.ui.theme.IosDarkLabelPrimary
 import com.policydesk.app.ui.theme.IosDarkLabelSecondary
+import com.policydesk.app.ui.theme.IosDarkSeparator
 import com.policydesk.app.ui.theme.IosLabelPrimary
 import com.policydesk.app.ui.theme.IosLabelSecondary
 import com.policydesk.app.ui.theme.IosLabelTertiary
+import com.policydesk.app.ui.theme.IosSeparator
 import com.policydesk.app.ui.theme.IosSystemBackground
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 
 @Composable
 fun VehicleDetailScreen(
@@ -231,117 +248,116 @@ fun VehicleDetailScreen(
     val isDark = isSystemInDarkTheme()
     val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
     val labelSecondary = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
+    val localHaze = remember { HazeState() }
 
-    Scaffold(
-        topBar = {
-            LiquidGlassTopBar(
-                title = "Vehicle Details",
-                onNavigateBack = onNavigateBack,
-                actions = {
-                    IconButton(
-                        onClick = {
-                            vehicleWithPolicies?.vehicle?.regNo?.let(onNavigateToEdit)
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
+            modifier = Modifier
+                .fillMaxSize()
+                .hazeSource(state = localHaze),
+            topBar = {
+                LiquidGlassTopBar(
+                    title = "Vehicle Details",
+                    onNavigateBack = onNavigateBack,
+                    actions = {
+                        IconButton(
+                            onClick = {
+                                vehicleWithPolicies?.vehicle?.regNo?.let(onNavigateToEdit)
+                            }
+                        ) {
+                            Icon(
+                                imageVector = AppleIcons.SquareAndPencil,
+                                contentDescription = "Edit All Details",
+                                tint = if (isDark) AppleDarkSystemBlue else AppleSystemBlue,
+                                modifier = Modifier.size(20.dp)
+                            )
                         }
-                    ) {
-                        Icon(
-                            imageVector = AppleIcons.SquareAndPencil,
-                            contentDescription = "Edit All Details",
-                            tint = if (isDark) AppleDarkSystemBlue else AppleSystemBlue,
-                            modifier = Modifier.size(20.dp)
-                        )
+                        IconButton(onClick = { showMenu = true }) {
+                            Icon(
+                                imageVector = AppleIcons.Ellipsis,
+                                contentDescription = "Options",
+                                tint = labelPrimary
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Close without renewal", color = AppleSystemRed) },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = AppleIcons.Clear,
+                                        contentDescription = null,
+                                        tint = AppleSystemRed,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                },
+                                onClick = {
+                                    showMenu = false
+                                    showCloseDialog = true
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Delete Vehicle", color = AppleSystemRed) },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = AppleIcons.Trash,
+                                        contentDescription = null,
+                                        tint = AppleSystemRed,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                },
+                                onClick = {
+                                    showMenu = false
+                                    showDeleteDialog = true
+                                }
+                            )
+                        }
                     }
-                    IconButton(onClick = { showMenu = true }) {
-                        Icon(
-                            imageVector = AppleIcons.Ellipsis,
-                            contentDescription = "Options",
-                            tint = labelPrimary
-                        )
-                    }
-                    DropdownMenu(
-                        expanded = showMenu,
-                        onDismissRequest = { showMenu = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("Close without renewal", color = AppleSystemRed) },
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = AppleIcons.Clear,
-                                    contentDescription = null,
-                                    tint = AppleSystemRed,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            },
-                            onClick = {
-                                showMenu = false
-                                showCloseDialog = true
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Delete Vehicle", color = AppleSystemRed) },
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = AppleIcons.Trash,
-                                    contentDescription = null,
-                                    tint = AppleSystemRed,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            },
-                            onClick = {
-                                showMenu = false
-                                showDeleteDialog = true
-                            }
-                        )
-                    }
-                }
-            )
-        },
-        bottomBar = {
-            vehicleWithPolicies?.let { item ->
-                SurfaceActionBar(
-                    onRenew = { onNavigateToRenew(item.vehicle.regNo) }
                 )
-            }
-        },
-        containerColor = Color.Transparent
-    ) { paddingValues ->
-        val data = vehicleWithPolicies
-        if (data == null) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    androidx.compose.material3.CircularProgressIndicator(
-                        modifier = Modifier.size(28.dp),
-                        strokeWidth = 2.5.dp,
-                        color = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
-                    )
-                    Text("Loading vehicle details...", fontSize = 13.sp, color = labelSecondary)
-                }
-            }
-        } else {
-            val vehicle = data.vehicle
-            val policy = data.currentPolicy
-            val daysRemaining = policy?.computeDaysRemaining() ?: 0
-            val status = policy?.computeCurrentStatus() ?: PolicyStatus.ACTIVE
-
-            val scrollState = rememberScrollState()
-            BindBackToTop(scrollState)
-
-            SelectionContainer {
-                Column(
+            },
+            containerColor = Color.Transparent,
+            contentWindowInsets = WindowInsets(0, 0, 0, 0)
+        ) { paddingValues ->
+            val data = vehicleWithPolicies
+            if (data == null) {
+                Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(paddingValues)
-                        .verticalScroll(scrollState)
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                        .padding(top = paddingValues.calculateTopPadding()),
+                    contentAlignment = Alignment.Center
                 ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        androidx.compose.material3.CircularProgressIndicator(
+                            modifier = Modifier.size(28.dp),
+                            strokeWidth = 2.5.dp,
+                            color = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
+                        )
+                        Text("Loading vehicle details...", fontSize = 13.sp, color = labelSecondary)
+                    }
+                }
+            } else {
+                val vehicle = data.vehicle
+                val policy = data.currentPolicy
+                val daysRemaining = policy?.computeDaysRemaining() ?: 0
+                val status = policy?.computeCurrentStatus() ?: PolicyStatus.ACTIVE
+
+                val scrollState = rememberScrollState()
+                BindBackToTop(scrollState)
+
+                SelectionContainer {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(top = paddingValues.calculateTopPadding())
+                            .verticalScroll(scrollState)
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
                     // VEHICLE NUMBER PLATE HEADER & COUNTDOWN (LIQUID GLASS)
                     LiquidGlassCard(
                         shape = RoundedCornerShape(20.dp),
@@ -385,18 +401,6 @@ fun VehicleDetailScreen(
                             expiryDate = policy?.expiryDate
                         )
                     }
-
-                    // QUICK CONTACT ACTIONS
-                    val curPolicy = vehicleWithPolicies?.currentPolicy
-                    CustomerContactBar(
-                        customerName = vehicle.customer.name,
-                        mobile = vehicle.customer.mobile,
-                        regNo = vehicle.regNo,
-                        insurer = curPolicy?.insurer ?: "",
-                        expiryDate = curPolicy?.expiryDate?.let { UiFormatters.formatDate(it) } ?: "",
-                        premium = curPolicy?.totalPremium?.let { UiFormatters.formatCurrency(it) } ?: "",
-                        context = context
-                    )
 
                     // CUSTOMER INFORMATION GROUP
                     LiquidGlassGroupedSection(title = "Customer Details") {
@@ -484,8 +488,41 @@ fun VehicleDetailScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(120.dp))
+                    Spacer(
+                        modifier = Modifier
+                            .height(104.dp)
+                            .navigationBarsPadding()
+                    )
                 }
+            }
+        }
+        }
+
+        AnimatedVisibility(
+            visible = vehicleWithPolicies != null,
+            enter = slideInVertically(
+                initialOffsetY = { it },
+                animationSpec = spring(dampingRatio = 0.82f, stiffness = 400f)
+            ) + fadeIn(),
+            exit = slideOutVertically(
+                targetOffsetY = { it },
+                animationSpec = spring(dampingRatio = 0.82f, stiffness = 400f)
+            ) + fadeOut(),
+            modifier = Modifier.align(Alignment.BottomCenter)
+        ) {
+            vehicleWithPolicies?.let { item ->
+                val curPolicy = item.currentPolicy
+                VehicleDetailActionDock(
+                    customerName = item.vehicle.customer.name,
+                    mobile = item.vehicle.customer.mobile,
+                    regNo = item.vehicle.regNo,
+                    insurer = curPolicy?.insurer ?: "",
+                    expiryDate = curPolicy?.expiryDate?.let { UiFormatters.formatDate(it) } ?: "",
+                    premium = curPolicy?.totalPremium?.let { UiFormatters.formatCurrency(it) } ?: "",
+                    context = context,
+                    hazeState = localHaze,
+                    onRenew = { onNavigateToRenew(item.vehicle.regNo) }
+                )
             }
         }
     }
@@ -559,38 +596,49 @@ fun CountdownLiveBanner(
 }
 
 @Composable
-fun CustomerContactBar(
+private fun VehicleDetailActionDock(
     customerName: String,
     mobile: String,
     regNo: String,
-    insurer: String = "",
-    expiryDate: String = "",
-    premium: String = "",
-    context: android.content.Context
+    insurer: String,
+    expiryDate: String,
+    premium: String,
+    context: Context,
+    hazeState: HazeState,
+    onRenew: () -> Unit
 ) {
-    LiquidGlassCard(
-        shape = RoundedCornerShape(18.dp),
-        elevation = 2.dp
-    ) {
+    val isDark = isSystemInDarkTheme()
+    val accentBlue = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
+    val whatsAppGreen = Color(0xFF25D366)
+    val cleanNumber = mobile.trim()
+    val hasPhone = cleanNumber.any { it.isDigit() }
+
+    LiquidGlassActionDock(hazeState = hazeState) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
+            horizontalArrangement = Arrangement.spacedBy(5.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            ContactActionButton(
+            DockActionIconButton(
                 icon = AppleIcons.Phone,
-                label = "Call",
-                tintColor = AppleSystemBlue,
+                contentDescription = "Call customer",
+                tintColor = accentBlue,
+                enabled = hasPhone,
                 onClick = {
-                    val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$mobile"))
-                    context.startActivity(intent)
+                    launchContactIntent(
+                        context = context,
+                        intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$cleanNumber")),
+                        fallbackMessage = "Dialer app unavailable"
+                    )
                 }
             )
-            ContactActionButton(
+            DockActionIconButton(
                 icon = AppleIcons.WhatsApp,
-                label = "WhatsApp",
-                tintColor = Color(0xFF25D366),
+                contentDescription = "Send WhatsApp reminder",
+                tintColor = whatsAppGreen,
+                enabled = hasPhone,
                 onClick = {
-                    val formattedMobile = if (mobile.startsWith("91")) mobile else "91$mobile"
+                    val digits = cleanNumber.filter { it.isDigit() }
+                    val formattedMobile = if (digits.length == 10) "91$digits" else digits
                     val msg = com.policydesk.app.data.profile.AdvisorProfileManager.formatRenewalMessage(
                         context = context,
                         customerName = customerName,
@@ -600,63 +648,106 @@ fun CustomerContactBar(
                         premium = premium
                     )
                     val url = "https://wa.me/$formattedMobile?text=${Uri.encode(msg)}"
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                    context.startActivity(intent)
+                    launchContactIntent(
+                        context = context,
+                        intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)),
+                        fallbackMessage = "WhatsApp is not installed"
+                    )
                 }
             )
-            ContactActionButton(
+            DockActionIconButton(
                 icon = AppleIcons.Message,
-                label = "SMS",
-                tintColor = AppleSystemBlue,
+                contentDescription = "Send SMS",
+                tintColor = accentBlue,
+                enabled = hasPhone,
                 onClick = {
-                    val intent = Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:$mobile"))
-                    context.startActivity(intent)
+                    launchContactIntent(
+                        context = context,
+                        intent = Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:$cleanNumber")),
+                        fallbackMessage = "SMS app unavailable"
+                    )
                 }
             )
         }
+
+        Spacer(modifier = Modifier.width(6.dp))
+        Box(
+            modifier = Modifier
+                .width(1.dp)
+                .height(24.dp)
+                .background(if (isDark) IosDarkSeparator else IosSeparator)
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+
+        AppleButton(
+            text = "Renew Policy",
+            onClick = onRenew,
+            height = 48.dp,
+            shape = RoundedCornerShape(24.dp),
+            horizontalPadding = 12.dp,
+            fontSize = 14.5.sp,
+            modifier = Modifier.weight(1f)
+        )
     }
 }
 
 @Composable
-fun ContactActionButton(
+private fun DockActionIconButton(
     icon: ImageVector,
-    label: String,
-    tintColor: Color = AppleSystemBlue,
+    contentDescription: String,
+    tintColor: Color,
+    enabled: Boolean,
     onClick: () -> Unit
 ) {
-    val isDark = isSystemInDarkTheme()
     val haptic = LocalHapticFeedback.current
-    Column(
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed && enabled) 0.90f else 1f,
+        animationSpec = AppleSprings.CardPress,
+        label = "dock_icon_spring"
+    )
+    val effectiveTint = if (enabled) tintColor else tintColor.copy(alpha = 0.35f)
+
+    Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(12.dp))
-            .clickable {
-                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                onClick()
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
             }
-            .padding(horizontal = 14.dp, vertical = 6.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .size(44.dp)
+            .clip(CircleShape)
+            .background(effectiveTint.copy(alpha = if (enabled) 0.16f else 0.08f), CircleShape)
+            .border(0.75.dp, effectiveTint.copy(alpha = if (enabled) 0.34f else 0.16f), CircleShape)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                enabled = enabled,
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onClick()
+                }
+            ),
+        contentAlignment = Alignment.Center
     ) {
-        Box(
-            modifier = Modifier
-                .size(46.dp)
-                .background(tintColor.copy(alpha = 0.16f), CircleShape)
-                .border(0.5.dp, tintColor.copy(alpha = 0.35f), CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = label,
-                tint = tintColor,
-                modifier = Modifier.size(22.dp)
-            )
-        }
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = label,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Medium,
-            color = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = effectiveTint,
+            modifier = Modifier.size(19.dp)
         )
+    }
+}
+
+private fun launchContactIntent(
+    context: Context,
+    intent: Intent,
+    fallbackMessage: String
+) {
+    try {
+        context.startActivity(intent)
+    } catch (_: Exception) {
+        Toast.makeText(context, fallbackMessage, Toast.LENGTH_SHORT).show()
     }
 }
 
@@ -790,37 +881,5 @@ fun PolicyHistoryItem(policy: Policy) {
                 }
             }
         }
-    }
-}
-
-@Composable
-fun SurfaceActionBar(
-    onRenew: () -> Unit
-) {
-    val isDark = isSystemInDarkTheme()
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(
-                androidx.compose.ui.graphics.Brush.verticalGradient(
-                    colors = if (isDark) listOf(
-                        Color.Transparent,
-                        Color(0xCC000000),
-                        Color(0xF0000000)
-                    ) else listOf(
-                        Color.Transparent,
-                        Color(0xCCFFFFFF),
-                        Color(0xF0FFFFFF)
-                    )
-                )
-            )
-            .navigationBarsPadding()
-            .padding(horizontal = 16.dp, vertical = 10.dp)
-    ) {
-        AppleButton(
-            text = "Renew Policy",
-            onClick = onRenew,
-            modifier = Modifier.fillMaxWidth()
-        )
     }
 }

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -26,6 +27,7 @@ import com.policydesk.app.ui.components.AppleAlertDialog
 import com.policydesk.app.ui.components.AppleButton
 import com.policydesk.app.ui.components.AppleSecondaryButton
 import com.policydesk.app.ui.components.CupertinoTopBarAction
+import com.policydesk.app.ui.components.LiquidGlassActionDock
 import com.policydesk.app.ui.components.LiquidGlassCard
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -105,6 +107,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.ui.platform.LocalFocusManager
 import com.policydesk.app.ui.theme.StatusOverdueRedBg
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -213,46 +217,42 @@ fun AddPolicyScreen(
         )
     }
 
-    Scaffold(
-        topBar = {
-            com.policydesk.app.ui.components.LiquidGlassTopBar(
-                title = if (state.isEditMode) "Edit Record" else "Add New Policy",
-                subtitle = if (state.isEditMode) "Modify Vehicle, Policy & Customer Details" else "Manual Entry or Scan",
-                onNavigateBack = onNavigateBack
-            )
-        },
-        bottomBar = {
-            FormBottomBar(
-                isEditMode = state.isEditMode,
-                isSaving = state.isSaving,
-                hasAttemptedSave = state.hasAttemptedSave,
-                isFormValid = state.isFormValid,
-                missingFields = if (state.hasAttemptedSave && !state.isFormValid) {
-                    buildList {
-                        if (RegistrationNormalizer.normalize(state.regNo).isEmpty()) add("Registration No.")
-                        if (!FieldValidators.isValidPolicyNumber(state.policyNumber)) add("Policy No.")
-                        if (state.expiryDateEpochMs == null) add("Expiry Date")
-                        if ((state.totalPremium.toDoubleOrNull() ?: 0.0) <= 0.0) add("Premium")
-                        if (!FieldValidators.isValidName(state.name)) add("Customer Name")
-                        if (!FieldValidators.isValidMobile(state.mobile)) add("Mobile No.")
-                    }
-                } else emptyList(),
-                onSave = { viewModel.savePolicy(addAnother = false) },
-                onSaveAndAddAnother = { viewModel.savePolicy(addAnother = true) }
-            )
-        },
-        containerColor = Color.Transparent
-    ) { paddingValues ->
-        Column(
+    val localHaze = remember { HazeState() }
+    val missingFields = if (state.hasAttemptedSave && !state.isFormValid) {
+        buildList {
+            if (RegistrationNormalizer.normalize(state.regNo).isEmpty()) add("Registration No.")
+            if (!FieldValidators.isValidPolicyNumber(state.policyNumber)) add("Policy No.")
+            if (state.expiryDateEpochMs == null) add("Expiry Date")
+            if ((state.totalPremium.toDoubleOrNull() ?: 0.0) <= 0.0) add("Premium")
+            if (!FieldValidators.isValidName(state.name)) add("Customer Name")
+            if (!FieldValidators.isValidMobile(state.mobile)) add("Mobile No.")
+        }
+    } else emptyList()
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
-                .consumeWindowInsets(paddingValues)
-                .imePadding()
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
+                .hazeSource(state = localHaze),
+            topBar = {
+                com.policydesk.app.ui.components.LiquidGlassTopBar(
+                    title = if (state.isEditMode) "Edit Record" else "Add New Policy",
+                    subtitle = if (state.isEditMode) "Modify Vehicle, Policy & Customer Details" else "Manual Entry or Scan",
+                    onNavigateBack = onNavigateBack
+                )
+            },
+            containerColor = Color.Transparent,
+            contentWindowInsets = WindowInsets(0, 0, 0, 0)
+        ) { paddingValues ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(top = paddingValues.calculateTopPadding())
+                    .imePadding()
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
             // Quick Scan Banner: Auto-Fill with AI Scanner (Quiet chrome, unslop)
             if (!state.isEditMode && onNavigateToScan != null) {
                 LiquidGlassCard(
@@ -686,106 +686,122 @@ fun AddPolicyScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(
+                modifier = Modifier
+                    .height(104.dp)
+                    .navigationBarsPadding()
+            )
         }
+        }
+
+        FormFloatingDock(
+            isEditMode = state.isEditMode,
+            isSaving = state.isSaving,
+            hasAttemptedSave = state.hasAttemptedSave,
+            isFormValid = state.isFormValid,
+            missingFields = missingFields,
+            hazeState = localHaze,
+            onSave = { viewModel.savePolicy(addAnother = false) },
+            onSaveAndAddAnother = { viewModel.savePolicy(addAnother = true) },
+            modifier = Modifier.align(Alignment.BottomCenter)
+        )
     }
 }
 
 @Composable
-private fun FormBottomBar(
+private fun FormFloatingDock(
     isEditMode: Boolean,
     isSaving: Boolean,
     hasAttemptedSave: Boolean,
     isFormValid: Boolean,
     missingFields: List<String>,
+    hazeState: HazeState,
     onSave: () -> Unit,
-    onSaveAndAddAnother: () -> Unit
+    onSaveAndAddAnother: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val isDark = isSystemInDarkTheme()
-    val bg = if (isDark) Color(0xF21C1C1E) else Color(0xF7FFFFFF)
-    val topBorderColor = if (isDark) Color(0x26FFFFFF) else Color(0x1F000000)
+    val showMissingBanner = hasAttemptedSave && !isFormValid && missingFields.isNotEmpty()
 
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = bg,
-        shadowElevation = 8.dp
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .border(
-                    width = 0.5.dp,
-                    color = topBorderColor,
-                    shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
-                )
-                .navigationBarsPadding()
-                .imePadding()
-                .padding(horizontal = 16.dp, vertical = 12.dp)
-        ) {
-            // Missing fields warning banner right above buttons
-            if (hasAttemptedSave && !isFormValid && missingFields.isNotEmpty()) {
+    LiquidGlassActionDock(
+        modifier = modifier,
+        hazeState = hazeState,
+        imeAware = true,
+        topBanner = if (showMissingBanner) {
+            {
+                val bannerShape = RoundedCornerShape(14.dp)
+                val bannerBg = if (isDark) Color(0xE63B1214) else Color(0xF5FFF1F0)
+                val bannerTextColor = if (isDark) Color(0xFFFFB4AB) else MaterialTheme.colorScheme.error
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 10.dp)
-                        .background(
-                            color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f),
-                            shape = RoundedCornerShape(8.dp)
-                        )
+                        .clip(bannerShape)
+                        .background(bannerBg, bannerShape)
                         .border(
-                            1.dp,
-                            MaterialTheme.colorScheme.error.copy(alpha = 0.4f),
-                            RoundedCornerShape(8.dp)
+                            width = 1.dp,
+                            color = MaterialTheme.colorScheme.error.copy(alpha = 0.45f),
+                            shape = bannerShape
                         )
-                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                        .padding(horizontal = 12.dp, vertical = 7.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Icon(
                         imageVector = AppleIcons.Warning,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.error,
+                        tint = bannerTextColor,
                         modifier = Modifier.size(14.dp)
                     )
                     Text(
                         text = "Required: ${missingFields.joinToString(", ")}",
                         fontSize = 12.sp,
-                        color = if (isDark) Color(0xFFFFB4AB) else MaterialTheme.colorScheme.error,
+                        color = bannerTextColor,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
             }
-
-            if (isEditMode) {
+        } else null
+    ) {
+        if (isEditMode) {
+            AppleButton(
+                text = if (isSaving) "Saving..." else "Save Changes",
+                onClick = onSave,
+                enabled = !isSaving,
+                isLoading = isSaving,
+                height = 48.dp,
+                shape = RoundedCornerShape(24.dp),
+                horizontalPadding = 16.dp,
+                modifier = Modifier.fillMaxWidth()
+            )
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                AppleSecondaryButton(
+                    text = "Save & Add",
+                    onClick = onSaveAndAddAnother,
+                    enabled = !isSaving,
+                    height = 48.dp,
+                    shape = RoundedCornerShape(24.dp),
+                    horizontalPadding = 12.dp,
+                    fontSize = 13.5.sp,
+                    modifier = Modifier.weight(1f)
+                )
                 AppleButton(
-                    text = if (isSaving) "Saving..." else "Save Changes",
+                    text = if (isSaving) "Saving..." else "Save Policy",
                     onClick = onSave,
                     enabled = !isSaving,
                     isLoading = isSaving,
-                    modifier = Modifier.fillMaxWidth()
+                    height = 48.dp,
+                    shape = RoundedCornerShape(24.dp),
+                    horizontalPadding = 12.dp,
+                    fontSize = 14.5.sp,
+                    modifier = Modifier.weight(1.25f)
                 )
-            } else {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    AppleSecondaryButton(
-                        text = "Save & Add",
-                        onClick = onSaveAndAddAnother,
-                        enabled = !isSaving,
-                        modifier = Modifier.weight(1f)
-                    )
-                    AppleButton(
-                        text = if (isSaving) "Saving..." else "Save Policy",
-                        onClick = onSave,
-                        enabled = !isSaving,
-                        isLoading = isSaving,
-                        modifier = Modifier.weight(1.2f)
-                    )
-                }
             }
         }
     }

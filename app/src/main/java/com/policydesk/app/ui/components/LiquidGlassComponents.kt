@@ -19,14 +19,21 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -63,12 +70,15 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.TextStyle
 import com.policydesk.app.domain.model.RegistrationNormalizer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.animation.animateColorAsState
@@ -906,7 +916,9 @@ fun AppleButton(
     icon: ImageVector? = null,
     isLoading: Boolean = false,
     height: Dp = 48.dp,
-    shape: Shape = RoundedCornerShape(12.dp)
+    shape: Shape = RoundedCornerShape(12.dp),
+    horizontalPadding: Dp = 20.dp,
+    fontSize: TextUnit = 15.sp
 ) {
     val isDark = isSystemInDarkTheme()
     val haptic = LocalHapticFeedback.current
@@ -992,7 +1004,7 @@ fun AppleButton(
                     onClick()
                 }
             )
-            .padding(horizontal = 20.dp),
+            .padding(horizontal = horizontalPadding),
         contentAlignment = Alignment.Center
     ) {
         if (isLoading) {
@@ -1018,9 +1030,11 @@ fun AppleButton(
                 Text(
                     text = text,
                     color = actualContentColor,
-                    fontSize = 15.sp,
+                    fontSize = fontSize,
                     fontWeight = FontWeight.SemiBold,
-                    letterSpacing = (-0.2).sp
+                    letterSpacing = (-0.2).sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
@@ -1040,7 +1054,9 @@ fun AppleSecondaryButton(
     tintColor: Color = AppleSystemBlue,
     icon: ImageVector? = null,
     height: Dp = 48.dp,
-    shape: Shape = RoundedCornerShape(12.dp)
+    shape: Shape = RoundedCornerShape(12.dp),
+    horizontalPadding: Dp = 16.dp,
+    fontSize: TextUnit = 13.sp
 ) {
     val isDark = isSystemInDarkTheme()
     val haptic = LocalHapticFeedback.current
@@ -1108,7 +1124,7 @@ fun AppleSecondaryButton(
                     onClick()
                 }
             )
-            .padding(horizontal = 16.dp),
+            .padding(horizontal = horizontalPadding),
         contentAlignment = Alignment.Center
     ) {
         Row(
@@ -1127,9 +1143,11 @@ fun AppleSecondaryButton(
             Text(
                 text = text,
                 color = contentColor,
-                fontSize = 13.sp,
+                fontSize = fontSize,
                 fontWeight = FontWeight.SemiBold,
-                letterSpacing = (-0.1).sp
+                letterSpacing = (-0.1).sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
@@ -2231,6 +2249,159 @@ fun LiquidGlassDock(
     }
 }
 
+private fun Modifier.floatingDockGlassChrome(
+    shape: Shape,
+    isDark: Boolean,
+    hazeState: HazeState? = null
+): Modifier {
+    val hazeMod = if (hazeState != null) {
+        try {
+            val bg = (if (isDark) Color(0xFF141418) else Color.White).copy(alpha = 0.88f)
+            Modifier.hazeEffect(
+                state = hazeState,
+                style = HazeStyle(
+                    backgroundColor = bg,
+                    blurRadius = 24.dp,
+                    tints = listOf(HazeTint(bg)),
+                    noiseFactor = 0.05f
+                )
+            )
+        } catch (_: Throwable) {
+            Modifier
+        }
+    } else Modifier
+
+    val meniscusColors = if (isDark) DarkMeniscusColors else LightMeniscusColors
+    val borderColors = if (isDark) {
+        listOf(
+            Color.White.copy(alpha = 0.35f),
+            Color.White.copy(alpha = 0.12f),
+            Color.White.copy(alpha = 0.04f)
+        )
+    } else {
+        listOf(
+            Color.White.copy(alpha = 0.90f),
+            Color.White.copy(alpha = 0.35f),
+            Color.White.copy(alpha = 0.15f)
+        )
+    }
+
+    return this
+        .shadow(
+            elevation = 16.dp,
+            shape = shape,
+            ambientColor = if (isDark) Color(0x66000000) else Color(0x1F0F172A),
+            spotColor = if (isDark) Color(0x66000000) else Color(0x14000000)
+        )
+        .clip(shape)
+        .then(hazeMod)
+        .background(
+            brush = Brush.linearGradient(
+                colors = meniscusColors,
+                start = Offset.Zero,
+                end = Offset.Infinite
+            ),
+            shape = shape
+        )
+        .border(
+            width = 1.1.dp,
+            brush = Brush.verticalGradient(colors = borderColors),
+            shape = shape
+        )
+}
+
+/**
+ * Suspended floating Liquid Glass capsule dock for sub-screen actions
+ * (e.g. Vehicle Details power dock, Add/Edit policy form actions).
+ */
+@Composable
+fun LiquidGlassActionDock(
+    modifier: Modifier = Modifier,
+    hazeState: HazeState? = null,
+    imeAware: Boolean = false,
+    dockHeight: Dp = 58.dp,
+    topBanner: (@Composable ColumnScope.() -> Unit)? = null,
+    content: @Composable RowScope.() -> Unit
+) {
+    val isDark = isSystemInDarkTheme()
+    val density = LocalDensity.current
+    val isImeVisible = imeAware && WindowInsets.ime.getBottom(density) > 0
+    val bottomPadding by animateDpAsState(
+        targetValue = if (isImeVisible) 8.dp else 14.dp,
+        animationSpec = AppleSprings.SnappyDp,
+        label = "action_dock_bottom_inset"
+    )
+    val dockShape = RoundedCornerShape(29.dp)
+    val scrimColor = if (isDark) Color(0xFF000000) else Color(0xFFF2F2F7)
+    val insetsModifier = if (imeAware) {
+        Modifier.windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.ime))
+    } else {
+        Modifier.navigationBarsPadding()
+    }
+
+    Box(
+        modifier = modifier.fillMaxWidth(),
+        contentAlignment = Alignment.BottomCenter
+    ) {
+        // Ambient Bottom Scrim so scrolling cards fade gracefully behind the floating dock
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .then(if (imeAware) Modifier.imePadding() else Modifier)
+                .height(96.dp)
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            scrimColor.copy(alpha = 0.45f),
+                            scrimColor.copy(alpha = 0.85f)
+                        )
+                    )
+                )
+        )
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(insetsModifier)
+                .padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = bottomPadding),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            if (topBanner != null) {
+                Column(
+                    modifier = Modifier
+                        .widthIn(max = 440.dp)
+                        .fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    content = topBanner
+                )
+            }
+
+            Box(
+                modifier = Modifier
+                    .widthIn(max = 440.dp)
+                    .fillMaxWidth()
+                    .height(dockHeight)
+                    .floatingDockGlassChrome(
+                        shape = dockShape,
+                        isDark = isDark,
+                        hazeState = hazeState
+                    )
+                    .padding(5.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    content = content
+                )
+            }
+        }
+    }
+}
+
 /**
  * Apple Liquid Glass Bulk Selection Toolbar
  * Suspended floating bar with Cupertino pill geometry and action buttons.
@@ -2264,49 +2435,9 @@ fun LiquidGlassSelectionBar(
                 .widthIn(max = 440.dp)
                 .fillMaxWidth()
                 .height(58.dp)
-                .shadow(
-                    elevation = 16.dp,
+                .floatingDockGlassChrome(
                     shape = barShape,
-                    ambientColor = if (isDark) Color(0x66000000) else Color(0x1F0F172A),
-                    spotColor = if (isDark) Color(0x66000000) else Color(0x14000000)
-                )
-                .clip(barShape)
-                .background(
-                    brush = Brush.linearGradient(
-                        colors = if (isDark) {
-                            listOf(
-                                Color(0xFF26262B).copy(alpha = 0.94f),
-                                Color(0xFF1C1C20).copy(alpha = 0.92f),
-                                Color(0xFF141417).copy(alpha = 0.90f),
-                                Color(0xFF202024).copy(alpha = 0.94f)
-                            )
-                        } else {
-                            listOf(
-                                Color.White.copy(alpha = 0.96f),
-                                Color(0xFFF9F9FB).copy(alpha = 0.94f),
-                                Color(0xFFF2F2F7).copy(alpha = 0.91f),
-                                Color.White.copy(alpha = 0.96f)
-                            )
-                        },
-                        start = Offset.Zero,
-                        end = Offset.Infinite
-                    ),
-                    shape = barShape
-                )
-                .border(
-                    width = 1.1.dp,
-                    brush = Brush.verticalGradient(
-                        colors = if (isDark) listOf(
-                            Color.White.copy(alpha = 0.35f),
-                            Color.White.copy(alpha = 0.12f),
-                            Color.White.copy(alpha = 0.04f)
-                        ) else listOf(
-                            Color.White.copy(alpha = 0.90f),
-                            Color.White.copy(alpha = 0.35f),
-                            Color.White.copy(alpha = 0.15f)
-                        )
-                    ),
-                    shape = barShape
+                    isDark = isDark
                 )
                 .padding(horizontal = 14.dp),
             contentAlignment = Alignment.Center
