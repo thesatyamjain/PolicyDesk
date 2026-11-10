@@ -197,6 +197,8 @@ fun DaysRemainingBadge(
             fontSize = 11.sp,
             fontWeight = FontWeight.SemiBold,
             letterSpacing = 0.1.sp,
+            maxLines = 1,
+            softWrap = false,
             style = TextStyle(fontFeatureSettings = "tnum")
         )
     }

@@ -372,7 +372,10 @@ fun VehicleDetailScreen(
                             HsrpNumberPlate(
                                 regNo = vehicle.regNo,
                                 makeModel = vehicle.makeModel,
-                                style = vehicle.plateStyle
+                                style = vehicle.plateStyle,
+                                modifier = Modifier
+                                    .weight(1f, fill = false)
+                                    .padding(end = 8.dp)
                             )
 
                             DaysRemainingBadge(

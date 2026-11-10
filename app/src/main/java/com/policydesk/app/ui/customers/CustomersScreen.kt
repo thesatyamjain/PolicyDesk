@@ -480,7 +480,7 @@ fun CustomerCard(
                                 onNavigateToVehicle(vehicle.regNo)
                             }
                             .padding(10.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(

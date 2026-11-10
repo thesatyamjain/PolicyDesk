@@ -72,6 +72,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import com.policydesk.app.domain.model.RegistrationNormalizer
 import androidx.compose.ui.text.font.FontWeight
@@ -1410,12 +1411,6 @@ fun HsrpNumberPlate(
         RegistrationNormalizer.formatForDisplay(clean)
     }
 
-    // Deterministic 10-digit laser PIN derived from regNo (e.g. AA 10294812)
-    val laserPin = remember(clean) {
-        val hash = (clean.hashCode().toLong() and 0xFFFFFFFFL).toString().padStart(8, '0').takeLast(8)
-        "AA$hash"
-    }
-
     Row(
         modifier = modifier
             .clip(plateShape)
@@ -1425,7 +1420,7 @@ fun HsrpNumberPlate(
                 color = plateBorderColor,
                 shape = plateShape
             )
-            .height(29.dp),
+            .height(30.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Left Blue IND Stripe with Ashoka Chakra & Hologram
@@ -1448,11 +1443,10 @@ fun HsrpNumberPlate(
                 verticalArrangement = Arrangement.Center
             ) {
                 // Chromium Ashoka Chakra Hologram Badge (Hot-stamped)
-                Canvas(modifier = Modifier.size(7.dp)) {
+                Canvas(modifier = Modifier.size(7.5.dp)) {
                     val radius = size.minDimension / 2f
                     val center = Offset(size.width / 2f, size.height / 2f)
 
-                    // Outer chromium reflective ring
                     drawCircle(
                         color = Color(0xFFFDE047),
                         radius = radius,
@@ -1460,34 +1454,14 @@ fun HsrpNumberPlate(
                     )
                     drawCircle(
                         color = Color(0xFF002277),
-                        radius = radius * 0.72f,
+                        radius = radius * 0.68f,
                         center = center
                     )
                     drawCircle(
                         color = Color(0xFFFDE047),
-                        radius = radius * 0.32f,
+                        radius = radius * 0.30f,
                         center = center
                     )
-
-                    // 12 spokes for high-density miniature representation
-                    val spokeCount = 12
-                    for (i in 0 until spokeCount) {
-                        val angle = (i * 360f / spokeCount) * (Math.PI / 180.0)
-                        val start = Offset(
-                            x = center.x + (radius * 0.35f * kotlin.math.cos(angle)).toFloat(),
-                            y = center.y + (radius * 0.35f * kotlin.math.sin(angle)).toFloat()
-                        )
-                        val end = Offset(
-                            x = center.x + (radius * 0.72f * kotlin.math.cos(angle)).toFloat(),
-                            y = center.y + (radius * 0.72f * kotlin.math.sin(angle)).toFloat()
-                        )
-                        drawLine(
-                            color = Color(0xFFFDE047),
-                            start = start,
-                            end = end,
-                            strokeWidth = 0.8f
-                        )
-                    }
                 }
 
                 Spacer(modifier = Modifier.height(1.5.dp))
@@ -1500,61 +1474,50 @@ fun HsrpNumberPlate(
                     fontFamily = androidx.compose.ui.text.font.FontFamily.SansSerif,
                     color = Color.White,
                     letterSpacing = 0.4.sp,
-                    lineHeight = 7.sp
+                    lineHeight = 7.sp,
+                    maxLines = 1,
+                    softWrap = false,
+                    style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
                 )
             }
         }
 
-        // Center Registration Plate Text & Laser Watermark
+        // Registration Plate Text (Centered vertically, wraps text tightly so badges sit beside it)
         Box(
             modifier = Modifier
-                .padding(start = 7.dp, end = 5.dp)
+                .weight(1f, fill = false)
+                .padding(start = 8.dp, end = 6.dp)
                 .fillMaxHeight(),
             contentAlignment = Alignment.CenterStart
         ) {
-            Column(
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.Start
-            ) {
-                // Main Registration Display (DIN 1451 geometric monoline styling)
-                Text(
-                    text = formatted,
-                    fontSize = 13.5.sp,
-                    fontFamily = androidx.compose.ui.text.font.FontFamily.SansSerif,
-                    fontWeight = FontWeight.Black,
-                    color = plateTextColor,
-                    letterSpacing = 1.4.sp,
-                    style = TextStyle(
-                        shadow = Shadow(
-                            color = plateBorderColor.copy(alpha = 0.35f),
-                            offset = Offset(0.5f, 0.8f),
-                            blurRadius = 0.5f
-                        )
+            Text(
+                text = formatted,
+                fontSize = 13.5.sp,
+                fontFamily = androidx.compose.ui.text.font.FontFamily.SansSerif,
+                fontWeight = FontWeight.Black,
+                color = plateTextColor,
+                letterSpacing = 1.2.sp,
+                maxLines = 1,
+                softWrap = false,
+                overflow = TextOverflow.Ellipsis,
+                style = TextStyle(
+                    platformStyle = PlatformTextStyle(includeFontPadding = false),
+                    shadow = Shadow(
+                        color = plateBorderColor.copy(alpha = 0.30f),
+                        offset = Offset(0f, 0.8f),
+                        blurRadius = 0.5f
                     )
                 )
-
-                // Laser-etched Serial / PIN watermark (Bottom border)
-                Text(
-                    text = laserPin,
-                    fontSize = 4.5.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                    color = plateTextColor.copy(alpha = 0.45f),
-                    letterSpacing = 0.3.sp,
-                    lineHeight = 5.sp
-                )
-            }
+            )
         }
-
-        Spacer(modifier = Modifier.weight(1f))
 
         // Right Snap-Lock Rivet Screw Simulation
         Box(
             modifier = Modifier
                 .padding(end = 5.dp)
-                .size(4.dp)
+                .size(3.5.dp)
                 .clip(CircleShape)
-                .background(plateBorderColor.copy(alpha = 0.65f))
+                .background(plateBorderColor.copy(alpha = 0.60f))
         )
     }
 }
