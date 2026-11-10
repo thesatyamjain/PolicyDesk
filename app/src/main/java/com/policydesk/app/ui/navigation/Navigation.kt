@@ -29,6 +29,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -43,7 +44,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 import com.policydesk.app.ui.addpolicy.AddPolicyScreen
 import com.policydesk.app.ui.components.DockTab
 import com.policydesk.app.ui.components.LiquidGlassDock
@@ -129,6 +132,20 @@ fun PolicyDeskNavHost(
     val pagerPosition = if (isTopLevelRoute) {
         pagerState.currentPage + pagerState.currentPageOffsetFraction
     } else null
+
+    var dockScrubPosition by remember { mutableStateOf<Float?>(null) }
+
+    LaunchedEffect(Unit) {
+        snapshotFlow { dockScrubPosition }
+            .collectLatest { scrubPos ->
+                if (scrubPos != null) {
+                    val clamped = scrubPos.coerceIn(0f, 3f)
+                    val page = clamped.roundToInt().coerceIn(0, 3)
+                    val offset = (clamped - page).coerceIn(-0.5f, 0.5f)
+                    pagerState.scrollToPage(page, offset)
+                }
+            }
+    }
 
     BackHandler(enabled = isTopLevelRoute && pagerState.currentPage != 0) {
         coroutineScope.launch {
@@ -406,7 +423,14 @@ fun PolicyDeskNavHost(
                     },
                     onScrollToTop = onScrollToTop,
                     hazeState = hazeState,
-                    pagerPosition = pagerPosition
+                    pagerPosition = pagerPosition,
+                    onScrubProgress = { pos -> dockScrubPosition = pos },
+                    onScrubFinished = { targetIndex ->
+                        dockScrubPosition = null
+                        coroutineScope.launch {
+                            pagerState.animateScrollToPage(targetIndex)
+                        }
+                    }
                 )
             }
         }

@@ -122,12 +122,14 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.IntOffset
 import com.policydesk.app.ui.theme.IosLabelTertiary
 import com.policydesk.app.ui.theme.IosSeparator
 
@@ -1983,7 +1985,9 @@ fun LiquidGlassDock(
     onScrollToTop: (() -> Unit)? = null,
     onAddClicked: (() -> Unit)? = null,
     hazeState: HazeState? = null,
-    pagerPosition: Float? = null
+    pagerPosition: Float? = null,
+    onScrubProgress: ((Float) -> Unit)? = null,
+    onScrubFinished: ((Int) -> Unit)? = null
 ) {
     val isDark = isSystemInDarkTheme()
     val dockShape = RoundedCornerShape(28.dp)
@@ -1994,6 +1998,8 @@ fun LiquidGlassDock(
 
     var lastTapTime by remember { mutableStateOf(0L) }
     var lastTappedTab by remember { mutableStateOf<DockTab?>(null) }
+    var activeDragPosition by remember { mutableStateOf<Float?>(null) }
+    var lastScrubbedIndex by remember { mutableStateOf(-1) }
 
     val tabs = remember {
         listOf(
@@ -2004,8 +2010,10 @@ fun LiquidGlassDock(
         )
     }
 
-    val selectedIndex = if (pagerPosition != null) {
-        pagerPosition.roundToInt().coerceIn(0, tabs.size - 1)
+    val activeDrag = activeDragPosition
+    val effectivePosition = activeDrag ?: pagerPosition
+    val selectedIndex = if (effectivePosition != null) {
+        effectivePosition.roundToInt().coerceIn(0, tabs.size - 1)
     } else {
         tabs.indexOfFirst { it.first == currentTab }.coerceAtLeast(0)
     }
@@ -2094,25 +2102,91 @@ fun LiquidGlassDock(
                 )
                 .padding(4.dp)
         ) {
+            val density = LocalDensity.current
             BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                 val itemWidth = maxWidth / tabs.size
+                val itemWidthPx = with(density) { itemWidth.toPx() }
                 val animatedPillOffset by animateDpAsState(
                     targetValue = itemWidth * selectedIndex,
                     animationSpec = AppleSprings.SnappyDp,
                     label = "dock_gliding_pill"
                 )
-                val pillOffset = if (pagerPosition != null) {
-                    itemWidth * pagerPosition.coerceIn(0f, (tabs.size - 1).toFloat())
+                val pillScale by animateFloatAsState(
+                    targetValue = if (activeDrag != null) 1.05f else 1.0f,
+                    animationSpec = AppleSprings.Snappy,
+                    label = "dock_scrub_pill_scale"
+                )
+                val pillOffset = if (effectivePosition != null) {
+                    itemWidth * effectivePosition.coerceIn(0f, (tabs.size - 1).toFloat())
                 } else {
                     animatedPillOffset
                 }
 
-                // 1. Gliding Animated Indicator Pill (My Warranties)
+                val dragScrubModifier = if (onScrubProgress != null || onScrubFinished != null) {
+                    Modifier.pointerInput(tabs.size, itemWidthPx) {
+                        var currentDragPos = 0f
+                        detectHorizontalDragGestures(
+                            onDragStart = { startOffset ->
+                                if (itemWidthPx > 0f) {
+                                    val pos = ((startOffset.x - itemWidthPx / 2f) / itemWidthPx)
+                                        .coerceIn(0f, (tabs.size - 1).toFloat())
+                                    currentDragPos = pos
+                                    activeDragPosition = pos
+                                    lastScrubbedIndex = pos.roundToInt().coerceIn(0, tabs.size - 1)
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    onScrubProgress?.invoke(pos)
+                                }
+                            },
+                            onHorizontalDrag = { change, _ ->
+                                if (itemWidthPx > 0f) {
+                                    change.consume()
+                                    val pos = ((change.position.x - itemWidthPx / 2f) / itemWidthPx)
+                                        .coerceIn(0f, (tabs.size - 1).toFloat())
+                                    currentDragPos = pos
+                                    activeDragPosition = pos
+                                    val crossedIndex = pos.roundToInt().coerceIn(0, tabs.size - 1)
+                                    if (crossedIndex != lastScrubbedIndex) {
+                                        lastScrubbedIndex = crossedIndex
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    }
+                                    onScrubProgress?.invoke(pos)
+                                }
+                            },
+                            onDragEnd = {
+                                val targetIndex = currentDragPos.roundToInt().coerceIn(0, tabs.size - 1)
+                                activeDragPosition = null
+                                lastScrubbedIndex = -1
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                if (onScrubFinished != null) {
+                                    onScrubFinished(targetIndex)
+                                } else {
+                                    onTabSelected(tabs[targetIndex].first)
+                                }
+                            },
+                            onDragCancel = {
+                                val targetIndex = currentDragPos.roundToInt().coerceIn(0, tabs.size - 1)
+                                activeDragPosition = null
+                                lastScrubbedIndex = -1
+                                if (onScrubFinished != null) {
+                                    onScrubFinished(targetIndex)
+                                } else {
+                                    onTabSelected(tabs[targetIndex].first)
+                                }
+                            }
+                        )
+                    }
+                } else Modifier
+
+                // 1. Gliding Animated Indicator Pill (My Warranties + iOS 26 Scrub Lens)
                 Box(
                     modifier = Modifier
-                        .offset(x = pillOffset)
+                        .offset { IntOffset(x = pillOffset.roundToPx(), y = 0) }
                         .width(itemWidth)
                         .fillMaxHeight()
+                        .graphicsLayer {
+                            scaleX = pillScale
+                            scaleY = pillScale
+                        }
                         .shadow(
                             elevation = 4.dp,
                             shape = RoundedCornerShape(24.dp),
@@ -2139,9 +2213,11 @@ fun LiquidGlassDock(
                         )
                 )
 
-                // 2. Interactive Tab Icons & Labels Row
+                // 2. Interactive Tab Icons & Labels Row (supports tap, double-tap & direct horizontal drag scrub)
                 Row(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .then(dragScrubModifier),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     tabs.forEachIndexed { index, (tab, pair) ->
