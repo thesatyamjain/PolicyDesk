@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -47,6 +48,9 @@ data class DashboardUiState(
 ) {
     val showBackupNudge: Boolean
         get() = !isDriveLinked && !isBackupNudgeDismissed && summary.totalActiveCount >= 5 && !isSelectionMode
+
+    val hasActiveFilter: Boolean
+        get() = searchQuery.isNotBlank() || activeFilter != ExpiryFilter.ALL || sectorFilter != SectorFilter.ALL
 }
 
 @HiltViewModel
@@ -120,12 +124,20 @@ class DashboardViewModel @Inject constructor(
         _isDriveLinked,
         _isBackupNudgeDismissed
     ) { baseState, isSelectionMode, selectedRegNos, isDriveLinked, isBackupNudgeDismissed ->
+        val validRegNos = baseState.filteredList.mapTo(HashSet()) { it.vehicle.regNo }
+        val effectiveSelectionMode = isSelectionMode && validRegNos.isNotEmpty()
+        val effectiveSelected = if (effectiveSelectionMode) selectedRegNos.intersect(validRegNos) else emptySet()
         baseState.copy(
-            isSelectionMode = isSelectionMode,
-            selectedRegNos = selectedRegNos,
+            isSelectionMode = effectiveSelectionMode,
+            selectedRegNos = effectiveSelected,
             isDriveLinked = isDriveLinked,
             isBackupNudgeDismissed = isBackupNudgeDismissed
         )
+    }.onEach { state ->
+        if (!state.isLoading && state.filteredList.isEmpty() && _isSelectionMode.value) {
+            _isSelectionMode.value = false
+            _selectedRegNos.value = emptySet()
+        }
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
@@ -150,6 +162,12 @@ class DashboardViewModel @Inject constructor(
 
     fun onSectorFilterSelected(sector: SectorFilter) {
         _sectorFilter.value = sector
+    }
+
+    fun resetFilters() {
+        _searchQuery.value = ""
+        _activeFilter.value = ExpiryFilter.ALL
+        _sectorFilter.value = SectorFilter.ALL
     }
 
     fun enterSelectionMode(initialRegNo: String? = null) {

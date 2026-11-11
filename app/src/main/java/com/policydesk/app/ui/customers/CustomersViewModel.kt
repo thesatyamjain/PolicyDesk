@@ -18,7 +18,9 @@ data class CustomersUiState(
     val searchQuery: String = "",
     val totalCustomers: Int = 0,
     val multiVehicleCount: Int = 0,
-    val isLoading: Boolean = false
+    val isLoading: Boolean = false,
+    val expandedMobiles: Set<String> = emptySet(),
+    val hasAnyCustomers: Boolean = false
 )
 
 @HiltViewModel
@@ -27,11 +29,13 @@ class CustomersViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
+    private val _expandedMobiles = MutableStateFlow<Set<String>>(emptySet())
 
     val uiState: StateFlow<CustomersUiState> = combine(
         repository.getCustomerGroups(),
-        _searchQuery
-    ) { groups, query ->
+        _searchQuery,
+        _expandedMobiles
+    ) { groups, query, expanded ->
         val cleanQuery = query.trim().lowercase()
         val normalizedQuery = RegistrationNormalizer.normalize(query).lowercase()
         val filtered = if (cleanQuery.isEmpty()) {
@@ -52,7 +56,9 @@ class CustomersViewModel @Inject constructor(
             searchQuery = query,
             totalCustomers = groups.size,
             multiVehicleCount = groups.count { it.vehicles.size > 1 },
-            isLoading = false
+            isLoading = false,
+            expandedMobiles = expanded,
+            hasAnyCustomers = groups.isNotEmpty()
         )
     }.stateIn(
         scope = viewModelScope,
@@ -62,5 +68,13 @@ class CustomersViewModel @Inject constructor(
 
     fun onSearchQueryChanged(query: String) {
         _searchQuery.value = query
+    }
+
+    fun toggleCustomerExpanded(mobile: String) {
+        val current = _expandedMobiles.value.toMutableSet()
+        if (!current.add(mobile)) {
+            current.remove(mobile)
+        }
+        _expandedMobiles.value = current
     }
 }
