@@ -1,27 +1,44 @@
 package com.policydesk.app.ui.components
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
@@ -33,105 +50,113 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Shadow
-import androidx.compose.ui.text.input.KeyboardCapitalization
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.HazeStyle
-import dev.chrisbanes.haze.HazeTint
-import dev.chrisbanes.haze.hazeEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
-import com.policydesk.app.domain.model.NumberPlateStyle
-import com.policydesk.app.domain.model.VehiclePlateClassifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalInspectionMode
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
-import com.policydesk.app.domain.model.RegistrationNormalizer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.foundation.layout.IntrinsicSize
-import kotlin.math.roundToInt
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.offset
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.policydesk.app.domain.model.NumberPlateStyle
+import com.policydesk.app.domain.model.RegistrationNormalizer
+import com.policydesk.app.domain.model.VehiclePlateClassifier
 import com.policydesk.app.ui.theme.AppleDarkSystemBlue
+import com.policydesk.app.ui.theme.AppleDarkSystemBlueDark
+import com.policydesk.app.ui.theme.AppleDarkSystemBlueFill
 import com.policydesk.app.ui.theme.AppleDarkSystemGreen
+import com.policydesk.app.ui.theme.AppleDarkSystemOrange
+import com.policydesk.app.ui.theme.AppleDarkSystemPurple
 import com.policydesk.app.ui.theme.AppleDarkSystemRed
 import com.policydesk.app.ui.theme.AppleIcons
 import com.policydesk.app.ui.theme.AppleSystemBlue
+import com.policydesk.app.ui.theme.AppleSystemBlueDark
+import com.policydesk.app.ui.theme.AppleSystemBlueFill
 import com.policydesk.app.ui.theme.AppleSystemGreen
+import com.policydesk.app.ui.theme.AppleSystemGreenFill
+import com.policydesk.app.ui.theme.AppleSystemOrange
+import com.policydesk.app.ui.theme.AppleSystemPurple
 import com.policydesk.app.ui.theme.AppleSystemRed
-import com.policydesk.app.ui.theme.GlassBorderBottom
-import com.policydesk.app.ui.theme.GlassBorderTop
-import com.policydesk.app.ui.theme.GlassDarkBorderBottom
-import com.policydesk.app.ui.theme.GlassDarkBorderTop
 import com.policydesk.app.ui.theme.GlassDarkShadow
-import com.policydesk.app.ui.theme.GlassDarkSurface
-import com.policydesk.app.ui.theme.GlassDarkSurfaceSubtle
 import com.policydesk.app.ui.theme.GlassShadow
-import com.policydesk.app.ui.theme.GlassSurface
-import com.policydesk.app.ui.theme.GlassSurfaceSubtle
 import com.policydesk.app.ui.theme.IosDarkLabelPrimary
 import com.policydesk.app.ui.theme.IosDarkLabelSecondary
 import com.policydesk.app.ui.theme.IosDarkLabelTertiary
 import com.policydesk.app.ui.theme.IosDarkSeparator
 import com.policydesk.app.ui.theme.IosLabelPrimary
 import com.policydesk.app.ui.theme.IosLabelSecondary
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.foundation.ScrollState
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.unit.IntOffset
 import com.policydesk.app.ui.theme.IosLabelTertiary
 import com.policydesk.app.ui.theme.IosSeparator
+import com.policydesk.app.ui.theme.LocalReducedMotion
+import com.policydesk.app.ui.theme.isSystemMotionReduced
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.HazeStyle
+import dev.chrisbanes.haze.HazeTint
+import dev.chrisbanes.haze.hazeEffect
+import kotlin.math.roundToInt
 
 val LocalHazeState = compositionLocalOf<HazeState?> { null }
 val LocalScrollToTopTrigger = compositionLocalOf { 0L }
@@ -246,6 +271,10 @@ private val LightMeniscusColors = listOf(
     Color.White.copy(alpha = 0.96f)
 )
 
+@Composable
+private fun effectiveReducedMotion(): Boolean =
+    LocalReducedMotion.current || isSystemMotionReduced(LocalInspectionMode.current)
+
 private val DarkGlassBrush = Brush.linearGradient(
     colors = DarkMeniscusColors,
     start = Offset.Zero,
@@ -256,6 +285,22 @@ private val LightGlassBrush = Brush.linearGradient(
     colors = LightMeniscusColors,
     start = Offset.Zero,
     end = Offset.Infinite
+)
+
+private val DarkBorderBrush = Brush.verticalGradient(
+    colors = listOf(
+        Color.White.copy(alpha = 0.35f),
+        Color.White.copy(alpha = (0.35f + 0.06f) * 0.45f),
+        Color.White.copy(alpha = 0.06f)
+    )
+)
+
+private val LightBorderBrush = Brush.verticalGradient(
+    colors = listOf(
+        Color.White.copy(alpha = 0.90f),
+        Color.White.copy(alpha = 0.35f),
+        Color.White.copy(alpha = 0.20f)
+    )
 )
 
 /**
@@ -273,35 +318,45 @@ fun Modifier.liquidGlass(
     borderAlphaTop: Float = if (isDark) 0.35f else 0.90f,
     borderAlphaBottom: Float = if (isDark) 0.06f else 0.20f
 ): Modifier {
-    // 1. Dual-Incident Specular Border (simulates overhead incident light catching glass bevels)
-    val borderBrush = Brush.verticalGradient(
-        colors = if (isDark) listOf(
-            Color.White.copy(alpha = borderAlphaTop),
-            Color.White.copy(alpha = (borderAlphaTop + borderAlphaBottom) * 0.45f),
-            Color.White.copy(alpha = borderAlphaBottom)
-        ) else listOf(
-            Color.White.copy(alpha = borderAlphaTop),
-            Color.White.copy(alpha = 0.35f),
-            Color.White.copy(alpha = borderAlphaBottom)
+    val useDefaultBorder = (isDark && borderAlphaTop == 0.35f && borderAlphaBottom == 0.06f) ||
+        (!isDark && borderAlphaTop == 0.90f && borderAlphaBottom == 0.20f)
+    val borderBrush = if (useDefaultBorder) {
+        if (isDark) DarkBorderBrush else LightBorderBrush
+    } else {
+        Brush.verticalGradient(
+            colors = if (isDark) listOf(
+                Color.White.copy(alpha = borderAlphaTop),
+                Color.White.copy(alpha = (borderAlphaTop + borderAlphaBottom) * 0.45f),
+                Color.White.copy(alpha = borderAlphaBottom)
+            ) else listOf(
+                Color.White.copy(alpha = borderAlphaTop),
+                Color.White.copy(alpha = 0.35f),
+                Color.White.copy(alpha = borderAlphaBottom)
+            )
         )
-    )
+    }
 
-    // 2. Multi-stop Meniscus Gradient
-    val meniscusBrush = Brush.linearGradient(
-        colors = if (isDark) listOf(
-            Color(0xFF26262B).copy(alpha = fillAlphaTop),
-            Color(0xFF1C1C20).copy(alpha = fillAlphaTop * 0.98f),
-            Color(0xFF141417).copy(alpha = fillAlphaBottom),
-            Color(0xFF202024).copy(alpha = fillAlphaTop)
-        ) else listOf(
-            Color.White.copy(alpha = fillAlphaTop),
-            Color(0xFFF9F9FB).copy(alpha = fillAlphaTop * 0.98f),
-            Color(0xFFF2F2F7).copy(alpha = fillAlphaBottom),
-            Color.White.copy(alpha = fillAlphaTop)
-        ),
-        start = Offset.Zero,
-        end = Offset.Infinite
-    )
+    val useDefaultFill = (isDark && fillAlphaTop == 0.94f && fillAlphaBottom == 0.90f) ||
+        (!isDark && fillAlphaTop == 0.96f && fillAlphaBottom == 0.91f)
+    val meniscusBrush = if (useDefaultFill) {
+        if (isDark) DarkGlassBrush else LightGlassBrush
+    } else {
+        Brush.linearGradient(
+            colors = if (isDark) listOf(
+                Color(0xFF26262B).copy(alpha = fillAlphaTop),
+                Color(0xFF1C1C20).copy(alpha = fillAlphaTop * 0.98f),
+                Color(0xFF141417).copy(alpha = fillAlphaBottom),
+                Color(0xFF202024).copy(alpha = fillAlphaTop)
+            ) else listOf(
+                Color.White.copy(alpha = fillAlphaTop),
+                Color(0xFFF9F9FB).copy(alpha = fillAlphaTop * 0.98f),
+                Color(0xFFF2F2F7).copy(alpha = fillAlphaBottom),
+                Color.White.copy(alpha = fillAlphaTop)
+            ),
+            start = Offset.Zero,
+            end = Offset.Infinite
+        )
+    }
 
     // 3. Apple Ambient + Contact Elevation
     val shadowModifier = if (elevation > 0.dp) {
@@ -331,7 +386,7 @@ fun Modifier.liquidGlass(
 
 /**
  * Apple Liquid Glass Inset Card
- * Supports fluid spring physics and Cupertino tactile haptic feedback.
+ * Supports fluid spring physics, GPU-only press scaling, reduced motion, and Role.Button semantics.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -341,23 +396,30 @@ fun LiquidGlassCard(
     elevation: Dp = 3.dp,
     onClick: (() -> Unit)? = null,
     onLongClick: (() -> Unit)? = null,
+    onClickLabel: String? = null,
+    onLongClickLabel: String? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
     val isDark = isSystemInDarkTheme()
+    val reducedMotion = effectiveReducedMotion()
     val haptic = LocalHapticFeedback.current
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
+    val isInteractive = onClick != null || onLongClick != null
 
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed && (onClick != null || onLongClick != null)) 0.962f else 1f,
-        animationSpec = AppleSprings.CardPress,
+    val scaleState = animateFloatAsState(
+        targetValue = if (!reducedMotion && isPressed && isInteractive) 0.962f else 1f,
+        animationSpec = if (reducedMotion) snap() else AppleSprings.CardPress,
         label = "glass_card_spring"
     )
 
-    val clickModifier = if (onClick != null || onLongClick != null) {
+    val clickModifier = if (isInteractive) {
         Modifier.combinedClickable(
             interactionSource = interactionSource,
             indication = null,
+            role = Role.Button,
+            onClickLabel = onClickLabel,
+            onLongClickLabel = onLongClickLabel,
             onClick = {
                 if (onClick != null) {
                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -381,8 +443,9 @@ fun LiquidGlassCard(
         Column(
             modifier = modifier
                 .graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
+                    val s = scaleState.value
+                    scaleX = s
+                    scaleY = s
                 }
                 .liquidGlass(shape = shape, elevation = elevation, isDark = isDark)
                 .clip(shape)
@@ -499,7 +562,8 @@ fun LiquidGlassTopBar(
                         fontSize = if (subtitle == null) 22.sp else 19.sp,
                         fontWeight = FontWeight.Bold,
                         color = primaryText,
-                        letterSpacing = (-0.4).sp
+                        letterSpacing = (-0.4).sp,
+                        modifier = Modifier.semantics { heading() }
                     )
                     if (subtitle != null) {
                         Text(
@@ -525,7 +589,7 @@ fun LiquidGlassTopBar(
 
 /**
  * Apple Liquid Glass Segmented Control
- * Sliding illuminated pill picker for switching tabs or filters with haptic feedback.
+ * Sliding spring-illuminated pill picker for switching tabs or filters with haptic & keyboard support.
  */
 @Composable
 fun <T> LiquidGlassSegmentedControl(
@@ -535,66 +599,140 @@ fun <T> LiquidGlassSegmentedControl(
     modifier: Modifier = Modifier,
     labelProvider: (T) -> String
 ) {
+    if (items.isEmpty()) return
     val isDark = isSystemInDarkTheme()
+    val reducedMotion = effectiveReducedMotion()
     val haptic = LocalHapticFeedback.current
+    val density = LocalDensity.current
     val trackShape = RoundedCornerShape(12.dp)
-    val trackBg = if (isDark) Color(0x33545458) else Color(0x14767680)
+    val itemShape = RoundedCornerShape(10.dp)
+    val trackBg = if (isDark) Color(0x33545458) else Color(0x1F767680)
     val trackBorder = if (isDark) Color(0x33FFFFFF) else Color(0x1F000000)
 
-    Box(
+    val selectedIndex = items.indexOf(selectedItem).coerceAtLeast(0)
+    val pillIndexAnim = animateFloatAsState(
+        targetValue = selectedIndex.toFloat(),
+        animationSpec = if (reducedMotion) snap() else AppleSprings.Snappy,
+        label = "seg_pill_index"
+    )
+    val pillBg = remember(isDark) {
+        if (isDark) {
+            Brush.verticalGradient(listOf(Color(0xFF3A3A3C), Color(0xFF2C2C2E)))
+        } else {
+            Brush.verticalGradient(listOf(Color.White, Color(0xFFFBFBFD)))
+        }
+    }
+    val pillBorder = if (isDark) Color(0x40FFFFFF) else Color(0x1A000000)
+    val selectedColor = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
+    val unselectedColor = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
+    val focusRequesters = remember(items.size) { List(items.size) { FocusRequester() } }
+
+    BoxWithConstraints(
         modifier = modifier
             .background(trackBg, trackShape)
             .border(0.5.dp, trackBorder, trackShape)
-            .padding(2.dp)
+            .padding(3.dp)
+            .selectableGroup()
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(2.dp)
+        val segmentSpacing = 2.dp
+        val count = items.size
+        val totalSpacing = segmentSpacing * (count - 1).coerceAtLeast(0)
+        val segmentWidth = (maxWidth - totalSpacing) / count
+        val stepPx = with(density) { (segmentWidth + segmentSpacing).toPx() }
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(IntrinsicSize.Min)
         ) {
-            items.forEach { item ->
-                val isSelected = item == selectedItem
-                val itemShape = RoundedCornerShape(10.dp)
-
-                val pillModifier = if (isSelected) {
-                    val pillBg = if (isDark) {
-                        Brush.verticalGradient(listOf(Color(0xFF3A3A3C), Color(0xFF2C2C2E)))
-                    } else {
-                        Brush.verticalGradient(listOf(Color.White, Color(0xFFFBFBFD)))
+            // Gliding indicator pill rendered purely via GPU translationX
+            Box(
+                modifier = Modifier
+                    .width(segmentWidth)
+                    .fillMaxHeight()
+                    .graphicsLayer {
+                        translationX = pillIndexAnim.value * stepPx
                     }
-                    val pillBorder = if (isDark) Color(0x40FFFFFF) else Color(0x1A000000)
+                    .shadow(2.dp, itemShape, spotColor = Color(0x1A000000))
+                    .background(brush = pillBg, shape = itemShape)
+                    .border(0.5.dp, pillBorder, itemShape)
+            )
 
-                    Modifier
-                        .shadow(2.dp, itemShape, spotColor = Color(0x1A000000))
-                        .background(brush = pillBg, shape = itemShape)
-                        .border(0.5.dp, pillBorder, itemShape)
-                } else {
-                    Modifier
-                }
-
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .then(pillModifier)
-                        .clip(itemShape)
-                        .clickable {
-                            if (!isSelected) {
-                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                onItemSelected(item)
-                            }
-                        }
-                        .padding(vertical = 7.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    val selectedColor = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
-                    val unselectedColor = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
-
-                    Text(
-                        text = labelProvider(item),
-                        fontSize = 12.sp,
-                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
-                        color = if (isSelected) selectedColor else unselectedColor,
-                        letterSpacing = (-0.1).sp
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(segmentSpacing)
+            ) {
+                items.forEachIndexed { index, item ->
+                    val isSelected = index == selectedIndex
+                    val interactionSource = remember { MutableInteractionSource() }
+                    val isPressed by interactionSource.collectIsPressedAsState()
+                    val pressScale = animateFloatAsState(
+                        targetValue = if (!reducedMotion && isPressed) 0.96f else 1f,
+                        animationSpec = if (reducedMotion) snap() else AppleSprings.Pop,
+                        label = "seg_item_press"
                     )
+                    val labelColor by animateColorAsState(
+                        targetValue = if (isSelected) selectedColor else unselectedColor,
+                        animationSpec = if (reducedMotion) snap() else AppleSprings.SnappyColor,
+                        label = "seg_item_color"
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .graphicsLayer {
+                                val s = pressScale.value
+                                scaleX = s
+                                scaleY = s
+                            }
+                            .clip(itemShape)
+                            .focusRequester(focusRequesters[index])
+                            .onPreviewKeyEvent { event ->
+                                if (event.type == KeyEventType.KeyDown && items.size > 1) {
+                                    when (event.key) {
+                                        Key.DirectionRight -> {
+                                            val next = (index + 1) % items.size
+                                            focusRequesters[next].requestFocus()
+                                            onItemSelected(items[next])
+                                            true
+                                        }
+                                        Key.DirectionLeft -> {
+                                            val prev = (index - 1 + items.size) % items.size
+                                            focusRequesters[prev].requestFocus()
+                                            onItemSelected(items[prev])
+                                            true
+                                        }
+                                        else -> false
+                                    }
+                                } else {
+                                    false
+                                }
+                            }
+                            .selectable(
+                                selected = isSelected,
+                                interactionSource = interactionSource,
+                                indication = null,
+                                role = Role.Tab,
+                                onClick = {
+                                    if (!isSelected) {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        onItemSelected(item)
+                                    }
+                                }
+                            )
+                            .padding(vertical = 7.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = labelProvider(item),
+                            fontSize = 12.sp,
+                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+                            color = labelColor,
+                            letterSpacing = (-0.1).sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
             }
         }
@@ -603,7 +741,7 @@ fun <T> LiquidGlassSegmentedControl(
 
 /**
  * Apple Liquid Glass Search Bar
- * Frosted pill search field with instant clear button and haptic confirmation.
+ * Frosted pill search field with subtle Apple focus glow ring, accessible clear button, and haptic confirmation.
  */
 @Composable
 fun LiquidGlassSearchBar(
@@ -614,41 +752,106 @@ fun LiquidGlassSearchBar(
     onSearchAction: () -> Unit = {}
 ) {
     val isDark = isSystemInDarkTheme()
+    val reducedMotion = effectiveReducedMotion()
     val haptic = LocalHapticFeedback.current
     val barShape = RoundedCornerShape(14.dp)
     val primaryText = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
     val placeholderColor = if (isDark) IosDarkLabelTertiary else IosLabelTertiary
     val accentBlue = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
+    val focusBorderColor = if (isDark) AppleDarkSystemBlueFill else AppleSystemBlueFill
+    val focusRequester = remember { FocusRequester() }
+    var isFocused by remember { mutableStateOf(false) }
+
+    val focusProgress = animateFloatAsState(
+        targetValue = if (isFocused) 1f else 0f,
+        animationSpec = if (reducedMotion) snap() else AppleSprings.Smooth,
+        label = "search_focus_glow"
+    )
+    val iconScale = animateFloatAsState(
+        targetValue = if (!reducedMotion && isFocused) 1.06f else 1f,
+        animationSpec = if (reducedMotion) snap() else AppleSprings.Pop,
+        label = "search_icon_scale"
+    )
+    val iconTint by animateColorAsState(
+        targetValue = if (isFocused) accentBlue else placeholderColor,
+        animationSpec = if (reducedMotion) snap() else AppleSprings.SnappyColor,
+        label = "search_icon_tint"
+    )
 
     Box(
         modifier = modifier
             .fillMaxWidth()
+            .drawBehind {
+                val p = focusProgress.value
+                if (p > 0.005f) {
+                    val cornerPx = 14.dp.toPx()
+                    val haloExpand = 3.5.dp.toPx()
+                    val haloAlpha = (if (isDark) 0.24f else 0.14f) * p
+                    drawRoundRect(
+                        color = accentBlue.copy(alpha = haloAlpha),
+                        topLeft = Offset(-haloExpand, -haloExpand),
+                        size = Size(size.width + haloExpand * 2f, size.height + haloExpand * 2f),
+                        cornerRadius = CornerRadius(cornerPx + haloExpand, cornerPx + haloExpand)
+                    )
+                }
+            }
             .liquidGlass(
                 shape = barShape,
                 elevation = 1.dp,
                 isDark = isDark,
-                fillAlphaTop = if (isDark) 0.90f else 0.90f,
-                fillAlphaBottom = if (isDark) 0.78f else 0.78f
+                fillAlphaTop = 0.90f,
+                fillAlphaBottom = 0.78f
             )
-            .padding(horizontal = 12.dp, vertical = 9.dp)
+            .drawWithContent {
+                drawContent()
+                val p = focusProgress.value
+                if (p > 0.005f) {
+                    val strokePx = 1.4.dp.toPx()
+                    val cornerPx = 14.dp.toPx()
+                    drawRoundRect(
+                        color = focusBorderColor.copy(alpha = p),
+                        style = Stroke(width = strokePx),
+                        cornerRadius = CornerRadius(cornerPx, cornerPx)
+                    )
+                }
+            }
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = { focusRequester.requestFocus() }
+            )
+            .padding(start = 12.dp, end = 6.dp, top = 6.dp, bottom = 6.dp)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(30.dp)
         ) {
             Icon(
                 imageVector = AppleIcons.Search,
                 contentDescription = null,
-                tint = placeholderColor,
-                modifier = Modifier.size(18.dp)
+                tint = iconTint,
+                modifier = Modifier
+                    .size(18.dp)
+                    .graphicsLayer {
+                        val s = iconScale.value
+                        scaleX = s
+                        scaleY = s
+                    }
             )
             Spacer(modifier = Modifier.width(8.dp))
-            Box(modifier = Modifier.weight(1f)) {
+            Box(
+                modifier = Modifier.weight(1f),
+                contentAlignment = Alignment.CenterStart
+            ) {
                 if (query.isEmpty()) {
                     Text(
                         text = placeholder,
                         fontSize = 14.sp,
-                        color = placeholderColor
+                        color = placeholderColor,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
                 BasicTextField(
@@ -663,22 +866,39 @@ fun LiquidGlassSearchBar(
                     cursorBrush = SolidColor(accentBlue),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                     keyboardActions = KeyboardActions(onSearch = { onSearchAction() }),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(focusRequester)
+                        .onFocusChanged { isFocused = it.isFocused }
                 )
             }
-            if (query.isNotEmpty()) {
-                Icon(
-                    imageVector = AppleIcons.Clear,
-                    contentDescription = "Clear search",
-                    tint = placeholderColor,
+            AnimatedVisibility(
+                visible = query.isNotEmpty(),
+                enter = if (reducedMotion) EnterTransition.None else fadeIn(tween(140)) + scaleIn(initialScale = 0.72f, animationSpec = AppleSprings.Pop),
+                exit = if (reducedMotion) ExitTransition.None else fadeOut(tween(120)) + scaleOut(targetScale = 0.72f, animationSpec = tween(120))
+            ) {
+                Box(
                     modifier = Modifier
-                        .size(18.dp)
+                        .size(30.dp)
                         .clip(CircleShape)
-                        .clickable {
-                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            onQueryChange("")
-                        }
-                )
+                        .clickable(
+                            role = Role.Button,
+                            onClickLabel = "Clear search",
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                onQueryChange("")
+                                focusRequester.requestFocus()
+                            }
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = AppleIcons.Clear,
+                        contentDescription = "Clear search",
+                        tint = placeholderColor,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
         }
     }
@@ -823,7 +1043,7 @@ fun LiquidGlassListRow(
 
 /**
  * Apple Liquid Glass Floating Pill Action Button
- * Features spring press physics and Cupertino haptic actuation.
+ * Features spring press physics, reduced-motion awareness, and Cupertino haptic actuation.
  */
 @Composable
 fun LiquidGlassFloatingButton(
@@ -833,32 +1053,31 @@ fun LiquidGlassFloatingButton(
     modifier: Modifier = Modifier
 ) {
     val isDark = isSystemInDarkTheme()
+    val reducedMotion = effectiveReducedMotion()
     val haptic = LocalHapticFeedback.current
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.95f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMediumLow
-        ),
+    val scaleState = animateFloatAsState(
+        targetValue = if (!reducedMotion && isPressed) 0.95f else 1f,
+        animationSpec = if (reducedMotion) snap() else AppleSprings.CardPress,
         label = "fab_spring_press"
     )
     val pillShape = CircleShape
     val blueGradient = if (isDark) {
-        listOf(AppleDarkSystemBlue, Color(0xFF005AC1))
+        listOf(AppleDarkSystemBlueFill, AppleDarkSystemBlueDark)
     } else {
-        listOf(AppleSystemBlue, Color(0xFF0063D1))
+        listOf(AppleSystemBlueFill, AppleSystemBlueDark)
     }
 
     Box(
         modifier = modifier
             .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
+                val s = scaleState.value
+                scaleX = s
+                scaleY = s
             }
-            .shadow(6.dp, pillShape, spotColor = AppleSystemBlue.copy(alpha = 0.35f))
+            .shadow(6.dp, pillShape, spotColor = AppleSystemBlueFill.copy(alpha = 0.35f))
             .background(
                 brush = Brush.verticalGradient(blueGradient),
                 shape = pillShape
@@ -874,6 +1093,7 @@ fun LiquidGlassFloatingButton(
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
+                role = Role.Button,
                 onClick = {
                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     onClick()
@@ -924,13 +1144,14 @@ fun AppleButton(
     fontSize: TextUnit = 15.sp
 ) {
     val isDark = isSystemInDarkTheme()
+    val reducedMotion = effectiveReducedMotion()
     val haptic = LocalHapticFeedback.current
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed && enabled && !isLoading) 0.965f else 1f,
-        animationSpec = AppleSprings.CardPress,
+    val scaleState = animateFloatAsState(
+        targetValue = if (!reducedMotion && isPressed && enabled && !isLoading) 0.965f else 1f,
+        animationSpec = if (reducedMotion) snap() else AppleSprings.CardPress,
         label = "apple_button_spring"
     )
 
@@ -941,28 +1162,31 @@ fun AppleButton(
     }
 
     val actualContentColor = if (!enabled) {
-        if (isDark) Color(0xFF636366) else Color(0xFF8E8E93)
+        if (isDark) IosDarkLabelTertiary else IosLabelTertiary
     } else {
         contentColor
     }
 
     val buttonBrush = if (!enabled) {
         SolidColor(actualContainerColor)
-    } else {
-        val topBlue = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
-        val bottomBlue = if (isDark) Color(0xFF0056B3) else Color(0xFF005AC1)
+    } else if (containerColor == AppleSystemBlue) {
+        val topBlue = if (isDark) AppleDarkSystemBlueFill else AppleSystemBlueFill
+        val bottomBlue = if (isDark) AppleDarkSystemBlueDark else AppleSystemBlueDark
         Brush.verticalGradient(listOf(topBlue, bottomBlue))
+    } else {
+        SolidColor(containerColor)
     }
 
     val shadowColor = if (enabled) {
-        if (isDark) AppleDarkSystemBlue.copy(alpha = 0.35f) else AppleSystemBlue.copy(alpha = 0.30f)
+        if (isDark) AppleDarkSystemBlueFill.copy(alpha = 0.35f) else AppleSystemBlueFill.copy(alpha = 0.30f)
     } else Color.Transparent
 
     Box(
         modifier = modifier
             .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
+                val s = scaleState.value
+                scaleX = s
+                scaleY = s
             }
             .height(height)
             .shadow(
@@ -979,7 +1203,7 @@ fun AppleButton(
                     // Specular rim light on top of button
                     drawRect(
                         brush = Brush.verticalGradient(
-                            colors = listOf(Color.White.copy(alpha = 0.35f), Color.Transparent),
+                            colors = listOf(Color.White.copy(alpha = 0.30f), Color.Transparent),
                             startY = 0f,
                             endY = 12.dp.toPx()
                         ),
@@ -1002,6 +1226,7 @@ fun AppleButton(
                 interactionSource = interactionSource,
                 indication = null,
                 enabled = enabled && !isLoading,
+                role = Role.Button,
                 onClick = {
                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     onClick()
@@ -1062,13 +1287,14 @@ fun AppleSecondaryButton(
     fontSize: TextUnit = 13.sp
 ) {
     val isDark = isSystemInDarkTheme()
+    val reducedMotion = effectiveReducedMotion()
     val haptic = LocalHapticFeedback.current
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed && enabled) 0.97f else 1f,
-        animationSpec = AppleSprings.CardPress,
+    val scaleState = animateFloatAsState(
+        targetValue = if (!reducedMotion && isPressed && enabled) 0.97f else 1f,
+        animationSpec = if (reducedMotion) snap() else AppleSprings.CardPress,
         label = "apple_sec_button_spring"
     )
 
@@ -1086,10 +1312,11 @@ fun AppleSecondaryButton(
         }
     }
 
+    val effectiveTint = if (isDark && tintColor == AppleSystemBlue) AppleDarkSystemBlue else tintColor
     val contentColor = if (!enabled) {
-        if (isDark) Color(0xFF636366) else Color(0xFF8E8E93)
+        if (isDark) IosDarkLabelTertiary else IosLabelTertiary
     } else {
-        tintColor
+        effectiveTint
     }
 
     val borderBrush = if (enabled) {
@@ -1105,8 +1332,9 @@ fun AppleSecondaryButton(
     Box(
         modifier = modifier
             .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
+                val s = scaleState.value
+                scaleX = s
+                scaleY = s
             }
             .height(height)
             .shadow(
@@ -1122,6 +1350,7 @@ fun AppleSecondaryButton(
                 interactionSource = interactionSource,
                 indication = null,
                 enabled = enabled,
+                role = Role.Button,
                 onClick = {
                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     onClick()
@@ -1158,7 +1387,7 @@ fun AppleSecondaryButton(
 
 /**
  * Authentic Cupertino Switch (iOS 18 HIG)
- * 51dp x 31dp track with spring animated thumb, AppleSystemGreen active state, and haptics.
+ * 51dp x 31dp track with GPU-translated spring thumb, reduced-motion awareness, and Role.Switch semantics.
  */
 @Composable
 fun AppleSwitch(
@@ -1168,20 +1397,21 @@ fun AppleSwitch(
     enabled: Boolean = true
 ) {
     val isDark = isSystemInDarkTheme()
+    val reducedMotion = effectiveReducedMotion()
     val haptic = LocalHapticFeedback.current
-    val activeColor = if (isDark) AppleDarkSystemGreen else AppleSystemGreen
+    val activeColor = if (isDark) Color(0xFF30D158) else AppleSystemGreenFill
     val inactiveColor = if (isDark) Color(0xFF39393D) else Color(0xFFE9E9EA)
 
     val trackColor by animateColorAsState(
         targetValue = if (checked) activeColor else inactiveColor,
-        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        animationSpec = if (reducedMotion) snap() else AppleSprings.SnappyColor,
         label = "switch_track_color"
     )
 
-    val thumbOffset by animateDpAsState(
-        targetValue = if (checked) 22.dp else 2.dp,
-        animationSpec = AppleSprings.Switch,
-        label = "switch_thumb_offset"
+    val thumbProgress = animateFloatAsState(
+        targetValue = if (checked) 1f else 0f,
+        animationSpec = if (reducedMotion) snap() else spring(dampingRatio = 0.80f, stiffness = 340f),
+        label = "switch_thumb_progress"
     )
 
     Box(
@@ -1189,13 +1419,15 @@ fun AppleSwitch(
             .size(width = 51.dp, height = 31.dp)
             .background(trackColor, CircleShape)
             .clip(CircleShape)
-            .clickable(
-                indication = null,
+            .toggleable(
+                value = checked,
                 interactionSource = remember { MutableInteractionSource() },
+                indication = null,
                 enabled = enabled,
-                onClick = {
+                role = Role.Switch,
+                onValueChange = { next ->
                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    onCheckedChange(!checked)
+                    onCheckedChange(next)
                 }
             )
             .padding(2.dp),
@@ -1203,7 +1435,9 @@ fun AppleSwitch(
     ) {
         Box(
             modifier = Modifier
-                .offset(x = thumbOffset)
+                .graphicsLayer {
+                    translationX = thumbProgress.value * 20.dp.toPx()
+                }
                 .size(27.dp)
                 .shadow(elevation = 3.dp, shape = CircleShape, spotColor = Color(0x33000000))
                 .background(Color.White, CircleShape)
@@ -1295,7 +1529,7 @@ fun AppleAlertDialog(
                         Box(
                             modifier = Modifier
                                 .weight(1f)
-                                .clickable {
+                                .clickable(role = Role.Button) {
                                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                     onDismiss?.invoke() ?: onDismissRequest()
                                 }
@@ -1320,7 +1554,7 @@ fun AppleAlertDialog(
                         Box(
                             modifier = Modifier
                                 .weight(1f)
-                                .clickable {
+                                .clickable(role = Role.Button) {
                                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                     onConfirm()
                                 }
@@ -1339,7 +1573,7 @@ fun AppleAlertDialog(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable {
+                            .clickable(role = Role.Button) {
                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 onConfirm()
                             }
@@ -1359,14 +1593,48 @@ fun AppleAlertDialog(
     }
 }
 
+internal data class HsrpPlateColors(
+    val bg: Color,
+    val text: Color,
+    val border: Color,
+    val placeholder: Color
+)
+
+internal fun hsrpPlateColors(style: NumberPlateStyle): HsrpPlateColors = when (style) {
+    NumberPlateStyle.PRIVATE_WHITE -> HsrpPlateColors(
+        bg = Color(0xFFFAFAFA),
+        text = Color(0xFF111317),
+        border = Color(0xFF1C1C1E),
+        placeholder = Color(0xFF5A5A60)
+    )
+    NumberPlateStyle.COMMERCIAL_YELLOW -> HsrpPlateColors(
+        bg = Color(0xFFFFD60A),
+        text = Color(0xFF111317),
+        border = Color(0xFF1C1C1E),
+        placeholder = Color(0xFF4A3E00)
+    )
+    NumberPlateStyle.EV_GREEN -> HsrpPlateColors(
+        bg = Color(0xFF0F6830),
+        text = Color(0xFFFFFFFF),
+        border = Color(0xFF083D1B),
+        placeholder = Color(0xFFD1FAE5)
+    )
+    NumberPlateStyle.COMMERCIAL_EV -> HsrpPlateColors(
+        bg = Color(0xFF0F5E2C),
+        text = Color(0xFFFFD60A),
+        border = Color(0xFF083D1B),
+        placeholder = Color(0xFFFEF08A)
+    )
+}
+
 /**
  * Authentic High-Security Registration Plate (HSRP) for Indian Motor Vehicles
- * Renders the blue IND band with emblem and sharp, embossed monospaced vehicle registration.
+ * Renders the blue IND band with emblem, symmetric snap-lock rivets, and embossed registration.
  * Dynamically supports:
- * - Private (White plate, Black text)
- * - Commercial (Yellow plate, Black text)
- * - Electric Vehicle / EV (Green plate, White text)
- * - Commercial EV / E-Rickshaw / EV Taxi (Green plate, Yellow text)
+ * - Private (White plate, dark text)
+ * - Commercial (Yellow plate, dark text)
+ * - Electric Vehicle / EV (Green #0F6830 plate, White text)
+ * - Commercial EV / E-Rickshaw / EV Taxi (Green #0F5E2C plate, #FFD60A text)
  */
 @Composable
 fun HsrpNumberPlate(
@@ -1382,31 +1650,8 @@ fun HsrpNumberPlate(
         VehiclePlateClassifier.detectStyle(makeModel)
     }
 
-    val plateShape = RoundedCornerShape(5.dp)
-
-    // Accurate RTO colors according to MoRTH specifications
-    val (plateBg, plateTextColor, plateBorderColor) = when (resolvedStyle) {
-        NumberPlateStyle.PRIVATE_WHITE -> Triple(
-            Color(0xFFFAFAFA),
-            Color(0xFF111827),
-            Color(0xFF94A3B8)
-        )
-        NumberPlateStyle.COMMERCIAL_YELLOW -> Triple(
-            Color(0xFFFFD600), // Pure Indian Commercial Yellow
-            Color(0xFF111827),
-            Color(0xFFCA8A04)
-        )
-        NumberPlateStyle.EV_GREEN -> Triple(
-            Color(0xFF15803D),
-            Color(0xFFFFFFFF),
-            Color(0xFF166534)
-        )
-        NumberPlateStyle.COMMERCIAL_EV -> Triple(
-            Color(0xFF15803D),
-            Color(0xFFFFD600),
-            Color(0xFF166534)
-        )
-    }
+    val plateShape = RoundedCornerShape(6.dp)
+    val palette = hsrpPlateColors(resolvedStyle)
 
     val clean = regNo.replace(" ", "").uppercase()
     val formatted = remember(clean) {
@@ -1416,28 +1661,29 @@ fun HsrpNumberPlate(
     Row(
         modifier = modifier
             .clip(plateShape)
-            .background(plateBg, plateShape)
+            .background(palette.bg, plateShape)
             .border(
-                width = 1.2.dp,
-                color = plateBorderColor,
+                width = 1.25.dp,
+                color = palette.border,
                 shape = plateShape
             )
-            .height(30.dp),
+            .height(29.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Left Blue IND Stripe with Ashoka Chakra & Hologram
+        // Left Blue IND Stripe with Ashoka Chakra & Hologram (decorative for TalkBack)
         Box(
             modifier = Modifier
-                .width(20.dp)
+                .width(19.dp)
                 .fillMaxHeight()
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
-                            Color(0xFF0038A8), // Deep International Optical Blue
-                            Color(0xFF002277)
+                            Color(0xFF0B4DA2),
+                            Color(0xFF07397B)
                         )
                     )
-                ),
+                )
+                .clearAndSetSemantics {},
             contentAlignment = Alignment.Center
         ) {
             Column(
@@ -1455,7 +1701,7 @@ fun HsrpNumberPlate(
                         center = center
                     )
                     drawCircle(
-                        color = Color(0xFF002277),
+                        color = Color(0xFF07397B),
                         radius = radius * 0.68f,
                         center = center
                     )
@@ -1471,12 +1717,12 @@ fun HsrpNumberPlate(
                 // Embossed "IND" Text
                 Text(
                     text = "IND",
-                    fontSize = 6.5.sp,
+                    fontSize = 6.sp,
                     fontWeight = FontWeight.Black,
                     fontFamily = androidx.compose.ui.text.font.FontFamily.SansSerif,
                     color = Color.White,
-                    letterSpacing = 0.4.sp,
-                    lineHeight = 7.sp,
+                    letterSpacing = 0.3.sp,
+                    lineHeight = 6.5.sp,
                     maxLines = 1,
                     softWrap = false,
                     style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
@@ -1484,28 +1730,39 @@ fun HsrpNumberPlate(
             }
         }
 
-        // Registration Plate Text (Centered vertically, wraps text tightly so badges sit beside it)
+        // Left Snap-Lock Rivet Screw (symmetric with right rivet)
+        Box(
+            modifier = Modifier
+                .padding(start = 5.dp)
+                .size(3.5.dp)
+                .clip(CircleShape)
+                .background(palette.text.copy(alpha = 0.35f))
+                .clearAndSetSemantics {}
+        )
+
+        // Registration Plate Text (Centered vertically, wraps tightly so status badges sit beside it)
         Box(
             modifier = Modifier
                 .weight(1f, fill = false)
-                .padding(start = 8.dp, end = 6.dp)
+                .padding(horizontal = 5.dp)
                 .fillMaxHeight(),
             contentAlignment = Alignment.CenterStart
         ) {
             Text(
                 text = formatted,
-                fontSize = 13.5.sp,
+                fontSize = 13.sp,
                 fontFamily = androidx.compose.ui.text.font.FontFamily.SansSerif,
                 fontWeight = FontWeight.Black,
-                color = plateTextColor,
-                letterSpacing = 1.2.sp,
+                color = palette.text,
+                letterSpacing = 1.0.sp,
                 maxLines = 1,
                 softWrap = false,
                 overflow = TextOverflow.Ellipsis,
                 style = TextStyle(
                     platformStyle = PlatformTextStyle(includeFontPadding = false),
+                    fontFeatureSettings = "tnum",
                     shadow = Shadow(
-                        color = plateBorderColor.copy(alpha = 0.30f),
+                        color = palette.border.copy(alpha = 0.25f),
                         offset = Offset(0f, 0.8f),
                         blurRadius = 0.5f
                     )
@@ -1513,13 +1770,14 @@ fun HsrpNumberPlate(
             )
         }
 
-        // Right Snap-Lock Rivet Screw Simulation
+        // Right Snap-Lock Rivet Screw (symmetric with left rivet)
         Box(
             modifier = Modifier
                 .padding(end = 5.dp)
                 .size(3.5.dp)
                 .clip(CircleShape)
-                .background(plateBorderColor.copy(alpha = 0.60f))
+                .background(palette.text.copy(alpha = 0.35f))
+                .clearAndSetSemantics {}
         )
     }
 }
@@ -1527,13 +1785,6 @@ fun HsrpNumberPlate(
 /**
  * Unified Authentic HSRP Number Plate Text Field
  * Merges the Indian High-Security Registration Plate (HSRP) and the vehicle registration input into one interactive component.
- * Features:
- * - Left authentic deep blue IND stripe with golden chakra dot and "IND" text.
- * - Dynamic plate background and font color matching Private, Commercial, EV, and Commercial EV.
- * - Monospaced bold embossed typography with real-time bidirectional spacing transformation.
- * - Top label with live category badge and colored status indicator.
- * - 1-tap clear action icon with haptic response.
- * - Full validation error styling and focus states.
  */
 @Composable
 fun HsrpRegistrationTextField(
@@ -1552,34 +1803,13 @@ fun HsrpRegistrationTextField(
     val isDark = isSystemInDarkTheme()
     var isFocused by remember { mutableStateOf(false) }
     val haptic = LocalHapticFeedback.current
-
-    val (plateBg, plateTextColor, plateBorderColor) = when (plateStyle) {
-        NumberPlateStyle.PRIVATE_WHITE -> Triple(
-            Color(0xFFF8FAFC),
-            Color(0xFF0F172A),
-            Color(0xFF94A3B8)
-        )
-        NumberPlateStyle.COMMERCIAL_YELLOW -> Triple(
-            Color(0xFFFACC15),
-            Color(0xFF0F172A),
-            Color(0xFFCA8A04)
-        )
-        NumberPlateStyle.EV_GREEN -> Triple(
-            Color(0xFF15803D),
-            Color(0xFFFFFFFF),
-            Color(0xFF166534)
-        )
-        NumberPlateStyle.COMMERCIAL_EV -> Triple(
-            Color(0xFF15803D),
-            Color(0xFFFDE047),
-            Color(0xFF166534)
-        )
-    }
+    val palette = hsrpPlateColors(plateStyle)
+    val errorColor = if (isDark) AppleDarkSystemRed else AppleSystemRed
 
     val activeBorder = when {
-        isError -> Color(0xFFEF4444)
+        isError -> errorColor
         isFocused -> if (isDark) AppleDarkSystemBlue else AppleSystemBlue
-        else -> plateBorderColor
+        else -> palette.border
     }
 
     val plateShape = RoundedCornerShape(10.dp)
@@ -1612,7 +1842,7 @@ fun HsrpRegistrationTextField(
                             when (plateStyle) {
                                 NumberPlateStyle.COMMERCIAL_YELLOW -> Color(0xFFEAB308)
                                 NumberPlateStyle.EV_GREEN,
-                                NumberPlateStyle.COMMERCIAL_EV -> Color(0xFF16A34A)
+                                NumberPlateStyle.COMMERCIAL_EV -> if (isDark) AppleDarkSystemGreen else AppleSystemGreen
                                 else -> if (isDark) Color(0xFF94A3B8) else Color(0xFF64748B)
                             }
                         )
@@ -1622,9 +1852,9 @@ fun HsrpRegistrationTextField(
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = when (plateStyle) {
-                        NumberPlateStyle.COMMERCIAL_YELLOW -> Color(0xFFCA8A04)
+                        NumberPlateStyle.COMMERCIAL_YELLOW -> if (isDark) AppleDarkSystemOrange else AppleSystemOrange
                         NumberPlateStyle.EV_GREEN,
-                        NumberPlateStyle.COMMERCIAL_EV -> Color(0xFF16A34A)
+                        NumberPlateStyle.COMMERCIAL_EV -> if (isDark) AppleDarkSystemGreen else AppleSystemGreen
                         else -> if (isDark) IosDarkLabelSecondary else IosLabelSecondary
                     }
                 )
@@ -1637,9 +1867,9 @@ fun HsrpRegistrationTextField(
                 .fillMaxWidth()
                 .height(52.dp)
                 .clip(plateShape)
-                .background(plateBg, plateShape)
+                .background(palette.bg, plateShape)
                 .border(
-                    width = if (isFocused || isError) 2.dp else 1.2.dp,
+                    width = if (isFocused || isError) 2.dp else 1.25.dp,
                     color = activeBorder,
                     shape = plateShape
                 )
@@ -1656,11 +1886,12 @@ fun HsrpRegistrationTextField(
                         .background(
                             Brush.verticalGradient(
                                 colors = listOf(
-                                    Color(0xFF0038A8),
-                                    Color(0xFF002277)
+                                    Color(0xFF0B4DA2),
+                                    Color(0xFF07397B)
                                 )
                             )
-                        ),
+                        )
+                        .clearAndSetSemantics {},
                     contentAlignment = Alignment.Center
                 ) {
                     Column(
@@ -1678,7 +1909,7 @@ fun HsrpRegistrationTextField(
                                 center = center
                             )
                             drawCircle(
-                                color = Color(0xFF002277),
+                                color = Color(0xFF07397B),
                                 radius = radius * 0.72f,
                                 center = center
                             )
@@ -1735,7 +1966,7 @@ fun HsrpRegistrationTextField(
                             fontSize = 16.sp,
                             fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                             fontWeight = FontWeight.Bold,
-                            color = plateTextColor.copy(alpha = 0.35f),
+                            color = palette.placeholder,
                             letterSpacing = 1.sp
                         )
                     }
@@ -1753,19 +1984,13 @@ fun HsrpRegistrationTextField(
                             },
                         singleLine = true,
                         textStyle = TextStyle(
-                            color = plateTextColor,
+                            color = palette.text,
                             fontSize = 16.sp,
                             fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                             fontWeight = FontWeight.ExtraBold,
                             letterSpacing = 1.2.sp
                         ),
-                        cursorBrush = SolidColor(
-                            when (plateStyle) {
-                                NumberPlateStyle.EV_GREEN -> Color.White
-                                NumberPlateStyle.COMMERCIAL_EV -> Color(0xFFFDE047)
-                                else -> Color(0xFF0F172A)
-                            }
-                        ),
+                        cursorBrush = SolidColor(palette.text),
                         visualTransformation = RegistrationPlateVisualTransformation,
                         keyboardOptions = KeyboardOptions(
                             capitalization = KeyboardCapitalization.Characters,
@@ -1779,19 +2004,23 @@ fun HsrpRegistrationTextField(
                 if (value.isNotEmpty()) {
                     Box(
                         modifier = Modifier
-                            .padding(end = 8.dp)
-                            .size(28.dp)
+                            .padding(end = 6.dp)
+                            .size(32.dp)
                             .clip(CircleShape)
-                            .clickable {
-                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                onValueChange("")
-                            },
+                            .clickable(
+                                role = Role.Button,
+                                onClickLabel = "Clear registration number",
+                                onClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    onValueChange("")
+                                }
+                            ),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = AppleIcons.Clear,
-                            contentDescription = "Clear",
-                            tint = plateTextColor.copy(alpha = 0.45f),
+                            contentDescription = "Clear registration number",
+                            tint = palette.placeholder,
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -1804,7 +2033,7 @@ fun HsrpRegistrationTextField(
             Text(
                 text = errorMessage,
                 fontSize = 11.sp,
-                color = Color(0xFFEF4444),
+                color = errorColor,
                 fontWeight = FontWeight.Medium,
                 modifier = Modifier.padding(start = 2.dp)
             )
@@ -1861,7 +2090,8 @@ fun VehicleCategoryPicker(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
+                .horizontalScroll(rememberScrollState())
+                .selectableGroup(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -1886,10 +2116,14 @@ fun VehicleCategoryPicker(
                             color = if (isSelected) activeBorder else inactiveBorder,
                             shape = RoundedCornerShape(10.dp)
                         )
-                        .clickable {
-                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            onStyleSelected(style)
-                        }
+                        .selectable(
+                            selected = isSelected,
+                            role = Role.Button,
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                onStyleSelected(style)
+                            }
+                        )
                         .padding(horizontal = 12.dp, vertical = 7.dp),
                     contentAlignment = Alignment.Center
                 ) {
@@ -1911,8 +2145,8 @@ fun VehicleCategoryPicker(
                                     modifier = Modifier
                                         .size(9.dp)
                                         .clip(CircleShape)
-                                        .background(Color(0xFFF8FAFC))
-                                        .border(1.dp, Color(0xFF94A3B8), CircleShape)
+                                        .background(Color(0xFFFAFAFA))
+                                        .border(1.dp, Color(0xFF1C1C1E), CircleShape)
                                 )
                             }
                             NumberPlateStyle.COMMERCIAL_YELLOW -> {
@@ -1920,8 +2154,8 @@ fun VehicleCategoryPicker(
                                     modifier = Modifier
                                         .size(9.dp)
                                         .clip(CircleShape)
-                                        .background(Color(0xFFFACC15))
-                                        .border(1.dp, Color(0xFFCA8A04), CircleShape)
+                                        .background(Color(0xFFFFD60A))
+                                        .border(1.dp, Color(0xFF1C1C1E), CircleShape)
                                 )
                             }
                             NumberPlateStyle.EV_GREEN -> {
@@ -1929,8 +2163,8 @@ fun VehicleCategoryPicker(
                                     modifier = Modifier
                                         .size(9.dp)
                                         .clip(CircleShape)
-                                        .background(Color(0xFF15803D))
-                                        .border(1.dp, Color(0xFF166534), CircleShape)
+                                        .background(Color(0xFF0F6830))
+                                        .border(1.dp, Color(0xFF083D1B), CircleShape)
                                 )
                             }
                             NumberPlateStyle.COMMERCIAL_EV -> {
@@ -1938,15 +2172,15 @@ fun VehicleCategoryPicker(
                                     modifier = Modifier
                                         .size(9.dp)
                                         .clip(CircleShape)
-                                        .background(Color(0xFF15803D))
-                                        .border(1.dp, Color(0xFFFDE047), CircleShape),
+                                        .background(Color(0xFF0F5E2C))
+                                        .border(1.dp, Color(0xFFFFD60A), CircleShape),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Box(
                                         modifier = Modifier
                                             .size(3.dp)
                                             .clip(CircleShape)
-                                            .background(Color(0xFFFDE047))
+                                            .background(Color(0xFFFFD60A))
                                     )
                                 }
                             }
@@ -1975,7 +2209,8 @@ enum class DockTab {
 
 /**
  * Floating Cupertino Glass Dock (Bottom Navigation - iOS HIG)
- * Exact recreation of My Warranties floating glass dock with gliding animated selection pill.
+ * Floating frosted glass dock with GPU-composited gliding spring pill, tab-colored ambient glow,
+ * horizontal scrub gesture, keyboard ArrowLeft/ArrowRight & Role.Tab accessibility, and reduced-motion support.
  */
 @Composable
 fun LiquidGlassDock(
@@ -1990,7 +2225,9 @@ fun LiquidGlassDock(
     onScrubFinished: ((Int) -> Unit)? = null
 ) {
     val isDark = isSystemInDarkTheme()
+    val reducedMotion = effectiveReducedMotion()
     val dockShape = RoundedCornerShape(28.dp)
+    val pillShape = RoundedCornerShape(24.dp)
     val haptic = LocalHapticFeedback.current
     val activeHaze = hazeState ?: LocalHazeState.current
     val scrollDispatcher = LocalScrollToTopDispatcher.current
@@ -2009,6 +2246,25 @@ fun LiquidGlassDock(
             DockTab.REPORTS to ("Analytics" to AppleIcons.ChartBar)
         )
     }
+    val tabAccents = remember(isDark) {
+        if (isDark) {
+            listOf(
+                AppleDarkSystemBlue,
+                AppleDarkSystemPurple,
+                AppleDarkSystemOrange,
+                AppleDarkSystemGreen
+            )
+        } else {
+            listOf(
+                AppleSystemBlue,
+                AppleSystemPurple,
+                AppleSystemOrange,
+                AppleSystemGreen
+            )
+        }
+    }
+    val focusRequesters = remember(tabs.size) { List(tabs.size) { FocusRequester() } }
+    val latestPagerPos = rememberUpdatedState(pagerPosition)
 
     val activeDrag = activeDragPosition
     val effectivePosition = activeDrag ?: pagerPosition
@@ -2018,22 +2274,34 @@ fun LiquidGlassDock(
         tabs.indexOfFirst { it.first == currentTab }.coerceAtLeast(0)
     }
 
-    val hazeMod = if (activeHaze != null) {
-        try {
-            val bg = (if (isDark) Color(0xFF141418) else Color.White).copy(alpha = 0.88f)
-            Modifier.hazeEffect(
-                state = activeHaze,
-                style = HazeStyle(
-                    backgroundColor = bg,
-                    blurRadius = 24.dp,
-                    tints = listOf(HazeTint(bg)),
-                    noiseFactor = 0.05f
-                )
-            )
-        } catch (_: Throwable) {
-            Modifier
-        }
-    } else Modifier
+    val animatedAccentState = animateColorAsState(
+        targetValue = tabAccents[selectedIndex],
+        animationSpec = if (reducedMotion) snap() else AppleSprings.SnappyColor,
+        label = "dock_tab_accent"
+    )
+    val pillProgressState = animateFloatAsState(
+        targetValue = selectedIndex.toFloat(),
+        animationSpec = if (reducedMotion) snap() else AppleSprings.Snappy,
+        label = "dock_gliding_pill"
+    )
+    val pillScaleState = animateFloatAsState(
+        targetValue = if (!reducedMotion && activeDrag != null) 1.05f else 1.0f,
+        animationSpec = if (reducedMotion) snap() else AppleSprings.Snappy,
+        label = "dock_scrub_pill_scale"
+    )
+
+    val pillBrush = remember(isDark) {
+        Brush.linearGradient(
+            colors = if (isDark) {
+                listOf(Color(0xFF38383C).copy(alpha = 0.96f), Color(0xFF28282C).copy(alpha = 0.76f))
+            } else {
+                listOf(Color.White.copy(alpha = 0.96f), Color.White.copy(alpha = 0.76f))
+            },
+            start = Offset.Zero,
+            end = Offset.Infinite
+        )
+    }
+    val inactiveColor = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
 
     Box(
         modifier = modifier
@@ -2047,14 +2315,11 @@ fun LiquidGlassDock(
                 .widthIn(max = 420.dp)
                 .fillMaxWidth()
                 .height(56.dp)
-                .shadow(
-                    elevation = 16.dp,
+                .floatingDockGlassChrome(
                     shape = dockShape,
-                    ambientColor = if (isDark) Color(0x66000000) else Color(0x1F0F172A),
-                    spotColor = if (isDark) Color(0x66000000) else Color(0x14000000)
+                    isDark = isDark,
+                    hazeState = activeHaze
                 )
-                .clip(dockShape)
-                .then(hazeMod)
                 .pointerInput(Unit) {
                     detectTapGestures(
                         onDoubleTap = {
@@ -2063,64 +2328,13 @@ fun LiquidGlassDock(
                         }
                     )
                 }
-                .background(
-                    brush = Brush.linearGradient(
-                        colors = if (isDark) {
-                            listOf(
-                                Color(0xFF26262B).copy(alpha = 0.94f),
-                                Color(0xFF1C1C20).copy(alpha = 0.92f),
-                                Color(0xFF141417).copy(alpha = 0.90f),
-                                Color(0xFF202024).copy(alpha = 0.94f)
-                            )
-                        } else {
-                            listOf(
-                                Color.White.copy(alpha = 0.96f),
-                                Color(0xFFF9F9FB).copy(alpha = 0.94f),
-                                Color(0xFFF2F2F7).copy(alpha = 0.91f),
-                                Color.White.copy(alpha = 0.96f)
-                            )
-                        },
-                        start = Offset.Zero,
-                        end = Offset.Infinite
-                    ),
-                    shape = dockShape
-                )
-                .border(
-                    width = 1.1.dp,
-                    brush = Brush.verticalGradient(
-                        colors = if (isDark) listOf(
-                            Color.White.copy(alpha = 0.35f),
-                            Color.White.copy(alpha = 0.12f),
-                            Color.White.copy(alpha = 0.04f)
-                        ) else listOf(
-                            Color.White.copy(alpha = 0.90f),
-                            Color.White.copy(alpha = 0.35f),
-                            Color.White.copy(alpha = 0.15f)
-                        )
-                    ),
-                    shape = dockShape
-                )
                 .padding(4.dp)
         ) {
             val density = LocalDensity.current
             BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                 val itemWidth = maxWidth / tabs.size
                 val itemWidthPx = with(density) { itemWidth.toPx() }
-                val animatedPillOffset by animateDpAsState(
-                    targetValue = itemWidth * selectedIndex,
-                    animationSpec = AppleSprings.SnappyDp,
-                    label = "dock_gliding_pill"
-                )
-                val pillScale by animateFloatAsState(
-                    targetValue = if (activeDrag != null) 1.05f else 1.0f,
-                    animationSpec = AppleSprings.Snappy,
-                    label = "dock_scrub_pill_scale"
-                )
-                val pillOffset = if (effectivePosition != null) {
-                    itemWidth * effectivePosition.coerceIn(0f, (tabs.size - 1).toFloat())
-                } else {
-                    animatedPillOffset
-                }
+                val maxIndexF = (tabs.size - 1).toFloat()
 
                 val dragScrubModifier = if (onScrubProgress != null || onScrubFinished != null) {
                     Modifier.pointerInput(tabs.size, itemWidthPx) {
@@ -2129,7 +2343,7 @@ fun LiquidGlassDock(
                             onDragStart = { startOffset ->
                                 if (itemWidthPx > 0f) {
                                     val pos = ((startOffset.x - itemWidthPx / 2f) / itemWidthPx)
-                                        .coerceIn(0f, (tabs.size - 1).toFloat())
+                                        .coerceIn(0f, maxIndexF)
                                     currentDragPos = pos
                                     activeDragPosition = pos
                                     lastScrubbedIndex = pos.roundToInt().coerceIn(0, tabs.size - 1)
@@ -2141,7 +2355,7 @@ fun LiquidGlassDock(
                                 if (itemWidthPx > 0f) {
                                     change.consume()
                                     val pos = ((change.position.x - itemWidthPx / 2f) / itemWidthPx)
-                                        .coerceIn(0f, (tabs.size - 1).toFloat())
+                                        .coerceIn(0f, maxIndexF)
                                     currentDragPos = pos
                                     activeDragPosition = pos
                                     val crossedIndex = pos.roundToInt().coerceIn(0, tabs.size - 1)
@@ -2177,83 +2391,152 @@ fun LiquidGlassDock(
                     }
                 } else Modifier
 
-                // 1. Gliding Animated Indicator Pill (My Warranties + iOS 26 Scrub Lens)
+                // 0. Smooth tab-colored ambient glow translated on GPU (no RenderEffect blur)
                 Box(
                     modifier = Modifier
-                        .offset { IntOffset(x = pillOffset.roundToPx(), y = 0) }
+                        .width(itemWidth * 1.8f)
+                        .fillMaxHeight()
+                        .graphicsLayer {
+                            val pos = (activeDragPosition ?: latestPagerPos.value ?: pillProgressState.value)
+                                .coerceIn(0f, maxIndexF)
+                            val centerX = (pos + 0.5f) * itemWidthPx
+                            translationX = centerX - (size.width / 2f)
+                        }
+                        .drawBehind {
+                            val glowColor = animatedAccentState.value
+                            val glowAlpha = if (isDark) 0.24f else 0.14f
+                            drawRect(
+                                brush = Brush.radialGradient(
+                                    colors = listOf(
+                                        glowColor.copy(alpha = glowAlpha),
+                                        glowColor.copy(alpha = glowAlpha * 0.35f),
+                                        Color.Transparent
+                                    ),
+                                    center = Offset(size.width / 2f, size.height / 2f),
+                                    radius = size.width * 0.52f
+                                )
+                            )
+                        }
+                )
+
+                // 1. Gliding Animated Indicator Pill rendered via GPU translationX & scale
+                Box(
+                    modifier = Modifier
                         .width(itemWidth)
                         .fillMaxHeight()
                         .graphicsLayer {
-                            scaleX = pillScale
-                            scaleY = pillScale
+                            val pos = (activeDragPosition ?: latestPagerPos.value ?: pillProgressState.value)
+                                .coerceIn(0f, maxIndexF)
+                            translationX = pos * itemWidthPx
+                            val s = pillScaleState.value
+                            scaleX = s
+                            scaleY = s
                         }
                         .shadow(
                             elevation = 4.dp,
-                            shape = RoundedCornerShape(24.dp),
-                            ambientColor = if (isDark) Color(0x40000000) else AppleSystemBlue.copy(alpha = 0.08f),
+                            shape = pillShape,
+                            ambientColor = if (isDark) Color(0x40000000) else animatedAccentState.value.copy(alpha = 0.12f),
                             spotColor = if (isDark) Color(0x40000000) else Color(0x0D000000)
                         )
-                        .clip(RoundedCornerShape(24.dp))
+                        .clip(pillShape)
                         .background(
-                            brush = Brush.linearGradient(
-                                colors = if (isDark) {
-                                    listOf(Color(0xFF38383C).copy(alpha = 0.96f), Color(0xFF28282C).copy(alpha = 0.76f))
-                                } else {
-                                    listOf(Color.White.copy(alpha = 0.96f), Color.White.copy(alpha = 0.76f))
-                                },
-                                start = Offset.Zero,
-                                end = Offset.Infinite
-                            ),
-                            shape = RoundedCornerShape(24.dp)
+                            brush = pillBrush,
+                            shape = pillShape
                         )
                         .border(
                             width = 1.dp,
                             color = if (isDark) Color.White.copy(alpha = 0.25f) else Color.White.copy(alpha = 0.90f),
-                            shape = RoundedCornerShape(24.dp)
+                            shape = pillShape
                         )
                 )
 
-                // 2. Interactive Tab Icons & Labels Row (supports tap, double-tap & direct horizontal drag scrub)
+                // 2. Interactive Tab Icons & Labels Row (tap, double-tap, drag scrub, ArrowLeft/ArrowRight, Role.Tab)
                 Row(
                     modifier = Modifier
                         .fillMaxSize()
-                        .then(dragScrubModifier),
+                        .then(dragScrubModifier)
+                        .selectableGroup(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     tabs.forEachIndexed { index, (tab, pair) ->
                         val (label, icon) = pair
                         val isSelected = index == selectedIndex
-                        val activeColor = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
-                        val inactiveColor = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
+                        val tabInteractionSource = remember { MutableInteractionSource() }
+                        val isPressed by tabInteractionSource.collectIsPressedAsState()
 
-                        val iconScale by animateFloatAsState(
-                            targetValue = if (isSelected) 1.14f else 1.0f,
-                            animationSpec = AppleSprings.Pop,
+                        val iconScaleState = animateFloatAsState(
+                            targetValue = when {
+                                reducedMotion -> 1.0f
+                                isPressed -> 0.92f
+                                isSelected -> 1.14f
+                                else -> 1.0f
+                            },
+                            animationSpec = if (reducedMotion) snap() else AppleSprings.Pop,
                             label = "dock_icon_pop"
+                        )
+                        val tabPressScaleState = animateFloatAsState(
+                            targetValue = if (!reducedMotion && isPressed) 0.94f else 1.0f,
+                            animationSpec = if (reducedMotion) snap() else AppleSprings.Pop,
+                            label = "dock_tab_press"
+                        )
+                        val tabColor by animateColorAsState(
+                            targetValue = if (isSelected) tabAccents[index] else inactiveColor,
+                            animationSpec = if (reducedMotion) snap() else AppleSprings.SnappyColor,
+                            label = "dock_tab_tint"
                         )
 
                         Box(
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxHeight()
-                                .clip(RoundedCornerShape(24.dp))
-                                .clickable(
-                                    indication = null,
-                                    interactionSource = remember { MutableInteractionSource() }
-                                ) {
-                                    val now = System.currentTimeMillis()
-                                    val isDoubleTap = (lastTappedTab == tab && (now - lastTapTime) < 450L)
-                                    lastTapTime = now
-                                    lastTappedTab = tab
-
-                                    if (isDoubleTap) {
-                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        effectiveScrollToTop.invoke()
+                                .graphicsLayer {
+                                    val s = tabPressScaleState.value
+                                    scaleX = s
+                                    scaleY = s
+                                }
+                                .clip(pillShape)
+                                .focusRequester(focusRequesters[index])
+                                .onPreviewKeyEvent { event ->
+                                    if (event.type == KeyEventType.KeyDown) {
+                                        when (event.key) {
+                                            Key.DirectionRight -> {
+                                                val next = (index + 1) % tabs.size
+                                                focusRequesters[next].requestFocus()
+                                                onTabSelected(tabs[next].first)
+                                                true
+                                            }
+                                            Key.DirectionLeft -> {
+                                                val prev = (index - 1 + tabs.size) % tabs.size
+                                                focusRequesters[prev].requestFocus()
+                                                onTabSelected(tabs[prev].first)
+                                                true
+                                            }
+                                            else -> false
+                                        }
                                     } else {
-                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                        onTabSelected(tab)
+                                        false
                                     }
-                                },
+                                }
+                                .selectable(
+                                    selected = isSelected,
+                                    interactionSource = tabInteractionSource,
+                                    indication = null,
+                                    role = Role.Tab,
+                                    onClick = {
+                                        val now = System.currentTimeMillis()
+                                        val isDoubleTap = (lastTappedTab == tab && (now - lastTapTime) < 450L)
+                                        lastTapTime = now
+                                        lastTappedTab = tab
+
+                                        if (isDoubleTap) {
+                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            effectiveScrollToTop.invoke()
+                                        } else {
+                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                            onTabSelected(tab)
+                                        }
+                                    }
+                                ),
                             contentAlignment = Alignment.Center
                         ) {
                             Column(
@@ -2262,13 +2545,14 @@ fun LiquidGlassDock(
                             ) {
                                 Icon(
                                     imageVector = icon,
-                                    contentDescription = label,
-                                    tint = if (isSelected) activeColor else inactiveColor,
+                                    contentDescription = null,
+                                    tint = tabColor,
                                     modifier = Modifier
                                         .size(19.dp)
                                         .graphicsLayer {
-                                            scaleX = iconScale
-                                            scaleY = iconScale
+                                            val s = iconScaleState.value
+                                            scaleX = s
+                                            scaleY = s
                                         }
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
@@ -2276,8 +2560,9 @@ fun LiquidGlassDock(
                                     text = label,
                                     fontSize = 10.sp,
                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                    color = if (isSelected) activeColor else inactiveColor,
-                                    letterSpacing = (-0.1).sp
+                                    color = tabColor,
+                                    letterSpacing = (-0.1).sp,
+                                    maxLines = 1
                                 )
                             }
                         }
@@ -2310,21 +2595,6 @@ private fun Modifier.floatingDockGlassChrome(
         }
     } else Modifier
 
-    val meniscusColors = if (isDark) DarkMeniscusColors else LightMeniscusColors
-    val borderColors = if (isDark) {
-        listOf(
-            Color.White.copy(alpha = 0.35f),
-            Color.White.copy(alpha = 0.12f),
-            Color.White.copy(alpha = 0.04f)
-        )
-    } else {
-        listOf(
-            Color.White.copy(alpha = 0.90f),
-            Color.White.copy(alpha = 0.35f),
-            Color.White.copy(alpha = 0.15f)
-        )
-    }
-
     return this
         .shadow(
             elevation = 16.dp,
@@ -2335,16 +2605,12 @@ private fun Modifier.floatingDockGlassChrome(
         .clip(shape)
         .then(hazeMod)
         .background(
-            brush = Brush.linearGradient(
-                colors = meniscusColors,
-                start = Offset.Zero,
-                end = Offset.Infinite
-            ),
+            brush = if (isDark) DarkGlassBrush else LightGlassBrush,
             shape = shape
         )
         .border(
             width = 1.1.dp,
-            brush = Brush.verticalGradient(colors = borderColors),
+            brush = if (isDark) DarkBorderBrush else LightBorderBrush,
             shape = shape
         )
 }
@@ -2363,11 +2629,12 @@ fun LiquidGlassActionDock(
     content: @Composable RowScope.() -> Unit
 ) {
     val isDark = isSystemInDarkTheme()
+    val reducedMotion = effectiveReducedMotion()
     val density = LocalDensity.current
     val isImeVisible = imeAware && WindowInsets.ime.getBottom(density) > 0
     val bottomPadding by animateDpAsState(
         targetValue = if (isImeVisible) 8.dp else 14.dp,
-        animationSpec = AppleSprings.SnappyDp,
+        animationSpec = if (reducedMotion) snap() else AppleSprings.SnappyDp,
         label = "action_dock_bottom_inset"
     )
     val dockShape = RoundedCornerShape(29.dp)
@@ -2494,10 +2761,14 @@ fun LiquidGlassSelectionBar(
                             if (allSelected) (if (isDark) AppleDarkSystemBlue else AppleSystemBlue).copy(alpha = 0.2f)
                             else (if (isDark) Color(0x33545458) else Color(0x14767680))
                         )
-                        .clickable {
-                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            onToggleSelectAll()
-                        }
+                        .toggleable(
+                            value = allSelected,
+                            role = Role.Checkbox,
+                            onValueChange = {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                onToggleSelectAll()
+                            }
+                        )
                         .padding(horizontal = 10.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -2507,7 +2778,7 @@ fun LiquidGlassSelectionBar(
                             .size(18.dp)
                             .clip(CircleShape)
                             .background(
-                                if (allSelected) (if (isDark) AppleDarkSystemBlue else AppleSystemBlue)
+                                if (allSelected) (if (isDark) AppleDarkSystemBlueFill else AppleSystemBlueFill)
                                 else Color.Transparent
                             )
                             .border(
@@ -2568,7 +2839,7 @@ fun LiquidGlassSelectionBar(
                         Icon(
                             imageVector = AppleIcons.Trash,
                             contentDescription = "Delete selected",
-                            tint = if (selectedCount > 0) AppleSystemRed else labelSecondary.copy(alpha = 0.4f),
+                            tint = if (selectedCount > 0) (if (isDark) AppleDarkSystemRed else AppleSystemRed) else labelSecondary.copy(alpha = 0.4f),
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -2578,7 +2849,7 @@ fun LiquidGlassSelectionBar(
                         modifier = Modifier
                             .clip(RoundedCornerShape(12.dp))
                             .background(if (isDark) Color(0x33545458) else Color(0x14767680))
-                            .clickable {
+                            .clickable(role = Role.Button) {
                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 onClose()
                             }
@@ -2630,17 +2901,19 @@ fun CupertinoTopBarAction(
     tint: Color? = null
 ) {
     val isDark = isSystemInDarkTheme()
+    val reducedMotion = effectiveReducedMotion()
     val haptic = LocalHapticFeedback.current
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val actionTint = tint ?: if (isDark) AppleDarkSystemBlue else AppleSystemBlue
 
-    val alpha by animateFloatAsState(
+    val alphaState = animateFloatAsState(
         targetValue = when {
             !enabled -> 0.38f
             isPressed -> 0.45f
             else -> 1f
         },
+        animationSpec = if (reducedMotion) snap() else AppleSprings.Snappy,
         label = "cupertino_action_alpha"
     )
 
@@ -2651,13 +2924,14 @@ fun CupertinoTopBarAction(
                 interactionSource = interactionSource,
                 indication = null,
                 enabled = enabled,
+                role = Role.Button,
                 onClick = {
                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     onClick()
                 }
             )
             .padding(horizontal = 8.dp, vertical = 6.dp)
-            .graphicsLayer { this.alpha = alpha },
+            .graphicsLayer { this.alpha = alphaState.value },
         contentAlignment = Alignment.Center
     ) {
         Text(

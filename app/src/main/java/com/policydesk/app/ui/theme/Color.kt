@@ -16,47 +16,53 @@ val IosDarkSystemBackground = Color(0xFF000000)
 val IosDarkSecondaryGrouped = Color(0xFF1C1C1E)
 val IosDarkTertiaryGrouped = Color(0xFF2C2C2E)
 
-// iOS Light Label Hierarchy (WCAG AAA Contrast)
+// iOS Light Label Hierarchy (WCAG AA >= 4.5:1 Contrast)
 val IosLabelPrimary = Color(0xFF1C1C1E)     // Primary text
-val IosLabelSecondary = Color(0xFF6C6C70)   // Subhead & secondary text
-val IosLabelTertiary = Color(0xFF8E8E93)    // Footnotes & placeholder
+val IosLabelSecondary = Color(0xFF5A5A60)   // Subhead & secondary text (>= 6.1:1 on light surfaces)
+val IosLabelTertiary = Color(0xFF6C6C72)    // Footnotes & placeholder (>= 4.6:1 on light surfaces)
 val IosSeparator = Color(0x33000000)        // 20% Black Hairline separator
 
-// iOS Dark Label Hierarchy
+// iOS Dark Label Hierarchy (WCAG AA >= 4.5:1 Contrast)
 val IosDarkLabelPrimary = Color(0xFFFFFFFF)
-val IosDarkLabelSecondary = Color(0xFF8E8E93)
-val IosDarkLabelTertiary = Color(0xFF636366)
+val IosDarkLabelSecondary = Color(0xFFA1A1AA) // >= 5.4:1 on #2C2C2E, >= 6.6:1 on #1C1C1E
+val IosDarkLabelTertiary = Color(0xFF949499)  // >= 4.6:1 on #2C2C2E, >= 5.6:1 on #1C1C1E
 val IosDarkSeparator = Color(0x54545865)
 
-// Apple Light Accent Colors (<80% saturation, high contrast)
-val AppleSystemBlue = Color(0xFF007AFF)     // Signature Cupertino Blue
+// Apple Light Accent Colors (<80% saturation, WCAG AA >= 4.5:1)
+val AppleSystemBlue = Color(0xFF0056B8)     // AA Text/Icon Blue (>= 6.2:1 on light surfaces)
+val AppleSystemBlueFill = Color(0xFF0062CC) // AA Button/Pill Fill (>= 5.8:1 with white text)
 val AppleSystemBlueDark = Color(0xFF0056B3)
 val AppleSystemBlueLight = Color(0xFFE5F1FF)
 
-// Apple Dark Accent Colors (Higher luminance for dark canvas)
-val AppleDarkSystemBlue = Color(0xFF0A84FF)
-val AppleDarkSystemBlueDark = Color(0xFF0063D1)
+// Apple Dark Accent Colors (Higher luminance for dark canvas, separate AA fill tokens)
+val AppleDarkSystemBlue = Color(0xFF4CA6FF)     // AA Text/Icon Blue (>= 4.5:1 on dark glass/pills)
+val AppleDarkSystemBlueFill = Color(0xFF0066D6) // AA Button/Pill Fill (>= 5.4:1 with white text)
+val AppleDarkSystemBlueDark = Color(0xFF0052AD)
 val AppleDarkSystemBlueLight = Color(0xFF1C3456)
 
-// Apple Light Status Colors
-val AppleSystemGreen = Color(0xFF34C759)
-val AppleSystemGreenBg = Color(0x1F34C759) // 12% translucent tint
-val AppleSystemOrange = Color(0xFFFF9500)
-val AppleSystemOrangeBg = Color(0x1FFF9500)
-val AppleSystemDeepOrange = Color(0xFFFF6B00)
-val AppleSystemDeepOrangeBg = Color(0x1FFF6B00)
-val AppleSystemRed = Color(0xFFFF3B30)
-val AppleSystemRedBg = Color(0x1FFF3B30)
+// Apple Light Status Colors (WCAG AA >= 4.5:1 on light cards & translucent tints)
+val AppleSystemGreen = Color(0xFF146C34)
+val AppleSystemGreenFill = Color(0xFF15803D)
+val AppleSystemGreenBg = Color(0x1F15803D) // 12% translucent tint
+val AppleSystemOrange = Color(0xFF9A4104)
+val AppleSystemOrangeBg = Color(0x21D97706) // 13% translucent tint
+val AppleSystemDeepOrange = Color(0xFFB33909)
+val AppleSystemDeepOrangeBg = Color(0x21EA580C)
+val AppleSystemRed = Color(0xFFBE1B1B)
+val AppleSystemRedFill = Color(0xFFDC2626)
+val AppleSystemRedBg = Color(0x1FDC2626)
 
-// Apple Dark Status Colors
-val AppleDarkSystemGreen = Color(0xFF30D158)
-val AppleDarkSystemGreenBg = Color(0x2E30D158)
-val AppleDarkSystemOrange = Color(0xFFFF9F0A)
-val AppleDarkSystemOrangeBg = Color(0x2EFF9F0A)
-val AppleDarkSystemDeepOrange = Color(0xFFFF6961)
-val AppleDarkSystemDeepOrangeBg = Color(0x2EFF6961)
-val AppleDarkSystemRed = Color(0xFFFF453A)
-val AppleDarkSystemRedBg = Color(0x2EFF453A)
+// Apple Dark Status Colors (WCAG AA >= 4.5:1 on dark glass & translucent tints)
+val AppleDarkSystemGreen = Color(0xFF34D375)
+val AppleDarkSystemGreenFill = Color(0xFF15803D)
+val AppleDarkSystemGreenBg = Color(0x3330D158) // 20% translucent tint
+val AppleDarkSystemOrange = Color(0xFFFBBF24)
+val AppleDarkSystemOrangeBg = Color(0x33FF9F0A)
+val AppleDarkSystemDeepOrange = Color(0xFFFB923C)
+val AppleDarkSystemDeepOrangeBg = Color(0x33FF6961)
+val AppleDarkSystemRed = Color(0xFFFF857D)
+val AppleDarkSystemRedFill = Color(0xFFDC2626)
+val AppleDarkSystemRedBg = Color(0x33FF453A)
 
 // ==========================================
 // True Apple Liquid Glass Tokens (Light & Dark)
@@ -77,8 +83,8 @@ val GlassDarkBorderTop = Color(0x38FFFFFF)    // Moonlight specular highlight ri
 val GlassDarkBorderBottom = Color(0x0FFFFFFF) // Ambient bottom rim (6% white)
 val GlassDarkShadow = Color(0x59000000)       // Deep ambient shadow
 
-val AppleSystemPurple = Color(0xFF5856D6)
-val AppleDarkSystemPurple = Color(0xFF5E5CE6)
+val AppleSystemPurple = Color(0xFF4F46E5)
+val AppleDarkSystemPurple = Color(0xFF9A98F8)
 
 // Backward-compatible mappings
 val Navy900 = IosLabelPrimary

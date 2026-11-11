@@ -30,15 +30,25 @@ import androidx.compose.ui.unit.sp
 import com.policydesk.app.domain.model.ExistingClientInfo
 import com.policydesk.app.domain.model.PolicyStatus
 import com.policydesk.app.domain.model.RegistrationNormalizer
+import com.policydesk.app.ui.theme.AppleDarkSystemBlue
 import com.policydesk.app.ui.theme.AppleDarkSystemDeepOrange
+import com.policydesk.app.ui.theme.AppleDarkSystemDeepOrangeBg
 import com.policydesk.app.ui.theme.AppleDarkSystemGreen
+import com.policydesk.app.ui.theme.AppleDarkSystemGreenBg
 import com.policydesk.app.ui.theme.AppleDarkSystemOrange
+import com.policydesk.app.ui.theme.AppleDarkSystemOrangeBg
 import com.policydesk.app.ui.theme.AppleDarkSystemRed
+import com.policydesk.app.ui.theme.AppleDarkSystemRedBg
 import com.policydesk.app.ui.theme.AppleIcons
+import com.policydesk.app.ui.theme.AppleSystemBlue
 import com.policydesk.app.ui.theme.AppleSystemDeepOrange
+import com.policydesk.app.ui.theme.AppleSystemDeepOrangeBg
 import com.policydesk.app.ui.theme.AppleSystemGreen
+import com.policydesk.app.ui.theme.AppleSystemGreenBg
 import com.policydesk.app.ui.theme.AppleSystemOrange
+import com.policydesk.app.ui.theme.AppleSystemOrangeBg
 import com.policydesk.app.ui.theme.AppleSystemRed
+import com.policydesk.app.ui.theme.AppleSystemRedBg
 import com.policydesk.app.ui.theme.IosDarkLabelPrimary
 import com.policydesk.app.ui.theme.IosDarkLabelSecondary
 import com.policydesk.app.ui.theme.IosLabelPrimary
@@ -151,43 +161,52 @@ fun DaysRemainingBadge(
     val isDark = isSystemInDarkTheme()
 
     val green = if (isDark) AppleDarkSystemGreen else AppleSystemGreen
+    val greenBg = if (isDark) AppleDarkSystemGreenBg else AppleSystemGreenBg
     val orange = if (isDark) AppleDarkSystemOrange else AppleSystemOrange
+    val orangeBg = if (isDark) AppleDarkSystemOrangeBg else AppleSystemOrangeBg
     val deepOrange = if (isDark) AppleDarkSystemDeepOrange else AppleSystemDeepOrange
+    val deepOrangeBg = if (isDark) AppleDarkSystemDeepOrangeBg else AppleSystemDeepOrangeBg
     val red = if (isDark) AppleDarkSystemRed else AppleSystemRed
-    val gray = if (isDark) Color(0xFFA1A1A6) else Color(0xFF8E8E93)
+    val redBg = if (isDark) AppleDarkSystemRedBg else AppleSystemRedBg
+    val gray = if (isDark) Color(0xFFB4B4BC) else IosLabelSecondary
+    val grayBg = if (isDark) Color(0x2E8E8E93) else Color(0x1F5A5A60)
 
-    val (accentColor, text) = when {
-        status == PolicyStatus.CLOSED -> Pair(gray, "Closed")
-        status == PolicyStatus.RENEWED -> Pair(green, "Renewed")
-        daysRemaining < 0 -> Pair(
+    val (accentColor, bgColor, text) = when {
+        status == PolicyStatus.CLOSED -> Triple(gray, grayBg, "Closed")
+        status == PolicyStatus.RENEWED -> Triple(green, greenBg, "Renewed")
+        daysRemaining < 0 -> Triple(
             red,
+            redBg,
             "Overdue by ${-daysRemaining}d"
         )
-        daysRemaining == 0L -> Pair(
+        daysRemaining == 0L -> Triple(
             red,
+            redBg,
             "Expires Today"
         )
-        daysRemaining <= 7 -> Pair(
+        daysRemaining <= 7 -> Triple(
             deepOrange,
+            deepOrangeBg,
             "Expires in ${daysRemaining}d"
         )
-        daysRemaining <= 30 -> Pair(
+        daysRemaining <= 30 -> Triple(
             orange,
+            orangeBg,
             "${daysRemaining} days left"
         )
-        else -> Pair(
+        else -> Triple(
             green,
+            greenBg,
             "${UiFormatters.formatCompoundDurationCompact(daysRemaining)} left"
         )
     }
 
     val badgeShape = RoundedCornerShape(8.dp)
-    val bgAlpha = if (isDark) 0.20f else 0.12f
     val borderAlpha = if (isDark) 0.40f else 0.28f
 
     Box(
         modifier = modifier
-            .background(accentColor.copy(alpha = bgAlpha), badgeShape)
+            .background(bgColor, badgeShape)
             .border(0.75.dp, accentColor.copy(alpha = borderAlpha), badgeShape)
             .padding(horizontal = 8.dp, vertical = 3.dp)
     ) {
@@ -270,7 +289,7 @@ fun ExistingClientRenewalBanner(
     val isDark = isSystemInDarkTheme()
     val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
     val labelSecondary = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
-    val accentColor = if (isDark) Color(0xFF0A84FF) else Color(0xFF007AFF)
+    val accentColor = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
     val cardBg = if (isDark) Color(0xFF0F2644) else Color(0xFFF0F7FF)
     val borderColor = if (isDark) Color(0xFF1D4ED8).copy(alpha = 0.5f) else Color(0xFF93C5FD)
 
@@ -375,7 +394,7 @@ fun ExistingClientRenewalBanner(
                 text = "Contact info and prior commission % have been auto-filled from records.",
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Normal,
-                color = labelSecondary.copy(alpha = 0.9f),
+                color = labelSecondary,
                 modifier = Modifier.padding(start = 2.dp)
             )
         }
