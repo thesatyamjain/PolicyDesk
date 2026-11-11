@@ -3,18 +3,20 @@ package com.policydesk.app.ui.detail
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.policydesk.app.domain.model.FieldValidators
 import com.policydesk.app.domain.model.RegistrationNormalizer
 import com.policydesk.app.domain.model.VehicleWithPolicies
 import com.policydesk.app.domain.repository.VehicleRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -31,33 +33,69 @@ class VehicleDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
-    private val regNo: String = RegistrationNormalizer.normalize(checkNotNull(savedStateHandle["regNo"]))
+    private val activeRegNo = MutableStateFlow(
+        RegistrationNormalizer.normalize(checkNotNull(savedStateHandle["regNo"]))
+    )
 
-    val vehicleData: StateFlow<VehicleWithPolicies?> = repository.getVehicleWithPolicies(regNo)
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val vehicleData: StateFlow<VehicleWithPolicies?> = activeRegNo
+        .flatMapLatest { reg -> repository.getVehicleWithPolicies(reg) }
         .stateIn(
             scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
+            started = SharingStarted.Eagerly,
             initialValue = null
         )
+
+    val siblingVehicles: StateFlow<List<VehicleWithPolicies>> = combine(
+        vehicleData,
+        repository.getAllVehicles()
+    ) { current, all ->
+        val currentItem = current ?: return@combine emptyList()
+        val normalizedMobile = FieldValidators.normalizeMobile(currentItem.vehicle.customer.mobile)
+        if (normalizedMobile.isBlank()) return@combine emptyList()
+        all.filter { candidate ->
+            candidate.vehicle.regNo != currentItem.vehicle.regNo &&
+                FieldValidators.normalizeMobile(candidate.vehicle.customer.mobile) == normalizedMobile
+        }.sortedBy { it.currentPolicy?.expiryDate ?: Long.MAX_VALUE }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.Eagerly,
+        initialValue = emptyList()
+    )
 
     private val _uiEvent = MutableSharedFlow<DetailUiEvent>()
     val uiEvent: SharedFlow<DetailUiEvent> = _uiEvent.asSharedFlow()
 
+    fun selectVehicle(regNo: String) {
+        val normalized = RegistrationNormalizer.normalize(regNo)
+        if (normalized.isNotEmpty() && normalized != activeRegNo.value) {
+            activeRegNo.value = normalized
+        }
+    }
+
     fun closeVehicle(reason: String) {
+        val reg = activeRegNo.value
         viewModelScope.launch {
-            repository.closeVehicle(regNo, reason)
+            repository.closeVehicle(reg, reason)
             _uiEvent.emit(DetailUiEvent.VehicleClosed)
         }
     }
 
     fun deleteVehicle() {
+        val reg = activeRegNo.value
         viewModelScope.launch {
-            repository.softDeleteVehicle(regNo)
+            repository.softDeleteVehicle(reg)
             _uiEvent.emit(DetailUiEvent.VehicleDeleted)
         }
     }
 
     fun updateCurrentPolicyPremium(newPremium: Double) {
+        if (newPremium <= 0.0 || newPremium.isNaN() || newPremium.isInfinite()) {
+            viewModelScope.launch {
+                _uiEvent.emit(DetailUiEvent.ShowToast("Enter a positive premium amount"))
+            }
+            return
+        }
         viewModelScope.launch {
             val vehicleWithPolicies = vehicleData.value ?: return@launch
             val policy = vehicleWithPolicies.currentPolicy ?: return@launch
