@@ -5,14 +5,10 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.content.ContextCompat
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -26,6 +22,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -36,11 +33,11 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -53,35 +50,42 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import com.policydesk.app.R
 import com.policydesk.app.data.onboarding.OnboardingManager
-import com.policydesk.app.data.profile.AdvisorProfile
 import com.policydesk.app.data.profile.AdvisorProfileManager
 import com.policydesk.app.domain.model.FieldValidators
+import com.policydesk.app.ui.addpolicy.formFieldColors
 import com.policydesk.app.ui.components.AppleButton
-import com.policydesk.app.ui.components.AppleSecondaryButton
 import com.policydesk.app.ui.components.LiquidGlassCard
+import com.policydesk.app.ui.detail.AccessibleStatusColors
+import com.policydesk.app.ui.detail.rememberAnimatorsEnabled
 import com.policydesk.app.ui.theme.AppleIcons
 import com.policydesk.app.ui.theme.IosDarkLabelPrimary
 import com.policydesk.app.ui.theme.IosDarkLabelSecondary
-import com.policydesk.app.ui.theme.IosDarkLabelTertiary
 import com.policydesk.app.ui.theme.IosLabelPrimary
 import com.policydesk.app.ui.theme.IosLabelSecondary
-import com.policydesk.app.ui.theme.IosLabelTertiary
-import com.policydesk.app.ui.theme.SapphireBlue
 import kotlinx.coroutines.launch
 
 private data class OnboardingPageData(
@@ -98,46 +102,50 @@ fun OnboardingScreen(
 ) {
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
+    val focusManager = LocalFocusManager.current
     val isDark = isSystemInDarkTheme()
     val scope = rememberCoroutineScope()
+    val animatorsEnabled = rememberAnimatorsEnabled()
 
     val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
     val labelSecondary = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
-    val labelTertiary = if (isDark) IosDarkLabelTertiary else IosLabelTertiary
+    val accentBlue = AccessibleStatusColors.blue(isDark)
+    val accentIndigo = if (isDark) Color(0xFF7C7AF2) else Color(0xFF4F46E5)
+    val accentGreen = AccessibleStatusColors.green(isDark)
 
-    val pages = remember {
+    val pages = remember(isDark) {
         listOf(
             OnboardingPageData(
                 title = "Smart Vehicle Portfolio",
                 subtitle = "Manage your entire client vehicle book with live expiry countdowns, status badges, and zero paper chaos.",
                 icon = AppleIcons.Car,
-                accentColor = Color(0xFF007AFF),
+                accentColor = accentBlue,
                 features = listOf(
                     "Real-time expiry countdowns (Active, Expiring, Overdue)",
-                    "Realistic HSRP number plates (White, Yellow, EV Green)",
-                    "Lightning-fast search by RC, customer name or phone"
+                    "HSRP number plates for Private, Commercial, and EV fleets",
+                    "Fast search by RC, customer name, or mobile number"
                 )
             ),
             OnboardingPageData(
                 title = "Zero-Effort PDF Intake",
-                subtitle = "Share or open any insurer policy PDF into PolicyDesk. Intelligent extraction fills policy & vehicle data automatically.",
+                subtitle = "Share or open any insurer policy PDF into PolicyDesk. Intelligent extraction fills policy and vehicle data automatically.",
                 icon = AppleIcons.Brain,
-                accentColor = Color(0xFF5856D6),
+                accentColor = accentIndigo,
                 features = listOf(
-                    "Automatic bilingual & OCR label cleaning",
-                    "Customer names automatically formatted to Title Case",
-                    "Bulk Excel & CSV spreadsheet portfolio import"
+                    "Automatic bilingual and OCR label cleaning",
+                    "Customer names formatted cleanly to Title Case",
+                    "Bulk Excel and CSV spreadsheet portfolio import"
                 )
             ),
             OnboardingPageData(
                 title = "Instant Client Renewals",
                 subtitle = "Send personalized renewal notices on WhatsApp before policies lapse with your branded advisor signature.",
                 icon = AppleIcons.WhatsApp,
-                accentColor = Color(0xFF34C759),
+                accentColor = accentGreen,
                 features = listOf(
                     "One-tap pre-filled WhatsApp renewal messages",
                     "Customizable message template with your contact details",
-                    "Offline-first with secure Google Drive auto-sync"
+                    "Offline-first with encrypted Google Drive auto-sync"
                 )
             )
         )
@@ -157,6 +165,7 @@ fun OnboardingScreen(
     }
 
     fun completeOnboarding(requestNotification: Boolean = true) {
+        focusManager.clearFocus()
         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
         if (advisorName.isNotBlank() || agencyName.isNotBlank()) {
             val formattedName = FieldValidators.formatNameTitleCase(advisorName)
@@ -182,20 +191,29 @@ fun OnboardingScreen(
         onFinish()
     }
 
+    suspend fun goToPage(index: Int) {
+        if (animatorsEnabled) {
+            pagerState.animateScrollToPage(index)
+        } else {
+            pagerState.scrollToPage(index)
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .statusBarsPadding()
             .navigationBarsPadding()
+            .imePadding()
     ) {
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            // Top Bar with Branding & Skip Button
+            // Top Bar with Branding, Step State & Skip Button
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 16.dp),
+                    .padding(horizontal = 24.dp, vertical = 14.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -228,13 +246,22 @@ fun OnboardingScreen(
                         )
                     }
                     Spacer(modifier = Modifier.width(10.dp))
-                    Text(
-                        text = "PolicyDesk",
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = labelPrimary,
-                        letterSpacing = (-0.3).sp
-                    )
+                    Column {
+                        Text(
+                            text = "PolicyDesk",
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = labelPrimary,
+                            letterSpacing = (-0.3).sp
+                        )
+                        Text(
+                            text = "Step ${pagerState.currentPage + 1} of ${pages.size}",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = labelSecondary,
+                            style = TextStyle(fontFeatureSettings = "tnum")
+                        )
+                    }
                 }
 
                 if (pagerState.currentPage < pages.size - 1) {
@@ -246,7 +273,7 @@ fun OnboardingScreen(
                             text = "Skip",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = SapphireBlue
+                            color = accentBlue
                         )
                     }
                 }
@@ -270,18 +297,18 @@ fun OnboardingScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    // Glowing Icon Squircle
+                    // Icon Squircle
                     Box(
                         modifier = Modifier
-                            .size(88.dp)
+                            .size(84.dp)
                             .background(
                                 color = page.accentColor.copy(alpha = if (isDark) 0.22f else 0.12f),
-                                shape = RoundedCornerShape(26.dp)
+                                shape = RoundedCornerShape(24.dp)
                             )
                             .border(
-                                width = 1.5.dp,
-                                color = page.accentColor.copy(alpha = if (isDark) 0.45f else 0.25f),
-                                shape = RoundedCornerShape(26.dp)
+                                width = 1.25.dp,
+                                color = page.accentColor.copy(alpha = if (isDark) 0.42f else 0.26f),
+                                shape = RoundedCornerShape(24.dp)
                             ),
                         contentAlignment = Alignment.Center
                     ) {
@@ -289,11 +316,11 @@ fun OnboardingScreen(
                             imageVector = page.icon,
                             contentDescription = null,
                             tint = page.accentColor,
-                            modifier = Modifier.size(44.dp)
+                            modifier = Modifier.size(40.dp)
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(22.dp))
 
                     // Title
                     Text(
@@ -319,18 +346,16 @@ fun OnboardingScreen(
                         modifier = Modifier.fillMaxWidth(0.92f)
                     )
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(22.dp))
 
-                    // Features Card
+                    // Features Card (LiquidGlassCard already applies 16.dp inner padding)
                     LiquidGlassCard(
                         modifier = Modifier.fillMaxWidth(),
                         elevation = 3.dp,
                         shape = RoundedCornerShape(18.dp)
                     ) {
                         Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
+                            modifier = Modifier.fillMaxWidth(),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             page.features.forEach { feature ->
@@ -342,7 +367,7 @@ fun OnboardingScreen(
                                         modifier = Modifier
                                             .size(20.dp)
                                             .background(
-                                                color = page.accentColor.copy(alpha = 0.18f),
+                                                color = page.accentColor.copy(alpha = 0.16f),
                                                 shape = CircleShape
                                             ),
                                         contentAlignment = Alignment.Center
@@ -369,7 +394,7 @@ fun OnboardingScreen(
 
                     // Optional Setup on final slide
                     if (isLastPage) {
-                        Spacer(modifier = Modifier.height(18.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
 
                         LiquidGlassCard(
                             modifier = Modifier.fillMaxWidth(),
@@ -377,19 +402,17 @@ fun OnboardingScreen(
                             shape = RoundedCornerShape(18.dp)
                         ) {
                             Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
+                                modifier = Modifier.fillMaxWidth(),
                                 verticalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
                                 Text(
                                     text = "Quick Advisor Setup (Optional)",
-                                    fontSize = 13.sp,
+                                    fontSize = 13.5.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = labelPrimary
                                 )
                                 Text(
-                                    text = "Appears automatically on client renewal reminders. You can edit this anytime in Settings.",
+                                    text = "Appears automatically on client renewal reminders. Editable anytime in Settings.",
                                     fontSize = 11.5.sp,
                                     color = labelSecondary,
                                     lineHeight = 15.sp
@@ -401,15 +424,16 @@ fun OnboardingScreen(
                                     label = { Text("Your Name", fontSize = 12.sp) },
                                     placeholder = { Text("e.g. Rajesh Kumar", fontSize = 12.sp) },
                                     singleLine = true,
-                                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
+                                    keyboardOptions = KeyboardOptions(
+                                        capitalization = KeyboardCapitalization.Words,
+                                        imeAction = ImeAction.Next
+                                    ),
+                                    keyboardActions = KeyboardActions(
+                                        onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                                    ),
                                     modifier = Modifier.fillMaxWidth(),
                                     shape = RoundedCornerShape(10.dp),
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = SapphireBlue,
-                                        unfocusedBorderColor = if (isDark) Color(0x33FFFFFF) else Color(0x1F000000),
-                                        focusedLabelColor = SapphireBlue,
-                                        unfocusedLabelColor = labelTertiary
-                                    )
+                                    colors = formFieldColors()
                                 )
 
                                 OutlinedTextField(
@@ -418,15 +442,16 @@ fun OnboardingScreen(
                                     label = { Text("Agency / Firm Name", fontSize = 12.sp) },
                                     placeholder = { Text("e.g. Star Insurance Associates", fontSize = 12.sp) },
                                     singleLine = true,
-                                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
+                                    keyboardOptions = KeyboardOptions(
+                                        capitalization = KeyboardCapitalization.Words,
+                                        imeAction = ImeAction.Done
+                                    ),
+                                    keyboardActions = KeyboardActions(
+                                        onDone = { focusManager.clearFocus() }
+                                    ),
                                     modifier = Modifier.fillMaxWidth(),
                                     shape = RoundedCornerShape(10.dp),
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = SapphireBlue,
-                                        unfocusedBorderColor = if (isDark) Color(0x33FFFFFF) else Color(0x1F000000),
-                                        focusedLabelColor = SapphireBlue,
-                                        unfocusedLabelColor = labelTertiary
-                                    )
+                                    colors = formFieldColors()
                                 )
                             }
                         }
@@ -436,46 +461,60 @@ fun OnboardingScreen(
                 }
             }
 
-            // Bottom Section: Page Indicator & Action CTA
+            // Bottom Section: Accessible Page Indicator & Action CTA
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 16.dp),
+                    .padding(horizontal = 24.dp, vertical = 14.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Pill Indicator Dots
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(2.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     repeat(pages.size) { index ->
                         val isSelected = pagerState.currentPage == index
                         val width by animateDpAsState(
                             targetValue = if (isSelected) 22.dp else 7.dp,
-                            animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                            animationSpec = if (animatorsEnabled) {
+                                spring(stiffness = Spring.StiffnessMediumLow)
+                            } else {
+                                snap()
+                            },
                             label = "indicatorWidth"
                         )
                         val color = if (isSelected) {
                             pages[pagerState.currentPage].accentColor
                         } else {
-                            if (isDark) Color(0x33FFFFFF) else Color(0x1F000000)
+                            if (isDark) Color(0x40FFFFFF) else Color(0x28000000)
                         }
 
                         Box(
                             modifier = Modifier
-                                .height(7.dp)
-                                .width(width)
-                                .clip(CircleShape)
-                                .background(color)
-                                .clickable {
+                                .clip(RoundedCornerShape(12.dp))
+                                .clickable(role = Role.Tab) {
                                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    scope.launch { pagerState.animateScrollToPage(index) }
+                                    scope.launch { goToPage(index) }
                                 }
-                        )
+                                .semantics {
+                                    selected = isSelected
+                                    contentDescription = "Slide ${index + 1} of ${pages.size}"
+                                }
+                                .padding(horizontal = 4.dp, vertical = 10.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .height(7.dp)
+                                    .width(width)
+                                    .clip(CircleShape)
+                                    .background(color)
+                            )
+                        }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(18.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
                 // CTA Button
                 val isLast = pagerState.currentPage == pages.size - 1
@@ -487,7 +526,7 @@ fun OnboardingScreen(
                         } else {
                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             scope.launch {
-                                pagerState.animateScrollToPage(pagerState.currentPage + 1)
+                                goToPage(pagerState.currentPage + 1)
                             }
                         }
                     },

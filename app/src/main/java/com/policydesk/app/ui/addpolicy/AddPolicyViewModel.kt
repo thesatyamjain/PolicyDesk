@@ -68,6 +68,7 @@ data class AddPolicyFormState(
 
     // Renewal & Existing Client Detection
     val existingClientInfo: ExistingClientInfo? = null,
+    val existingPolicyNumbers: List<String> = emptyList(),
     val isRenewalDetected: Boolean = false,
 
     // Dialog state for duplicate registration
@@ -104,7 +105,7 @@ data class AddPolicyFormState(
 
             return validName && validMobile && validSector &&
                     validInsurer && validPolicyNo && validExpiry && validPremium &&
-                    validRegNo && validEmail
+                    validRegNo && validEmail && !regNoDuplicate
         }
 }
 
@@ -124,6 +125,8 @@ class AddPolicyViewModel @Inject constructor(
 
     private val _uiEvent = MutableSharedFlow<AddPolicyUiEvent>()
     val uiEvent: SharedFlow<AddPolicyUiEvent> = _uiEvent.asSharedFlow()
+
+    private var checkVehicleJob: kotlinx.coroutines.Job? = null
 
     val makeModelSuggestions: StateFlow<List<String>> = repository.getDistinctMakeModels()
         .stateIn(
@@ -306,7 +309,18 @@ class AddPolicyViewModel @Inject constructor(
     }
 
     fun onPolicyNumberChanged(policyNo: String) {
-        _formState.update { it.copy(policyNumber = policyNo.trim().uppercase()) }
+        val upper = policyNo.uppercase()
+        _formState.update { curr ->
+            val cleanPolicyNo = upper.trim()
+            val duplicatePolicy = !curr.isEditMode &&
+                curr.isRenewalDetected &&
+                cleanPolicyNo.isNotEmpty() &&
+                curr.existingPolicyNumbers.any { it.equals(cleanPolicyNo, ignoreCase = true) }
+            curr.copy(
+                policyNumber = upper,
+                regNoDuplicate = duplicatePolicy
+            )
+        }
     }
 
     fun onExpiryDateSelected(epochMillis: Long) {
@@ -417,14 +431,53 @@ class AddPolicyViewModel @Inject constructor(
     }
 
     private fun checkExistingVehicle(normalized: String) {
-        if (_formState.value.isEditMode || normalized.length < 5) {
-            _formState.update { it.copy(existingClientInfo = null, isRenewalDetected = false) }
+        checkVehicleJob?.cancel()
+        val current = _formState.value
+        if (current.isEditMode) {
+            if (normalized.length < 5 || normalized.equals(current.originalRegNo, ignoreCase = true)) {
+                _formState.update {
+                    it.copy(
+                        regNoDuplicate = false,
+                        existingClientInfo = null,
+                        existingPolicyNumbers = emptyList(),
+                        isRenewalDetected = false
+                    )
+                }
+                return
+            }
+            checkVehicleJob = viewModelScope.launch {
+                val collides = repository.exists(normalized)
+                _formState.update { curr ->
+                    if (curr.isEditMode && curr.regNo == normalized) {
+                        curr.copy(
+                            regNoDuplicate = collides,
+                            existingClientInfo = null,
+                            existingPolicyNumbers = emptyList(),
+                            isRenewalDetected = false
+                        )
+                    } else curr
+                }
+            }
             return
         }
-        viewModelScope.launch {
+
+        if (normalized.length < 5) {
+            _formState.update {
+                it.copy(
+                    regNoDuplicate = false,
+                    existingClientInfo = null,
+                    existingPolicyNumbers = emptyList(),
+                    isRenewalDetected = false
+                )
+            }
+            return
+        }
+
+        checkVehicleJob = viewModelScope.launch {
             val existing = repository.getVehicleWithPoliciesDirect(normalized)
             if (existing != null && !_formState.value.isEditMode) {
                 val prevPolicy = existing.currentPolicy
+                val policyNumbers = existing.policies.map { it.policyNumber.trim() }.filter { it.isNotEmpty() }
                 val info = ExistingClientInfo(
                     clientName = existing.vehicle.customer.name,
                     mobile = existing.vehicle.customer.mobile,
@@ -436,6 +489,7 @@ class AddPolicyViewModel @Inject constructor(
                     clientSinceEpochMs = existing.earliestDate
                 )
                 _formState.update { curr ->
+                    if (curr.regNo != normalized || curr.isEditMode) return@update curr
                     val useName = curr.name.ifBlank { existing.vehicle.customer.name }
                     val useTitle = curr.title.ifBlank { existing.vehicle.customer.title ?: "" }
                     val useMobile = if (!FieldValidators.isValidMobile(curr.mobile) && FieldValidators.isValidMobile(existing.vehicle.customer.mobile)) {
@@ -457,9 +511,15 @@ class AddPolicyViewModel @Inject constructor(
                         formatDecimal(((prem / 1.18) * pctNum) / 100.0)
                     } else curr.commissionAmount
 
+                    val cleanPolicyNo = curr.policyNumber.trim()
+                    val duplicatePolicy = cleanPolicyNo.isNotEmpty() &&
+                        policyNumbers.any { it.equals(cleanPolicyNo, ignoreCase = true) }
+
                     curr.copy(
                         existingClientInfo = info,
+                        existingPolicyNumbers = policyNumbers,
                         isRenewalDetected = true,
+                        regNoDuplicate = duplicatePolicy,
                         name = useName,
                         title = useTitle,
                         mobile = useMobile,
@@ -474,7 +534,14 @@ class AddPolicyViewModel @Inject constructor(
                     )
                 }
             } else {
-                _formState.update { it.copy(existingClientInfo = null, isRenewalDetected = false) }
+                _formState.update {
+                    it.copy(
+                        existingClientInfo = null,
+                        existingPolicyNumbers = emptyList(),
+                        isRenewalDetected = false,
+                        regNoDuplicate = false
+                    )
+                }
             }
         }
     }
@@ -502,7 +569,8 @@ class AddPolicyViewModel @Inject constructor(
                     existingCloseReason = v.closeReason,
                     existingStartDate = p?.startDate,
                     existingAttachmentId = p?.attachmentId,
-                    regNo = RegistrationNormalizer.formatForDisplay(v.regNo),
+                    regNo = normalized,
+                    regNoDuplicate = false,
                     makeModel = v.makeModel ?: "",
                     vin = v.vin ?: "",
                     engineNo = v.engineNo ?: "",
@@ -533,8 +601,9 @@ class AddPolicyViewModel @Inject constructor(
         _formState.update { it.copy(regNo = normalized) }
         if (normalized.isEmpty()) return
 
-        // If in edit mode and the registration has not changed from original, don't re-check
+        // If in edit mode and the registration has not changed from original, clear duplicate flag and return
         if (_formState.value.isEditMode && normalized.equals(_formState.value.originalRegNo, ignoreCase = true)) {
+            _formState.update { it.copy(regNoDuplicate = false) }
             return
         }
 
@@ -582,6 +651,11 @@ class AddPolicyViewModel @Inject constructor(
 
     fun savePolicy(addAnother: Boolean = false) {
         val state = _formState.value
+        if (state.isSaving) return
+        if (state.regNoDuplicate) {
+            _formState.update { it.copy(hasAttemptedSave = true, showDuplicateDialog = true) }
+            return
+        }
         if (!state.isFormValid) {
             _formState.update { it.copy(hasAttemptedSave = true) }
             val errorMsg = when {
@@ -608,6 +682,33 @@ class AddPolicyViewModel @Inject constructor(
         _formState.update { it.copy(isSaving = true) }
 
         viewModelScope.launch {
+            // Repository-level duplicate safeguard matching primary-key registration and policy rules
+            if (state.isEditMode && state.originalRegNo != null && !state.originalRegNo.equals(normalizedReg, ignoreCase = true)) {
+                if (repository.exists(normalizedReg)) {
+                    _formState.update {
+                        it.copy(
+                            isSaving = false,
+                            regNoDuplicate = true,
+                            showDuplicateDialog = true
+                        )
+                    }
+                    return@launch
+                }
+            } else if (!state.isEditMode) {
+                val existing = repository.getVehicleWithPoliciesDirect(normalizedReg)
+                val cleanPolicyNo = state.policyNumber.trim()
+                if (existing != null && existing.policies.any { it.policyNumber.equals(cleanPolicyNo, ignoreCase = true) }) {
+                    _formState.update {
+                        it.copy(
+                            isSaving = false,
+                            regNoDuplicate = true,
+                            showDuplicateDialog = true
+                        )
+                    }
+                    return@launch
+                }
+            }
+
             val customer = Customer(
                 title = state.title.ifBlank { null },
                 name = FieldValidators.formatNameTitleCase(state.name),

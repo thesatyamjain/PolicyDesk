@@ -20,25 +20,27 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -51,8 +53,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -66,10 +76,13 @@ import com.policydesk.app.data.theme.AppTheme
 import com.policydesk.app.data.theme.ThemeManager
 import com.policydesk.app.ui.components.AppleAlertDialog
 import com.policydesk.app.ui.components.AppleSwitch
+import com.policydesk.app.ui.components.BindBackToTop
 import com.policydesk.app.ui.components.LiquidGlassCard
 import com.policydesk.app.ui.components.LiquidGlassGroupedSection
 import com.policydesk.app.ui.components.LiquidGlassListRow
-import com.policydesk.app.ui.components.LiquidGlassTopBar
+import com.policydesk.app.ui.detail.AccessibleStatusColors
+import com.policydesk.app.ui.detail.OverlaidGlassTopBar
+import com.policydesk.app.ui.detail.rememberAnimatorsEnabled
 import com.policydesk.app.ui.theme.AppleDarkSystemBlue
 import com.policydesk.app.ui.theme.AppleDarkSystemGreen
 import com.policydesk.app.ui.theme.AppleDarkSystemPurple
@@ -85,6 +98,8 @@ import com.policydesk.app.ui.theme.IosDarkLabelTertiary
 import com.policydesk.app.ui.theme.IosLabelPrimary
 import com.policydesk.app.ui.theme.IosLabelSecondary
 import com.policydesk.app.ui.theme.IosLabelTertiary
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -195,39 +210,40 @@ fun SettingsScreen(
     }
 
     // OTA Update Dialog is hosted globally by PolicyDeskNavHost
+    val isDark = isSystemInDarkTheme()
+    val animatorsEnabled = rememberAnimatorsEnabled()
+    val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
+    val labelSecondary = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
+    val labelTertiary = if (isDark) IosDarkLabelTertiary else IosLabelTertiary
+    val activeBlue = AccessibleStatusColors.blue(isDark)
+    val activeGreen = AccessibleStatusColors.green(isDark)
+    val activeOrange = AccessibleStatusColors.orange(isDark)
+    val activeRed = AccessibleStatusColors.red(isDark)
 
-    Scaffold(
-        topBar = {
-            LiquidGlassTopBar(
-                title = "Settings",
-                subtitle = "Preferences, Profile & Compliance",
-                onNavigateBack = onNavigateBack
-            )
-        },
-        containerColor = Color.Transparent,
-        contentWindowInsets = WindowInsets(0, 0, 0, 0)
-    ) { paddingValues ->
-        val isDark = isSystemInDarkTheme()
-        val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
-        val labelSecondary = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
-        val labelTertiary = if (isDark) IosDarkLabelTertiary else IosLabelTertiary
-        val activeBlue = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
+    val localHaze = remember { HazeState() }
+    val scrollState = rememberScrollState()
+    BindBackToTop(scrollState)
+    val isScrolled by remember { derivedStateOf { scrollState.value > 4 } }
+    var topBarHeightPx by remember { mutableIntStateOf(0) }
+    val topBarHeightDp = with(LocalDensity.current) { topBarHeightPx.toDp() }
 
-        val avatarFile = remember(state.avatarUpdateTimestamp, state.googleAccountPhotoUrl, state.isDriveLinked) {
-            if (state.isDriveLinked) {
-                val file = File(context.filesDir, "google_avatar.png")
-                if (file.exists() && file.length() > 0) file else null
-            } else null
-        }
+    val avatarFile = remember(state.avatarUpdateTimestamp, state.googleAccountPhotoUrl, state.isDriveLinked) {
+        if (state.isDriveLinked) {
+            val file = File(context.filesDir, "google_avatar.png")
+            if (file.exists() && file.length() > 0) file else null
+        } else null
+    }
 
+    Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = paddingValues.calculateTopPadding())
-                .verticalScroll(rememberScrollState())
-                .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 120.dp),
+                .hazeSource(state = localHaze)
+                .verticalScroll(scrollState)
+                .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            Spacer(modifier = Modifier.height(topBarHeightDp + 10.dp))
             // ==========================================
             // TOP IDENTITY HERO BANNER (Samsung One UI / Apple ID Spec)
             // ==========================================
@@ -337,20 +353,20 @@ fun SettingsScreen(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                                     modifier = Modifier
-                                        .background(AppleSystemGreen.copy(alpha = 0.14f), RoundedCornerShape(6.dp))
-                                        .border(1.dp, AppleSystemGreen.copy(alpha = 0.35f), RoundedCornerShape(6.dp))
+                                        .background(activeGreen.copy(alpha = 0.14f), RoundedCornerShape(6.dp))
+                                        .border(1.dp, activeGreen.copy(alpha = 0.35f), RoundedCornerShape(6.dp))
                                         .padding(horizontal = 6.dp, vertical = 2.5.dp)
                                 ) {
                                     Box(
                                         modifier = Modifier
                                             .size(6.dp)
-                                            .background(AppleSystemGreen, CircleShape)
+                                            .background(activeGreen, CircleShape)
                                     )
                                     Text(
                                         text = "ACTIVE VAULT",
                                         fontSize = 9.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = AppleSystemGreen,
+                                        color = activeGreen,
                                         letterSpacing = 0.4.sp
                                     )
                                 }
@@ -369,10 +385,16 @@ fun SettingsScreen(
                             Spacer(modifier = Modifier.height(4.dp))
 
                             Text(
-                                text = if (state.isSyncing) "Syncing with Google Drive..." else "${state.totalRecords} vehicles synced • Auto-Sync: Active",
+                                text = if (state.isSyncing) {
+                                    "Syncing with Google Drive..."
+                                } else {
+                                    val unit = if (state.totalRecords == 1) "vehicle" else "vehicles"
+                                    "${state.totalRecords} $unit synced • Auto-Sync: Active"
+                                },
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = if (state.isSyncing) AppleSystemOrange else activeBlue
+                                color = if (state.isSyncing) activeOrange else activeBlue,
+                                style = androidx.compose.ui.text.TextStyle(fontFeatureSettings = "tnum")
                             )
                         }
 
@@ -392,6 +414,7 @@ fun SettingsScreen(
                                 )
                             } else {
                                 val monogram = accountName.firstOrNull()?.uppercaseChar()?.toString() ?: "P"
+                                val blueFill = AccessibleStatusColors.blueFill(isDark)
                                 Box(
                                     modifier = Modifier
                                         .size(54.dp)
@@ -399,8 +422,8 @@ fun SettingsScreen(
                                         .background(
                                             Brush.linearGradient(
                                                 colors = listOf(
-                                                    activeBlue,
-                                                    Color(0xFF5AC8FA)
+                                                    blueFill,
+                                                    Color(0xFF0051B3)
                                                 )
                                             )
                                         )
@@ -433,52 +456,83 @@ fun SettingsScreen(
             // GROUP 1: PREFERENCES & IDENTITY
             // ==========================================
             val currentThemeMode by ThemeManager.currentTheme.collectAsState()
+            val liveThemeLabel = when (currentThemeMode) {
+                AppTheme.DARK -> "Active: True Dark"
+                AppTheme.LIGHT -> "Active: Light"
+                AppTheme.SYSTEM -> "Active: System (${if (isDark) "Dark" else "Light"})"
+            }
 
             LiquidGlassGroupedSection(title = "Preferences") {
-                // Interactive 3-Segment Theme Switcher Pill
-                Text(
-                    text = "VISUAL APPEARANCE",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = labelSecondary,
-                    letterSpacing = 0.4.sp,
-                    modifier = Modifier.padding(bottom = 6.dp)
-                )
+                // Interactive 3-Segment Theme Switcher Pill with live state indicator
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "VISUAL APPEARANCE",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = labelSecondary,
+                        letterSpacing = 0.4.sp
+                    )
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(activeBlue.copy(alpha = 0.12f))
+                            .padding(horizontal = 7.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = liveThemeLabel,
+                            fontSize = 10.5.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = activeBlue
+                        )
+                    }
+                }
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    val blueFill = AccessibleStatusColors.blueFill(isDark)
                     AppTheme.values().forEach { themeOption ->
                         val isSelected = currentThemeMode == themeOption
                         val pillShape = RoundedCornerShape(10.dp)
+                        val optionText = when (themeOption) {
+                            AppTheme.DARK -> "True Dark"
+                            AppTheme.LIGHT -> "Light"
+                            AppTheme.SYSTEM -> "System"
+                        }
 
                         Box(
                             modifier = Modifier
                                 .weight(1f)
                                 .clip(pillShape)
                                 .background(
-                                    if (isSelected) activeBlue else (if (isDark) Color(0x33545458) else Color(0x14767680)),
+                                    if (isSelected) blueFill else (if (isDark) Color(0x33545458) else Color(0x14767680)),
                                     pillShape
                                 )
                                 .border(
                                     width = 1.dp,
-                                    color = if (isSelected) activeBlue else (if (isDark) Color(0x33FFFFFF) else Color(0x2E000000)),
+                                    color = if (isSelected) blueFill else (if (isDark) Color(0x33FFFFFF) else Color(0x2E000000)),
                                     shape = pillShape
                                 )
-                                .clickable {
+                                .clickable(role = Role.Tab) {
                                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                     ThemeManager.setTheme(context, themeOption)
+                                }
+                                .semantics {
+                                    selected = isSelected
+                                    contentDescription = "$optionText theme"
                                 }
                                 .padding(vertical = 10.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = when (themeOption) {
-                                    AppTheme.DARK -> "True Dark"
-                                    AppTheme.LIGHT -> "Light"
-                                    AppTheme.SYSTEM -> "System"
-                                },
+                                text = optionText,
                                 fontSize = 12.sp,
                                 fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
                                 color = if (isSelected) Color.White else labelPrimary
@@ -535,17 +589,14 @@ fun SettingsScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
+                            val aiBadgeColor = if (isCloudflare || hasApiKey) activeGreen else activeOrange
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(6.dp))
-                                    .background(
-                                        if (isCloudflare || hasApiKey) AppleSystemGreen.copy(alpha = 0.14f)
-                                        else AppleSystemOrange.copy(alpha = 0.14f)
-                                    )
+                                    .background(aiBadgeColor.copy(alpha = 0.14f))
                                     .border(
                                         1.dp,
-                                        if (isCloudflare || hasApiKey) AppleSystemGreen.copy(alpha = 0.35f)
-                                        else AppleSystemOrange.copy(alpha = 0.35f),
+                                        aiBadgeColor.copy(alpha = 0.35f),
                                         RoundedCornerShape(6.dp)
                                     )
                                     .padding(horizontal = 6.dp, vertical = 2.dp)
@@ -554,7 +605,7 @@ fun SettingsScreen(
                                     text = if (isCloudflare) "EDGE READY" else if (hasApiKey) "ACTIVE" else "SETUP",
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = if (isCloudflare || hasApiKey) AppleSystemGreen else AppleSystemOrange
+                                    color = aiBadgeColor
                                 )
                             }
                             Icon(
@@ -647,7 +698,7 @@ fun SettingsScreen(
                                 text = "Disconnect",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = AppleSystemRed
+                                color = activeRed
                             )
                         },
                         onClick = { showDisconnectConfirmDialog = true }
@@ -657,7 +708,7 @@ fun SettingsScreen(
                 // Device Rolling Snapshots Row
                 LiquidGlassListRow(
                     title = "Device Rolling Snapshots",
-                    subtitle = "${state.localSnapshots.size} offline rollback points available",
+                    subtitle = "${state.localSnapshots.size} offline rollback ${if (state.localSnapshots.size == 1) "point" else "points"} available",
                     icon = AppleIcons.History,
                     iconBgColor = AppleSystemOrange,
                     trailingContent = {
@@ -721,16 +772,32 @@ fun SettingsScreen(
             // GROUP 4: NOTIFICATIONS & SECURITY
             // ==========================================
             LiquidGlassGroupedSection(title = "Notifications & Security") {
+                val notifSubtext = when {
+                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !state.hasNotificationPermission ->
+                        "Permission Required • Allow notifications below"
+                    state.areNotificationsEnabled ->
+                        "Active • Daily background checks at 9:00 AM"
+                    else ->
+                        "Paused • Renewal reminders muted"
+                }
+
                 // Policy Expiry Alerts Row
                 LiquidGlassListRow(
                     title = "Policy Expiry Alerts",
-                    subtitle = "Daily background renewal checks at 9:00 AM",
+                    subtitle = notifSubtext,
                     icon = AppleIcons.Bell,
                     iconBgColor = AppleSystemOrange,
+                    modifier = Modifier.toggleable(
+                        value = state.areNotificationsEnabled,
+                        role = Role.Switch,
+                        onValueChange = viewModel::toggleNotifications
+                    ),
                     trailingContent = {
                         AppleSwitch(
                             checked = state.areNotificationsEnabled,
-                            onCheckedChange = viewModel::toggleNotifications
+                            onCheckedChange = {},
+                            enabled = false,
+                            modifier = Modifier.clearAndSetSemantics {}
                         )
                     }
                 )
@@ -742,8 +809,8 @@ fun SettingsScreen(
                             .fillMaxWidth()
                             .padding(vertical = 4.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .background(AppleSystemOrange.copy(alpha = if (isDark) 0.14f else 0.08f))
-                            .border(0.5.dp, AppleSystemOrange.copy(alpha = 0.35f), RoundedCornerShape(12.dp))
+                            .background(activeOrange.copy(alpha = if (isDark) 0.14f else 0.08f))
+                            .border(0.5.dp, activeOrange.copy(alpha = 0.35f), RoundedCornerShape(12.dp))
                             .padding(10.dp)
                     ) {
                         Row(
@@ -760,8 +827,8 @@ fun SettingsScreen(
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(6.dp))
-                                    .background(AppleSystemOrange.copy(alpha = 0.20f))
-                                    .clickable {
+                                    .background(activeOrange.copy(alpha = 0.16f))
+                                    .clickable(role = Role.Button) {
                                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                         notifPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                                     }
@@ -771,7 +838,7 @@ fun SettingsScreen(
                                     text = "Allow",
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = AppleSystemOrange
+                                    color = activeOrange
                                 )
                             }
                         }
@@ -781,14 +848,25 @@ fun SettingsScreen(
                 // App Lock & Biometrics Row
                 LiquidGlassListRow(
                     title = "App Lock & Biometrics",
-                    subtitle = "Require PIN or biometric authentication on app launch",
+                    subtitle = if (state.isAppLockEnabled) {
+                        "Active • Require PIN or biometrics on launch"
+                    } else {
+                        "Off • Tap to enable PIN or biometric lock"
+                    },
                     icon = AppleIcons.Lock,
                     iconBgColor = AppleSystemBlue,
                     showDivider = false,
+                    modifier = Modifier.toggleable(
+                        value = state.isAppLockEnabled,
+                        role = Role.Switch,
+                        onValueChange = viewModel::toggleAppLock
+                    ),
                     trailingContent = {
                         AppleSwitch(
                             checked = state.isAppLockEnabled,
-                            onCheckedChange = viewModel::toggleAppLock
+                            onCheckedChange = {},
+                            enabled = false,
+                            modifier = Modifier.clearAndSetSemantics {}
                         )
                     }
                 )
@@ -980,7 +1058,7 @@ fun SettingsScreen(
                         Icon(
                             imageVector = AppleIcons.ChevronRight,
                             contentDescription = null,
-                            tint = AppleSystemRed,
+                            tint = activeRed,
                             modifier = Modifier.size(16.dp)
                         )
                     },
@@ -1017,8 +1095,24 @@ fun SettingsScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(
+                modifier = Modifier
+                    .height(104.dp)
+                    .navigationBarsPadding()
+            )
         }
+
+        OverlaidGlassTopBar(
+            title = "Settings",
+            subtitle = "Preferences, Profile & Compliance",
+            isScrolled = isScrolled,
+            hazeState = localHaze,
+            onNavigateBack = onNavigateBack,
+            animatorsEnabled = animatorsEnabled,
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .onSizeChanged { topBarHeightPx = it.height }
+        )
     }
 
     // ==========================================

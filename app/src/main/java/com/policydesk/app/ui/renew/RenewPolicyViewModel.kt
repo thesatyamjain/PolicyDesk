@@ -9,6 +9,7 @@ import com.policydesk.app.domain.model.PolicySource
 import com.policydesk.app.domain.model.PolicyStatus
 import com.policydesk.app.domain.model.RegistrationNormalizer
 import com.policydesk.app.domain.model.SaleType
+import com.policydesk.app.domain.model.Vehicle
 import com.policydesk.app.domain.model.VehicleWithPolicies
 import com.policydesk.app.domain.repository.VehicleRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -34,22 +35,64 @@ data class RenewFormState(
     val notes: String = "",
 
     val earlierExpiryWarning: Boolean = false,
-    val isSaving: Boolean = false
+    val isSaving: Boolean = false,
+    val isRenewed: Boolean = false,
+    val renewalToken: Long = 0L
 ) {
-    val isValid: Boolean
+    val isPolicyNumberValid: Boolean
+        get() = FieldValidators.isValidPolicyNumber(newPolicyNumber)
+
+    val isExpiryValid: Boolean
+        get() = isValidFutureExpiry(newExpiryEpochMs)
+
+    val isPremiumValid: Boolean
         get() {
-            val validPolicyNo = FieldValidators.isValidPolicyNumber(newPolicyNumber)
-            val validExpiry = newExpiryEpochMs != null && newExpiryEpochMs > System.currentTimeMillis()
             val premiumNum = newPremium.toDoubleOrNull()
-            val validPremium = premiumNum != null && premiumNum > 0.0
-            return validPolicyNo && validExpiry && validPremium
+            return premiumNum != null && !premiumNum.isNaN() && !premiumNum.isInfinite() && premiumNum > 0.0
         }
+
+    val validationErrors: List<String>
+        get() = buildList {
+            if (newPolicyNumber.isBlank()) {
+                add("Policy Number")
+            } else if (!isPolicyNumberValid) {
+                add("Valid Policy Number")
+            }
+            if (newExpiryEpochMs == null) {
+                add("Expiry Date")
+            } else if (!isExpiryValid) {
+                add("Future Expiry Date")
+            }
+            if (!isPremiumValid) {
+                add("Positive Premium")
+            }
+        }
+
+    val isValid: Boolean
+        get() = validationErrors.isEmpty()
+
+    companion object {
+        fun isValidFutureExpiry(epochMs: Long?): Boolean {
+            if (epochMs == null) return false
+            val selectedDate = Instant.ofEpochMilli(epochMs)
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate()
+            return selectedDate.isAfter(LocalDate.now())
+        }
+    }
 }
 
 sealed interface RenewUiEvent {
     data class RenewSuccess(val regNo: String) : RenewUiEvent
+    object RenewalReverted : RenewUiEvent
     data class ShowToast(val message: String) : RenewUiEvent
 }
+
+private data class RenewalUndoSnapshot(
+    val previousVehicle: Vehicle,
+    val previousPolicy: Policy,
+    val createdPolicyId: String
+)
 
 @HiltViewModel
 class RenewPolicyViewModel @Inject constructor(
@@ -64,6 +107,8 @@ class RenewPolicyViewModel @Inject constructor(
 
     private val _uiEvent = MutableSharedFlow<RenewUiEvent>()
     val uiEvent: SharedFlow<RenewUiEvent> = _uiEvent.asSharedFlow()
+
+    private var undoSnapshot: RenewalUndoSnapshot? = null
 
     init {
         viewModelScope.launch {
@@ -86,7 +131,8 @@ class RenewPolicyViewModel @Inject constructor(
                     it.copy(
                         currentVehicle = vehicle,
                         newExpiryEpochMs = suggestedExpiry,
-                        newPremium = initialPremium
+                        newPremium = initialPremium,
+                        notes = vehicle.vehicle.notes ?: ""
                     )
                 }
             }
@@ -94,10 +140,12 @@ class RenewPolicyViewModel @Inject constructor(
     }
 
     fun onPolicyNumberChanged(no: String) {
-        _formState.update { it.copy(newPolicyNumber = no.trim().uppercase()) }
+        if (_formState.value.isRenewed) return
+        _formState.update { it.copy(newPolicyNumber = no.uppercase()) }
     }
 
     fun onExpiryDateSelected(epochMillis: Long) {
+        if (_formState.value.isRenewed) return
         val currentExpiry = _formState.value.currentVehicle?.currentPolicy?.expiryDate ?: 0L
         val isEarlier = epochMillis <= currentExpiry
         _formState.update {
@@ -109,6 +157,7 @@ class RenewPolicyViewModel @Inject constructor(
     }
 
     fun onPremiumChanged(premium: String) {
+        if (_formState.value.isRenewed) return
         val filtered = buildString {
             var hasDot = false
             for (ch in premium) {
@@ -124,20 +173,31 @@ class RenewPolicyViewModel @Inject constructor(
     }
 
     fun onNotesChanged(notes: String) {
+        if (_formState.value.isRenewed) return
         _formState.update { it.copy(notes = notes) }
     }
 
     fun saveRenewal() {
         val state = _formState.value
+        if (state.isSaving || state.isRenewed || !state.isValid) return
         val vehicleWithPolicies = state.currentVehicle ?: return
-        if (!state.isValid) return
-
-        val prevPolicy = vehicleWithPolicies.currentPolicy ?: return
+        val prevPolicy = vehicleWithPolicies.currentPolicy
+        if (prevPolicy == null) {
+            viewModelScope.launch {
+                _uiEvent.emit(RenewUiEvent.ShowToast("No active policy found to renew"))
+            }
+            return
+        }
 
         _formState.update { it.copy(isSaving = true) }
 
         viewModelScope.launch {
             val now = System.currentTimeMillis()
+            val newPrem = state.newPremium.toDoubleOrNull() ?: 0.0
+            val carriedCommPct = prevPolicy.commissionPercentage
+            val newCommAmount = carriedCommPct?.let { pct ->
+                ((newPrem / 1.18) * pct) / 100.0
+            }
 
             // 1. Mark previous policy as Renewed
             val updatedPrevPolicy = prevPolicy.copy(
@@ -153,7 +213,9 @@ class RenewPolicyViewModel @Inject constructor(
                 policyNumber = state.newPolicyNumber.trim(),
                 expiryDate = state.newExpiryEpochMs!!,
                 startDate = state.startDateEpochMs ?: now,
-                totalPremium = state.newPremium.toDoubleOrNull() ?: 0.0,
+                totalPremium = newPrem,
+                commissionPercentage = carriedCommPct,
+                commissionAmount = newCommAmount,
                 status = PolicyStatus.ACTIVE,
                 source = PolicySource.FORM,
                 saleType = SaleType.RENEWAL,
@@ -162,17 +224,60 @@ class RenewPolicyViewModel @Inject constructor(
             )
 
             val updatedVehicle = vehicleWithPolicies.vehicle.copy(
+                notes = state.notes.trim().ifBlank { null },
                 updatedAt = now,
                 isClosed = false,
                 closeReason = null
+            )
+
+            undoSnapshot = RenewalUndoSnapshot(
+                previousVehicle = vehicleWithPolicies.vehicle,
+                previousPolicy = prevPolicy,
+                createdPolicyId = newPolicy.id
             )
 
             // Save both
             repository.saveVehicleAndPolicy(updatedVehicle, updatedPrevPolicy)
             repository.saveVehicleAndPolicy(updatedVehicle, newPolicy)
 
-            _formState.update { it.copy(isSaving = false) }
+            val refreshed = repository.getVehicleWithPoliciesDirect(vehicleWithPolicies.vehicle.regNo)
+
+            _formState.update {
+                it.copy(
+                    currentVehicle = refreshed ?: it.currentVehicle,
+                    isSaving = false,
+                    isRenewed = true,
+                    renewalToken = System.nanoTime()
+                )
+            }
             _uiEvent.emit(RenewUiEvent.RenewSuccess(vehicleWithPolicies.vehicle.regNo))
+        }
+    }
+
+    fun undoRenewal() {
+        val snap = undoSnapshot ?: return
+        undoSnapshot = null
+        // Clear token synchronously so any pending UI auto-pop timer cancels immediately
+        _formState.update {
+            it.copy(
+                isRenewed = false,
+                renewalToken = 0L,
+                isSaving = true
+            )
+        }
+        viewModelScope.launch {
+            repository.rollbackImport(emptyList(), listOf(snap.createdPolicyId))
+            repository.saveVehicleAndPolicy(snap.previousVehicle, snap.previousPolicy)
+            val refreshed = repository.getVehicleWithPoliciesDirect(snap.previousVehicle.regNo)
+            _formState.update {
+                it.copy(
+                    currentVehicle = refreshed ?: it.currentVehicle,
+                    isSaving = false,
+                    isRenewed = false,
+                    renewalToken = 0L
+                )
+            }
+            _uiEvent.emit(RenewUiEvent.RenewalReverted)
         }
     }
 }
