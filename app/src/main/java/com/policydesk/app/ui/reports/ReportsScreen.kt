@@ -100,6 +100,7 @@ import com.policydesk.app.ui.detail.DetailRow
 import com.policydesk.app.ui.navigation.EmptyStateHaloBadge
 import com.policydesk.app.ui.navigation.FloatingGlassHeader
 import com.policydesk.app.ui.navigation.LocalReduceMotion
+import com.policydesk.app.ui.navigation.aaBlueFill
 import com.policydesk.app.ui.navigation.rememberIsListScrolled
 import com.policydesk.app.ui.theme.AppleDarkSystemBlue
 import com.policydesk.app.ui.theme.AppleDarkSystemGreen
@@ -204,12 +205,12 @@ fun ReportsScreen(
                             modifier = Modifier
                                 .clip(pillShape)
                                 .background(
-                                    color = if (isSelected) accentBlue else unselectedBg,
+                                    color = if (isSelected) aaBlueFill(isDark) else unselectedBg,
                                     shape = pillShape
                                 )
                                 .border(
                                     width = 1.dp,
-                                    color = if (isSelected) accentBlue else unselectedBorder,
+                                    color = if (isSelected) aaBlueFill(isDark) else unselectedBorder,
                                     shape = pillShape
                                 )
                                 .semantics {
@@ -745,7 +746,7 @@ fun MissedRenewalsTabContent(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(10.dp))
-                            .background(if (isSelected) accentBlue else unselectedBg)
+                            .background(if (isSelected) aaBlueFill(isDark) else unselectedBg)
                             .semantics {
                                 role = Role.Button
                                 selected = isSelected

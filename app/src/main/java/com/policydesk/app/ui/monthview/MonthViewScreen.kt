@@ -68,6 +68,7 @@ import com.policydesk.app.ui.dashboard.VehicleExpiryCard
 import com.policydesk.app.ui.navigation.EmptyStateHaloBadge
 import com.policydesk.app.ui.navigation.FloatingGlassHeader
 import com.policydesk.app.ui.navigation.LocalReduceMotion
+import com.policydesk.app.ui.navigation.aaBlueFill
 import com.policydesk.app.ui.navigation.rememberAnimatedCount
 import com.policydesk.app.ui.navigation.rememberIsListScrolled
 import com.policydesk.app.ui.theme.AppleDarkSystemBlue
@@ -625,7 +626,7 @@ private fun CalendarDayCell(
     val dayShape = remember { RoundedCornerShape(10.dp) }
 
     val targetBg = when {
-        isSelected -> activeBlue
+        isSelected -> aaBlueFill(isDark)
         info.policyCount > 0 -> activeBlue.copy(alpha = if (isDark) 0.16f else 0.10f)
         else -> Color.Transparent
     }

@@ -269,6 +269,13 @@ internal fun EmptyStateHaloBadge(
     }
 }
 
+/**
+ * WCAG AA solid blue fill behind [Color.White] text/icons while keeping
+ * theme foreground accent tokens intact.
+ */
+internal fun aaBlueFill(isDark: Boolean): Color =
+    if (isDark) Color(0xFF0066D6) else Color(0xFF0062CC)
+
 sealed class Screen(val route: String) {
     object Dashboard : Screen("dashboard")
     object MonthView : Screen("month_view")

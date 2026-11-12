@@ -99,6 +99,7 @@ import com.policydesk.app.ui.components.liquidGlass
 import com.policydesk.app.ui.navigation.EmptyStateHaloBadge
 import com.policydesk.app.ui.navigation.FloatingGlassHeader
 import com.policydesk.app.ui.navigation.LocalReduceMotion
+import com.policydesk.app.ui.navigation.aaBlueFill
 import com.policydesk.app.ui.navigation.rememberAnimatedCount
 import com.policydesk.app.ui.navigation.rememberIsListScrolled
 import com.policydesk.app.ui.theme.AppleDarkSystemBlue
@@ -549,7 +550,7 @@ fun DashboardScreen(
                                     modifier = Modifier
                                         .size(34.dp)
                                         .clip(CircleShape)
-                                        .background(if (isDark) AppleDarkSystemBlue else AppleSystemBlue, CircleShape)
+                                        .background(aaBlueFill(isDark), CircleShape)
                                         .semantics { role = Role.Button }
                                         .clickable {
                                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -877,7 +878,7 @@ fun DashboardScreen(
                                     Box(
                                         modifier = Modifier
                                             .clip(RoundedCornerShape(10.dp))
-                                            .background(actionTint)
+                                            .background(aaBlueFill(isDark))
                                             .padding(horizontal = 10.dp, vertical = 6.dp)
                                     ) {
                                         Text(
@@ -939,7 +940,7 @@ fun DashboardScreen(
                             )
                             val pillBg by animateColorAsState(
                                 targetValue = if (isSelected) {
-                                    actionTint
+                                    aaBlueFill(isDark)
                                 } else {
                                     if (isDark) Color(0xFF2C2C2E) else Color.White
                                 },
@@ -1310,7 +1311,7 @@ fun VehicleExpiryCard(
                                 }
                                 .clip(CircleShape)
                                 .background(
-                                    if (isSelected) actionBlue else Color.Transparent
+                                    if (isSelected) aaBlueFill(isDark) else Color.Transparent
                                 )
                                 .border(
                                     width = 2.dp,
