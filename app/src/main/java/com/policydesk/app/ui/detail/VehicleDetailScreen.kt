@@ -135,7 +135,9 @@ import kotlinx.coroutines.launch
  */
 internal object AccessibleStatusColors {
     fun blue(isDark: Boolean): Color = if (isDark) Color(0xFF4CA6FF) else Color(0xFF0056B8)
+    fun blueFill(isDark: Boolean): Color = if (isDark) Color(0xFF0066D6) else Color(0xFF0062CC)
     fun green(isDark: Boolean): Color = if (isDark) Color(0xFF34D375) else Color(0xFF146C34)
+    fun greenFill(): Color = Color(0xFF15803D)
     fun orange(isDark: Boolean): Color = if (isDark) Color(0xFFFBBF24) else Color(0xFF9A4104)
     fun deepOrange(isDark: Boolean): Color = if (isDark) Color(0xFFFB923C) else Color(0xFFB33909)
     fun red(isDark: Boolean): Color = if (isDark) Color(0xFFFF6B63) else Color(0xFFBE1B1B)
@@ -947,7 +949,7 @@ private fun HouseholdWhatsAppSheet(
     val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
     val labelSecondary = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
     val accentBlue = AccessibleStatusColors.blue(isDark)
-    val accentGreen = AccessibleStatusColors.green(isDark)
+    val whatsappFillGreen = AccessibleStatusColors.greenFill()
 
     var selectedRegNo by remember(items) { mutableStateOf(items.first().vehicle.regNo) }
     val selectedItem = items.firstOrNull { it.vehicle.regNo == selectedRegNo } ?: items.first()
@@ -1096,7 +1098,7 @@ private fun HouseholdWhatsAppSheet(
             AppleButton(
                 text = "Open in WhatsApp",
                 icon = AppleIcons.WhatsApp,
-                containerColor = accentGreen,
+                containerColor = whatsappFillGreen,
                 onClick = {
                     launchWhatsAppMessage(
                         context = context,

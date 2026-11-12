@@ -680,8 +680,8 @@ private fun SwipeToRenewSlider(
 
     val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
     val accentBlue = AccessibleStatusColors.blue(isDark)
-    val fillBlue = if (isDark) Color(0xFF0066D6) else Color(0xFF0062CC)
-    val fillGreen = Color(0xFF15803D)
+    val fillBlue = AccessibleStatusColors.blueFill(isDark)
+    val fillGreen = AccessibleStatusColors.greenFill()
     val trackBg = if (isDark) Color(0x38545458) else Color(0x24767680)
     val trackBorder = if (isDark) Color(0x33FFFFFF) else Color(0x26000000)
 
@@ -689,7 +689,7 @@ private fun SwipeToRenewSlider(
         modifier = Modifier
             .fillMaxWidth()
             .height(trackHeight)
-            .alpha(if (enabled || isCompleted) 1f else 0.48f)
+            .alpha(if (enabled || isCompleted || isSaving) 1f else 0.48f)
             .clip(CircleShape)
             .background(trackBg, CircleShape)
             .border(1.dp, trackBorder, CircleShape)
@@ -727,10 +727,10 @@ private fun SwipeToRenewSlider(
         val trackWidthPx = with(density) { maxWidth.toPx() }
         val maxTravelPx = (trackWidthPx - thumbSizePx - paddingPx * 2f).coerceAtLeast(0f)
 
-        // Snap thumb to right when completed, or smoothly back to 0 when reset (Undo / invalidation)
-        LaunchedEffect(isCompleted, resetKey, enabled, maxTravelPx) {
+        // Snap thumb to right when saving/completed, or smoothly back to 0 when reset (Undo / invalidation)
+        LaunchedEffect(isCompleted, isSaving, resetKey, enabled, maxTravelPx) {
             if (isDragging) return@LaunchedEffect
-            val target = if (isCompleted) maxTravelPx else 0f
+            val target = if (isCompleted || isSaving) maxTravelPx else 0f
             if (animatorsEnabled) {
                 dragAnimatable.animateTo(target, AppleSprings.Smooth)
             } else {

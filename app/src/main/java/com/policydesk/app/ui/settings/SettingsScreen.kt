@@ -58,6 +58,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
@@ -413,6 +414,7 @@ fun SettingsScreen(
                                 )
                             } else {
                                 val monogram = accountName.firstOrNull()?.uppercaseChar()?.toString() ?: "P"
+                                val blueFill = AccessibleStatusColors.blueFill(isDark)
                                 Box(
                                     modifier = Modifier
                                         .size(54.dp)
@@ -420,8 +422,8 @@ fun SettingsScreen(
                                         .background(
                                             Brush.linearGradient(
                                                 colors = listOf(
-                                                    activeBlue,
-                                                    Color(0xFF5AC8FA)
+                                                    blueFill,
+                                                    Color(0xFF0051B3)
                                                 )
                                             )
                                         )
@@ -495,6 +497,7 @@ fun SettingsScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    val blueFill = AccessibleStatusColors.blueFill(isDark)
                     AppTheme.values().forEach { themeOption ->
                         val isSelected = currentThemeMode == themeOption
                         val pillShape = RoundedCornerShape(10.dp)
@@ -509,12 +512,12 @@ fun SettingsScreen(
                                 .weight(1f)
                                 .clip(pillShape)
                                 .background(
-                                    if (isSelected) activeBlue else (if (isDark) Color(0x33545458) else Color(0x14767680)),
+                                    if (isSelected) blueFill else (if (isDark) Color(0x33545458) else Color(0x14767680)),
                                     pillShape
                                 )
                                 .border(
                                     width = 1.dp,
-                                    color = if (isSelected) activeBlue else (if (isDark) Color(0x33FFFFFF) else Color(0x2E000000)),
+                                    color = if (isSelected) blueFill else (if (isDark) Color(0x33FFFFFF) else Color(0x2E000000)),
                                     shape = pillShape
                                 )
                                 .clickable(role = Role.Tab) {
@@ -792,7 +795,9 @@ fun SettingsScreen(
                     trailingContent = {
                         AppleSwitch(
                             checked = state.areNotificationsEnabled,
-                            onCheckedChange = viewModel::toggleNotifications
+                            onCheckedChange = {},
+                            enabled = false,
+                            modifier = Modifier.clearAndSetSemantics {}
                         )
                     }
                 )
@@ -859,7 +864,9 @@ fun SettingsScreen(
                     trailingContent = {
                         AppleSwitch(
                             checked = state.isAppLockEnabled,
-                            onCheckedChange = viewModel::toggleAppLock
+                            onCheckedChange = {},
+                            enabled = false,
+                            modifier = Modifier.clearAndSetSemantics {}
                         )
                     }
                 )

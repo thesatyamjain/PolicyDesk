@@ -521,6 +521,7 @@ fun SettingsAiConfigSheet(
                     AiProvider.values().forEach { provider ->
                         val isSelected = state.aiConfig.provider == provider
                         val pillShape = RoundedCornerShape(10.dp)
+                        val blueFill = AccessibleStatusColors.blueFill(isDark)
                         val providerLabel = when (provider) {
                             AiProvider.CLOUDFLARE_AI -> "Cloudflare"
                             AiProvider.GEMINI -> "Gemini"
@@ -532,12 +533,12 @@ fun SettingsAiConfigSheet(
                                 .weight(1f)
                                 .clip(pillShape)
                                 .background(
-                                    if (isSelected) activeBlue else (if (isDark) Color(0x33545458) else Color(0x14767680)),
+                                    if (isSelected) blueFill else (if (isDark) Color(0x33545458) else Color(0x14767680)),
                                     pillShape
                                 )
                                 .border(
                                     width = 1.dp,
-                                    color = if (isSelected) activeBlue else (if (isDark) Color(0x33FFFFFF) else Color(0x2E000000)),
+                                    color = if (isSelected) blueFill else (if (isDark) Color(0x33FFFFFF) else Color(0x2E000000)),
                                     shape = pillShape
                                 )
                                 .clickable(role = Role.Tab) {
