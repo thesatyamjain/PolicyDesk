@@ -355,4 +355,80 @@ class SpreadsheetAndReportsTest {
         assertEquals("HDFC ERGO General Insurance", row.insurer)
         assertEquals(Sector.PRIVATE, row.sector)
     }
+
+    @Test
+    fun reportsPeriodChipLabels_align_with_indian_financial_year() {
+        assertEquals("Nov 2026", com.policydesk.app.ui.reports.formatReportPeriodChipLabel(ReportPeriod.Month(2026, 11)))
+        // Calendar Q4 (Oct-Dec 2026) -> Indian Q3 FY27
+        assertEquals("Q3 FY27", com.policydesk.app.ui.reports.formatReportPeriodChipLabel(ReportPeriod.Quarter(2026, 4)))
+        // Calendar Q1 (Jan-Mar 2026) -> Indian Q4 FY26
+        assertEquals("Q4 FY26", com.policydesk.app.ui.reports.formatReportPeriodChipLabel(ReportPeriod.Quarter(2026, 1)))
+        // Calendar Q2 (Apr-Jun 2026) -> Indian Q1 FY27
+        assertEquals("Q1 FY27", com.policydesk.app.ui.reports.formatReportPeriodChipLabel(ReportPeriod.Quarter(2026, 2)))
+        assertEquals("FY 2026-27", com.policydesk.app.ui.reports.formatReportPeriodChipLabel(ReportPeriod.FinancialYear(2026)))
+        assertEquals("FY 2099-00", com.policydesk.app.ui.reports.formatReportPeriodChipLabel(ReportPeriod.FinancialYear(2099)))
+    }
+
+    @Test
+    fun computeUrgentRiskSummary_separates_overdue_and_due_soon_without_double_counting() {
+        val zone = ZoneId.systemDefault()
+        val today = LocalDate.of(2026, 11, 11)
+        val todayEpochDay = today.toEpochDay()
+        fun epochForOffset(days: Long): Long =
+            today.plusDays(days).atStartOfDay(zone).toInstant().toEpochMilli()
+
+        val customer = Customer(name = "Test Client", mobile = "9876543210", address = "Delhi")
+
+        val overdueVeh = VehicleWithPolicies(
+            vehicle = Vehicle(regNo = "DL01AB0001", customer = customer),
+            policies = listOf(
+                Policy(vehicleRegNo = "DL01AB0001", companySector = Sector.PRIVATE, insurer = "Digit", policyNumber = "P1", expiryDate = epochForOffset(-5), totalPremium = 10000.0)
+            )
+        )
+        val dueTodayVeh = VehicleWithPolicies(
+            vehicle = Vehicle(regNo = "DL01AB0002", customer = customer),
+            policies = listOf(
+                Policy(vehicleRegNo = "DL01AB0002", companySector = Sector.PRIVATE, insurer = "Digit", policyNumber = "P2", expiryDate = epochForOffset(0), totalPremium = 12000.0)
+            )
+        )
+        val dueIn5DaysVeh = VehicleWithPolicies(
+            vehicle = Vehicle(regNo = "DL01AB0003", customer = customer),
+            policies = listOf(
+                Policy(vehicleRegNo = "DL01AB0003", companySector = Sector.PSU, insurer = "NIC", policyNumber = "P3", expiryDate = epochForOffset(5), totalPremium = 15000.0)
+            )
+        )
+        val safeFutureVeh = VehicleWithPolicies(
+            vehicle = Vehicle(regNo = "DL01AB0004", customer = customer),
+            policies = listOf(
+                Policy(vehicleRegNo = "DL01AB0004", companySector = Sector.PSU, insurer = "NIC", policyNumber = "P4", expiryDate = epochForOffset(20), totalPremium = 20000.0)
+            )
+        )
+        val closedOverdueVeh = VehicleWithPolicies(
+            vehicle = Vehicle(regNo = "DL01AB0005", customer = customer, isClosed = true, closeReason = "Sold"),
+            policies = listOf(
+                Policy(vehicleRegNo = "DL01AB0005", companySector = Sector.PRIVATE, insurer = "Digit", policyNumber = "P5", expiryDate = epochForOffset(-10), totalPremium = 9000.0)
+            )
+        )
+
+        val summary = com.policydesk.app.ui.reports.computeUrgentRiskSummary(
+            vehicles = listOf(overdueVeh, dueTodayVeh, dueIn5DaysVeh, safeFutureVeh, closedOverdueVeh),
+            todayEpochDay = todayEpochDay
+        )
+
+        assertEquals(1, summary.overdueCount)
+        assertEquals(2, summary.dueSoonCount)
+        assertEquals(listOf("DL01AB0001"), summary.overduePolicies.map { it.vehicle.regNo })
+        assertEquals(listOf("DL01AB0002", "DL01AB0003"), summary.dueSoonPolicies.map { it.vehicle.regNo })
+        assertEquals(10000.0, summary.overdueRiskPremium, 0.001)
+        assertEquals(27000.0, summary.dueSoonRiskPremium, 0.001)
+    }
+
+    @Test
+    fun monthView_clampDayForMonth_handles_february_and_short_months() {
+        assertEquals(28, com.policydesk.app.ui.monthview.clampDayForMonth(2026, 2, 31))
+        assertEquals(29, com.policydesk.app.ui.monthview.clampDayForMonth(2028, 2, 31))
+        assertEquals(30, com.policydesk.app.ui.monthview.clampDayForMonth(2026, 4, 31))
+        assertEquals(14, com.policydesk.app.ui.monthview.clampDayForMonth(2026, 2, 14))
+        assertEquals(1, com.policydesk.app.ui.monthview.clampDayForMonth(2026, 2, 0))
+    }
 }

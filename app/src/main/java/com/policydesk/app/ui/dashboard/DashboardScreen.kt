@@ -4,9 +4,11 @@ import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandHorizontally
@@ -15,11 +17,16 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.text.TextStyle
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -89,8 +96,16 @@ import com.policydesk.app.ui.components.LiquidGlassSelectionBar
 import com.policydesk.app.ui.components.LiquidGlassTopBar
 import com.policydesk.app.ui.components.UiFormatters
 import com.policydesk.app.ui.components.liquidGlass
+import com.policydesk.app.ui.navigation.EmptyStateHaloBadge
+import com.policydesk.app.ui.navigation.FloatingGlassHeader
+import com.policydesk.app.ui.navigation.LocalReduceMotion
+import com.policydesk.app.ui.navigation.aaBlueFill
+import com.policydesk.app.ui.navigation.rememberAnimatedCount
+import com.policydesk.app.ui.navigation.rememberIsListScrolled
 import com.policydesk.app.ui.theme.AppleDarkSystemBlue
+import com.policydesk.app.ui.theme.AppleDarkSystemDeepOrange
 import com.policydesk.app.ui.theme.AppleDarkSystemGreen
+import com.policydesk.app.ui.theme.AppleDarkSystemRed
 import com.policydesk.app.ui.theme.AppleIcons
 import com.policydesk.app.ui.theme.AppleSystemBlue
 import com.policydesk.app.ui.theme.AppleSystemGreen
@@ -109,6 +124,12 @@ import com.policydesk.app.ui.theme.IosLabelSecondary
 import com.policydesk.app.ui.theme.IosLabelTertiary
 import com.policydesk.app.ui.theme.IosSeparator
 import com.policydesk.app.ui.theme.IosSystemBackground
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -123,6 +144,7 @@ fun DashboardScreen(
     onNavigateToVehicleDetail: (String) -> Unit,
     onSelectionModeChange: (Boolean) -> Unit = {},
     isUpdateAvailable: Boolean = false,
+    isTabActive: Boolean = true,
     viewModel: DashboardViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -131,6 +153,7 @@ fun DashboardScreen(
     val sheetState = rememberModalBottomSheetState()
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
+    val reduceMotion = LocalReduceMotion.current
 
     val isDark = isSystemInDarkTheme()
     val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
@@ -138,6 +161,9 @@ fun DashboardScreen(
     val actionTint = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
 
     val allSelected = uiState.filteredList.isNotEmpty() && uiState.selectedRegNos.size == uiState.filteredList.size
+    val screenHazeState = remember { HazeState() }
+    val listState = rememberLazyListState()
+    val isScrolled by rememberIsListScrolled(listState)
 
     LaunchedEffect(Unit) {
         viewModel.refreshDriveStatus()
@@ -147,6 +173,12 @@ fun DashboardScreen(
         onSelectionModeChange(uiState.isSelectionMode)
     }
 
+    LaunchedEffect(isTabActive) {
+        if (!isTabActive && uiState.isSelectionMode) {
+            viewModel.exitSelectionMode()
+        }
+    }
+
     BackHandler(enabled = uiState.isSelectionMode) {
         viewModel.exitSelectionMode()
     }
@@ -154,8 +186,9 @@ fun DashboardScreen(
     val onShareSelected: () -> Unit = {
         val selectedItems = uiState.filteredList.filter { it.vehicle.regNo in uiState.selectedRegNos }
         if (selectedItems.isNotEmpty()) {
+            val policyWord = if (selectedItems.size == 1) "Policy" else "Policies"
             val shareText = buildString {
-                appendLine("PolicyDesk Summary (${selectedItems.size} Policies):")
+                appendLine("PolicyDesk Summary (${selectedItems.size} $policyWord):")
                 appendLine("────────────────────────────────")
                 selectedItems.forEachIndexed { i, item ->
                     val p = item.currentPolicy
@@ -174,14 +207,15 @@ fun DashboardScreen(
                 putExtra(Intent.EXTRA_TEXT, shareText)
                 type = "text/plain"
             }
-            context.startActivity(Intent.createChooser(sendIntent, "Share ${selectedItems.size} Policies"))
+            context.startActivity(Intent.createChooser(sendIntent, "Share ${selectedItems.size} $policyWord"))
         }
     }
 
     if (showDeleteConfirmDialog) {
+        val deleteWord = if (uiState.selectedRegNos.size == 1) "Policy" else "Policies"
         AppleAlertDialog(
             onDismissRequest = { showDeleteConfirmDialog = false },
-            title = "Delete ${uiState.selectedRegNos.size} Policies?",
+            title = "Delete ${uiState.selectedRegNos.size} $deleteWord?",
             message = "Are you sure you want to remove the selected policies? Their vehicle records will be archived.",
             confirmText = "Delete",
             dismissText = "Cancel",
@@ -461,391 +495,413 @@ fun DashboardScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
+        BindBackToTop(listState)
         Scaffold(
             topBar = {
-                if (uiState.isSelectionMode) {
-                    LiquidGlassTopBar(
-                        title = if (uiState.selectedRegNos.isEmpty()) "Select Policies" else "${uiState.selectedRegNos.size} Selected",
-                        subtitle = "${uiState.filteredList.size} policies total",
-                        onNavigateBack = {
-                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            viewModel.exitSelectionMode()
-                        },
-                        actions = {
-                            CupertinoTopBarAction(
-                                text = if (allSelected) "Deselect All" else "Select All",
-                                onClick = {
-                                    viewModel.toggleSelectAll(uiState.filteredList.map { it.vehicle.regNo })
-                                },
-                                tint = actionTint
-                            )
-
-                            CupertinoTopBarAction(
-                                text = "Done",
-                                onClick = {
-                                    viewModel.exitSelectionMode()
-                                },
-                                isProminent = true,
-                                tint = actionTint
-                            )
-                        }
-                    )
-                } else {
-                    LiquidGlassTopBar(
-                        title = "PolicyDesk",
-                        subtitle = "Vehicle Insurance Advisor",
-                        actions = {
-                            if (uiState.filteredList.isNotEmpty()) {
+                FloatingGlassHeader(
+                    hazeState = screenHazeState,
+                    isScrolled = isScrolled
+                ) {
+                    if (uiState.isSelectionMode) {
+                        val totalCountWord = if (uiState.filteredList.size == 1) "policy" else "policies"
+                        LiquidGlassTopBar(
+                            title = if (uiState.selectedRegNos.isEmpty()) "Select Policies" else "${uiState.selectedRegNos.size} Selected",
+                            subtitle = "${uiState.filteredList.size} $totalCountWord total",
+                            onNavigateBack = {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                viewModel.exitSelectionMode()
+                            },
+                            actions = {
                                 CupertinoTopBarAction(
-                                    text = "Select",
+                                    text = if (allSelected) "Deselect All" else "Select All",
                                     onClick = {
-                                        viewModel.enterSelectionMode()
+                                        viewModel.toggleSelectAll(uiState.filteredList.map { it.vehicle.regNo })
                                     },
                                     tint = actionTint
                                 )
-                            }
 
-                            // Prominent Apple Glass Add Button (Primary Action)
-                            Box(
-                                modifier = Modifier
-                                    .size(34.dp)
-                                    .clip(CircleShape)
-                                    .background(if (isDark) AppleDarkSystemBlue else AppleSystemBlue, CircleShape)
-                                    .clickable {
-                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                        showAddChooserSheet = true
+                                CupertinoTopBarAction(
+                                    text = "Done",
+                                    onClick = {
+                                        viewModel.exitSelectionMode()
                                     },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = AppleIcons.Plus,
-                                    contentDescription = "Add Policy",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(19.dp)
+                                    isProminent = true,
+                                    tint = actionTint
                                 )
                             }
-
-                            // Apple Glass Settings Button (Frosted glass secondary navigation control)
-                            Box(
-                                modifier = Modifier
-                                    .size(34.dp)
-                                    .clip(CircleShape)
-                                    .background(
-                                        if (isDark) Color(0x29FFFFFF) else Color(0x14000000),
-                                        CircleShape
-                                    )
-                                    .border(
-                                        width = 0.5.dp,
-                                        color = Color.White.copy(alpha = if (isDark) 0.18f else 0.45f),
-                                        shape = CircleShape
-                                    )
-                                    .clickable {
-                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                        onNavigateToSettings()
-                                    },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = AppleIcons.GearShape,
-                                    contentDescription = "Settings",
-                                    tint = if (isDark) IosDarkLabelPrimary else IosLabelPrimary,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                if (isUpdateAvailable) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(8.dp)
-                                            .align(Alignment.TopEnd)
-                                            .background(
-                                                color = if (isDark) AppleDarkSystemBlue else AppleSystemBlue,
-                                                shape = CircleShape
-                                            )
+                        )
+                    } else {
+                        LiquidGlassTopBar(
+                            title = "PolicyDesk",
+                            subtitle = "Vehicle Insurance Advisor",
+                            actions = {
+                                if (uiState.filteredList.isNotEmpty()) {
+                                    CupertinoTopBarAction(
+                                        text = "Select",
+                                        onClick = {
+                                            viewModel.enterSelectionMode()
+                                        },
+                                        tint = actionTint
                                     )
                                 }
+
+                                // Prominent Apple Glass Add Button (Primary Action)
+                                Box(
+                                    modifier = Modifier
+                                        .size(34.dp)
+                                        .clip(CircleShape)
+                                        .background(aaBlueFill(isDark), CircleShape)
+                                        .semantics { role = Role.Button }
+                                        .clickable {
+                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                            showAddChooserSheet = true
+                                        },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = AppleIcons.Plus,
+                                        contentDescription = "Add Policy",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(19.dp)
+                                    )
+                                }
+
+                                // Apple Glass Settings Button (Frosted glass secondary navigation control)
+                                Box(
+                                    modifier = Modifier
+                                        .size(34.dp)
+                                        .clip(CircleShape)
+                                        .background(
+                                            if (isDark) Color(0x29FFFFFF) else Color(0x14000000),
+                                            CircleShape
+                                        )
+                                        .border(
+                                            width = 0.5.dp,
+                                            color = Color.White.copy(alpha = if (isDark) 0.18f else 0.45f),
+                                            shape = CircleShape
+                                        )
+                                        .semantics { role = Role.Button }
+                                        .clickable {
+                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                            onNavigateToSettings()
+                                        },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = AppleIcons.GearShape,
+                                        contentDescription = "Settings",
+                                        tint = if (isDark) IosDarkLabelPrimary else IosLabelPrimary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    if (isUpdateAvailable) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(8.dp)
+                                                .align(Alignment.TopEnd)
+                                                .background(
+                                                    color = if (isDark) AppleDarkSystemBlue else AppleSystemBlue,
+                                                    shape = CircleShape
+                                                )
+                                        )
+                                    }
+                                }
                             }
-                        }
-                    )
+                        )
+                    }
                 }
             },
             containerColor = Color.Transparent,
             contentWindowInsets = WindowInsets(0, 0, 0, 0)
         ) { paddingValues ->
-        val listState = rememberLazyListState()
-        BindBackToTop(listState)
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(top = paddingValues.calculateTopPadding() + 8.dp, bottom = 140.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            // 1. Executive Bento Hero Pulse Card (Full-Width, Scrollable)
-            item {
-                LiquidGlassCard(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    shape = RoundedCornerShape(20.dp),
-                    elevation = 4.dp,
-                    onClick = { viewModel.onFilterSelected(ExpiryFilter.ALL) }
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Portfolio in force",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = if (isDark) AppleDarkSystemGreen else AppleSystemGreen,
-                                letterSpacing = (-0.1).sp
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Row(verticalAlignment = Alignment.Bottom) {
-                                Text(
-                                    text = "${uiState.summary.totalActiveCount}",
-                                    fontSize = 32.sp,
-                                    fontWeight = FontWeight.Black,
-                                    color = labelPrimary,
-                                    letterSpacing = (-0.8).sp,
-                                    lineHeight = 34.sp
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "Active Vehicles",
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = labelSecondary,
-                                    modifier = Modifier.padding(bottom = 3.dp)
-                                )
-                            }
-                        }
+            val animatedActiveCount = rememberAnimatedCount(uiState.summary.totalActiveCount)
+            val animatedOverdueCount = rememberAnimatedCount(uiState.summary.overdueCount)
+            val animatedNext7Count = rememberAnimatedCount(uiState.summary.next7DaysCount)
+            val thirtyDayCount = uiState.summary.next7DaysCount + uiState.summary.next30DaysCount
+            val redAccent = if (isDark) AppleDarkSystemRed else AppleSystemRed
+            val deepOrangeAccent = if (isDark) AppleDarkSystemDeepOrange else AppleSystemDeepOrange
+            val greenAccent = if (isDark) AppleDarkSystemGreen else AppleSystemGreen
 
-                        // Quick Month Timeline Pill Shortcut
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(if (isDark) Color(0x330A84FF) else Color(0x1F007AFF))
-                                .clickable(onClick = onNavigateToMonthView)
-                                .padding(horizontal = 10.dp, vertical = 6.dp)
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = AppleIcons.Calendar,
-                                    contentDescription = null,
-                                    tint = if (isDark) AppleDarkSystemBlue else AppleSystemBlue,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = "Timeline",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            // 2. Urgent Action Triage Bento (2 Columns, Scrollable)
-            item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    // Overdue Action Card
-                    LiquidGlassCard(
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(18.dp),
-                        elevation = 3.dp,
-                        onClick = { viewModel.onFilterSelected(ExpiryFilter.OVERDUE) }
-                    ) {
-                        Text(
-                            text = "Overdue",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = AppleSystemRed,
-                            letterSpacing = (-0.1).sp
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "${uiState.summary.overdueCount}",
-                            fontSize = 26.sp,
-                            fontWeight = FontWeight.Black,
-                            color = AppleSystemRed,
-                            letterSpacing = (-0.5).sp,
-                            lineHeight = 28.sp
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = "Needs immediate nudge",
-                            fontSize = 11.sp,
-                            color = labelSecondary
-                        )
-                    }
-
-                    // Next 7 Days Card
-                    LiquidGlassCard(
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(18.dp),
-                        elevation = 3.dp,
-                        onClick = { viewModel.onFilterSelected(ExpiryFilter.NEXT_7_DAYS) }
-                    ) {
-                        Text(
-                            text = "This week",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = AppleSystemDeepOrange,
-                            letterSpacing = (-0.1).sp
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "${uiState.summary.next7DaysCount}",
-                            fontSize = 26.sp,
-                            fontWeight = FontWeight.Black,
-                            color = AppleSystemDeepOrange,
-                            letterSpacing = (-0.5).sp,
-                            lineHeight = 28.sp
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = "Expiring in 7 days",
-                            fontSize = 11.sp,
-                            color = labelSecondary
-                        )
-                    }
-                }
-            }
-
-            // 3. Next 30 Days Pipeline Banner Strip (Scrollable)
-            item {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(if (isDark) Color(0x332C2C2E) else Color(0x66FFFFFF))
-                        .border(
-                            0.5.dp,
-                            if (isDark) Color(0x33FFFFFF) else Color(0x33000000),
-                            RoundedCornerShape(14.dp)
-                        )
-                        .clickable { viewModel.onFilterSelected(ExpiryFilter.NEXT_30_DAYS) }
-                        .padding(horizontal = 14.dp, vertical = 9.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "30-Day Renewal Pipeline",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = labelPrimary
-                        )
-                        Text(
-                            text = "${uiState.summary.next30DaysCount} policies",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = AppleSystemOrange
-                        )
-                    }
-                }
-            }
-
-            // 3.5. Smart Google Drive Cloud Backup Nudge (Prompt if >= 5 policies & not linked)
-            if (uiState.showBackupNudge) {
-                item(key = "smart_backup_nudge") {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .hazeSource(state = screenHazeState),
+                contentPadding = PaddingValues(top = paddingValues.calculateTopPadding() + 8.dp, bottom = 140.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                // 1. Executive Bento Hero Pulse Card (non-nested interactive controls)
+                item(key = "hero_portfolio") {
                     LiquidGlassCard(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        elevation = 2.dp,
-                        onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            onNavigateToSettings()
-                        }
+                        shape = RoundedCornerShape(20.dp),
+                        elevation = 4.dp
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(
-                                modifier = Modifier.weight(1f),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(end = 10.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .semantics {
+                                        role = Role.Button
+                                        selected = uiState.activeFilter == ExpiryFilter.ALL
+                                    }
+                                    .clickable(onClickLabel = "Show all active policies") {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        viewModel.onFilterSelected(ExpiryFilter.ALL)
+                                    }
+                                    .padding(vertical = 2.dp)
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(38.dp)
-                                        .clip(CircleShape)
-                                        .background((if (isDark) AppleDarkSystemBlue else AppleSystemBlue).copy(alpha = 0.16f)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = AppleIcons.Cloud,
-                                        contentDescription = null,
-                                        tint = if (isDark) AppleDarkSystemBlue else AppleSystemBlue,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-
-                                Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Portfolio in force",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = greenAccent,
+                                    letterSpacing = (-0.1).sp
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Row(verticalAlignment = Alignment.Bottom) {
                                     Text(
-                                        text = "Protect ${uiState.summary.totalActiveCount} policies",
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Bold,
+                                        text = "$animatedActiveCount",
+                                        fontSize = 32.sp,
+                                        fontWeight = FontWeight.Black,
                                         color = labelPrimary,
-                                        letterSpacing = (-0.2).sp
+                                        letterSpacing = (-0.8).sp,
+                                        lineHeight = 34.sp,
+                                        style = TextStyle(fontFeatureSettings = "tnum")
                                     )
-                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
                                     Text(
-                                        text = "Enable Google Drive backup to prevent data loss.",
-                                        fontSize = 11.sp,
+                                        text = if (uiState.summary.totalActiveCount == 1) "Active Vehicle" else "Active Vehicles",
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Medium,
                                         color = labelSecondary,
-                                        lineHeight = 15.sp
+                                        modifier = Modifier.padding(bottom = 3.dp)
                                     )
                                 }
                             }
 
-                            Spacer(modifier = Modifier.width(8.dp))
-
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            // Quick Month Timeline Pill Shortcut (sibling, never nested inside card click)
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(if (isDark) Color(0x330A84FF) else Color(0x1F007AFF))
+                                    .semantics { role = Role.Button }
+                                    .clickable(onClickLabel = "Open Month Timeline") {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        onNavigateToMonthView()
+                                    }
+                                    .padding(horizontal = 10.dp, vertical = 7.dp)
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .background(if (isDark) AppleDarkSystemBlue else AppleSystemBlue)
-                                        .padding(horizontal = 10.dp, vertical = 6.dp)
-                                ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = AppleIcons.Calendar,
+                                        contentDescription = null,
+                                        tint = actionTint,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
                                     Text(
-                                        text = "Enable",
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color.White
+                                        text = "Timeline",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = actionTint
                                     )
                                 }
+                            }
+                        }
+                    }
+                }
+
+                // 2. Urgent Action Triage Bento (2 Columns, Scrollable)
+                item(key = "urgent_triage_bento") {
+                    val overdueSelected = uiState.activeFilter == ExpiryFilter.OVERDUE
+                    val weekSelected = uiState.activeFilter == ExpiryFilter.NEXT_7_DAYS
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        // Overdue Action Card
+                        LiquidGlassCard(
+                            modifier = Modifier
+                                .weight(1f)
+                                .then(
+                                    if (overdueSelected) {
+                                        Modifier.border(1.5.dp, redAccent.copy(alpha = 0.7f), RoundedCornerShape(18.dp))
+                                    } else Modifier
+                                )
+                                .semantics {
+                                    role = Role.Button
+                                    selected = overdueSelected
+                                },
+                            shape = RoundedCornerShape(18.dp),
+                            elevation = 3.dp,
+                            onClick = { viewModel.onFilterSelected(ExpiryFilter.OVERDUE) }
+                        ) {
+                            Text(
+                                text = "Overdue",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = redAccent,
+                                letterSpacing = (-0.1).sp
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "$animatedOverdueCount",
+                                fontSize = 26.sp,
+                                fontWeight = FontWeight.Black,
+                                color = redAccent,
+                                letterSpacing = (-0.5).sp,
+                                lineHeight = 28.sp,
+                                style = TextStyle(fontFeatureSettings = "tnum")
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "Needs immediate nudge",
+                                fontSize = 11.sp,
+                                color = labelSecondary
+                            )
+                        }
+
+                        // Next 7 Days Card
+                        LiquidGlassCard(
+                            modifier = Modifier
+                                .weight(1f)
+                                .then(
+                                    if (weekSelected) {
+                                        Modifier.border(1.5.dp, deepOrangeAccent.copy(alpha = 0.7f), RoundedCornerShape(18.dp))
+                                    } else Modifier
+                                )
+                                .semantics {
+                                    role = Role.Button
+                                    selected = weekSelected
+                                },
+                            shape = RoundedCornerShape(18.dp),
+                            elevation = 3.dp,
+                            onClick = { viewModel.onFilterSelected(ExpiryFilter.NEXT_7_DAYS) }
+                        ) {
+                            Text(
+                                text = "This week",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = deepOrangeAccent,
+                                letterSpacing = (-0.1).sp
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "$animatedNext7Count",
+                                fontSize = 26.sp,
+                                fontWeight = FontWeight.Black,
+                                color = deepOrangeAccent,
+                                letterSpacing = (-0.5).sp,
+                                lineHeight = 28.sp,
+                                style = TextStyle(fontFeatureSettings = "tnum")
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "Expiring in 7 days",
+                                fontSize = 11.sp,
+                                color = labelSecondary
+                            )
+                        }
+                    }
+                }
+
+                // 3. Smart Google Drive Cloud Backup Nudge (Prompt if >= 5 policies & not linked; non-nested siblings)
+                if (uiState.showBackupNudge) {
+                    item(key = "smart_backup_nudge") {
+                        LiquidGlassCard(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            elevation = 2.dp
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .semantics { role = Role.Button }
+                                        .clickable(onClickLabel = "Enable Google Drive backup") {
+                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                            onNavigateToSettings()
+                                        }
+                                        .padding(vertical = 2.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(38.dp)
+                                            .clip(CircleShape)
+                                            .background(actionTint.copy(alpha = 0.16f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = AppleIcons.Cloud,
+                                            contentDescription = null,
+                                            tint = actionTint,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = "Protect ${uiState.summary.totalActiveCount} ${if (uiState.summary.totalActiveCount == 1) "policy" else "policies"}",
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = labelPrimary,
+                                            letterSpacing = (-0.2).sp
+                                        )
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        Text(
+                                            text = "Enable Google Drive backup to prevent data loss.",
+                                            fontSize = 11.sp,
+                                            color = labelSecondary,
+                                            lineHeight = 15.sp
+                                        )
+                                    }
+
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(10.dp))
+                                            .background(aaBlueFill(isDark))
+                                            .padding(horizontal = 10.dp, vertical = 6.dp)
+                                    ) {
+                                        Text(
+                                            text = "Enable",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White
+                                        )
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.width(4.dp))
 
                                 IconButton(
                                     onClick = {
                                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                         viewModel.dismissBackupNudge()
                                     },
-                                    modifier = Modifier.size(28.dp)
+                                    modifier = Modifier.size(32.dp)
                                 ) {
                                     Icon(
                                         imageVector = AppleIcons.Clear,
-                                        contentDescription = "Dismiss",
+                                        contentDescription = "Dismiss backup reminder",
                                         tint = if (isDark) IosDarkLabelTertiary else IosLabelTertiary,
                                         modifier = Modifier.size(13.dp)
                                     )
@@ -854,188 +910,198 @@ fun DashboardScreen(
                         }
                     }
                 }
-            }
 
-            // 4. Apple Liquid Glass Search Bar (Scrollable)
-            item {
-                LiquidGlassSearchBar(
-                    query = uiState.searchQuery,
-                    onQueryChange = viewModel::onSearchQueryChanged,
-                    placeholder = "Search registration, customer, phone...",
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp)
-                )
-            }
-
-            // 5. Expiry & Sector Filter Glass Pills (Scrollable)
-            item {
-                LazyRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    contentPadding = PaddingValues(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    items(ExpiryFilter.values()) { filter ->
-                        val isSelected = uiState.activeFilter == filter
-                        val pillShape = RoundedCornerShape(12.dp)
-                        val haptic = LocalHapticFeedback.current
-                        val isDark = isSystemInDarkTheme()
-
-                        val pillScale by animateFloatAsState(
-                            targetValue = if (isSelected) 1.04f else 1.0f,
-                            animationSpec = AppleSprings.Pop,
-                            label = "expiry_pill_scale"
-                        )
-                        val pillBg by animateColorAsState(
-                            targetValue = if (isSelected) {
-                                if (isDark) AppleDarkSystemBlue else AppleSystemBlue
-                            } else {
-                                if (isDark) Color(0xFF2C2C2E) else Color.White
-                            },
-                            animationSpec = AppleSprings.SnappyColor,
-                            label = "expiry_pill_bg"
-                        )
-
-                        Box(
-                            modifier = Modifier
-                                .graphicsLayer {
-                                    scaleX = pillScale
-                                    scaleY = pillScale
-                                }
-                                .clip(pillShape)
-                                .background(pillBg, pillShape)
-                                .border(
-                                    width = 1.dp,
-                                    color = if (isSelected) {
-                                        Color.Transparent
-                                    } else {
-                                        if (isDark) Color(0x38FFFFFF) else Color(0x24000000)
-                                    },
-                                    shape = pillShape
-                                )
-                                .clickable {
-                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    viewModel.onFilterSelected(filter)
-                                }
-                                .padding(horizontal = 13.dp, vertical = 7.dp)
-                        ) {
-                            Text(
-                                text = filter.label,
-                                fontSize = 12.sp,
-                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
-                                color = if (isSelected) Color.White else (if (isDark) IosDarkLabelPrimary else IosLabelPrimary)
-                            )
-                        }
-                    }
-
-                    item {
-                        Box(
-                            modifier = Modifier
-                                .padding(horizontal = 4.dp)
-                                .width(1.dp)
-                                .height(18.dp)
-                                .background(
-                                    if (isSystemInDarkTheme()) IosDarkSeparator else IosSeparator,
-                                    RoundedCornerShape(1.dp)
-                                )
-                        )
-                    }
-
-                    items(SectorFilter.values()) { sector ->
-                        val isSelected = uiState.sectorFilter == sector
-                        val pillShape = RoundedCornerShape(12.dp)
-                        val haptic = LocalHapticFeedback.current
-                        val isDark = isSystemInDarkTheme()
-
-                        val pillScale by animateFloatAsState(
-                            targetValue = if (isSelected) 1.04f else 1.0f,
-                            animationSpec = AppleSprings.Pop,
-                            label = "sector_pill_scale"
-                        )
-                        val pillBg by animateColorAsState(
-                            targetValue = if (isSelected) {
-                                (if (isDark) AppleDarkSystemBlue else AppleSystemBlue).copy(alpha = 0.16f)
-                            } else {
-                                if (isDark) Color(0xFF2C2C2E) else Color.White
-                            },
-                            animationSpec = AppleSprings.SnappyColor,
-                            label = "sector_pill_bg"
-                        )
-
-                        Box(
-                            modifier = Modifier
-                                .graphicsLayer {
-                                    scaleX = pillScale
-                                    scaleY = pillScale
-                                }
-                                .clip(pillShape)
-                                .background(pillBg, pillShape)
-                                .border(
-                                    width = 1.dp,
-                                    color = if (isSelected) {
-                                        if (isDark) AppleDarkSystemBlue else AppleSystemBlue
-                                    } else {
-                                        if (isDark) Color(0x38FFFFFF) else Color(0x24000000)
-                                    },
-                                    shape = pillShape
-                                )
-                                .clickable {
-                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    viewModel.onSectorFilterSelected(sector)
-                                }
-                                .padding(horizontal = 13.dp, vertical = 7.dp)
-                        ) {
-                            Text(
-                                text = sector.label,
-                                fontSize = 12.sp,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                color = if (isSelected) {
-                                    if (isDark) AppleDarkSystemBlue else AppleSystemBlue
-                                } else {
-                                    if (isDark) IosDarkLabelSecondary else IosLabelSecondary
-                                }
-                            )
-                        }
-                    }
-                }
-            }
-
-            // 6. Vehicle Expiry List
-            if (uiState.filteredList.isEmpty()) {
-                item {
-                    EmptyStateView(
-                        hasQuery = uiState.searchQuery.isNotEmpty(),
-                        onClearSearch = { viewModel.onSearchQueryChanged("") },
-                        onAddCustomerClicked = { showAddChooserSheet = true },
-                        onNavigateToSettings = onNavigateToSettings
+                // 4. Apple Liquid Glass Search Bar (Scrollable)
+                item(key = "search_bar") {
+                    LiquidGlassSearchBar(
+                        query = uiState.searchQuery,
+                        onQueryChange = viewModel::onSearchQueryChanged,
+                        placeholder = "Search registration, customer, phone...",
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp)
                     )
                 }
-            } else {
-                items(
-                    items = uiState.filteredList,
-                    key = { it.vehicle.regNo },
-                    contentType = { "vehicle_card" }
-                ) { item ->
-                    val isSelected = uiState.selectedRegNos.contains(item.vehicle.regNo)
-                    Box(modifier = Modifier.padding(horizontal = 16.dp)) {
-                        VehicleExpiryCard(
-                            item = item,
-                            onClick = { onNavigateToVehicleDetail(item.vehicle.regNo) },
-                            isSelectionMode = uiState.isSelectionMode,
-                            isSelected = isSelected,
-                            onToggleSelect = { viewModel.toggleSelect(item.vehicle.regNo) },
-                            onLongClick = { viewModel.enterSelectionMode(item.vehicle.regNo) }
+
+                // 5. Expiry & Sector Filter Glass Pills (Scrollable)
+                item(key = "filter_pills") {
+                    LazyRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentPadding = PaddingValues(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        items(ExpiryFilter.values()) { filter ->
+                            val isSelected = uiState.activeFilter == filter
+                            val pillShape = RoundedCornerShape(12.dp)
+
+                            val pillScale by animateFloatAsState(
+                                targetValue = if (isSelected) 1.04f else 1.0f,
+                                animationSpec = if (reduceMotion) snap() else AppleSprings.Pop,
+                                label = "expiry_pill_scale"
+                            )
+                            val pillBg by animateColorAsState(
+                                targetValue = if (isSelected) {
+                                    aaBlueFill(isDark)
+                                } else {
+                                    if (isDark) Color(0xFF2C2C2E) else Color.White
+                                },
+                                animationSpec = if (reduceMotion) snap() else AppleSprings.SnappyColor,
+                                label = "expiry_pill_bg"
+                            )
+                            val pillLabel = if (filter == ExpiryFilter.NEXT_30_DAYS) {
+                                "30d Pipeline ($thirtyDayCount)"
+                            } else {
+                                filter.label
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .graphicsLayer {
+                                        scaleX = pillScale
+                                        scaleY = pillScale
+                                    }
+                                    .clip(pillShape)
+                                    .background(pillBg, pillShape)
+                                    .border(
+                                        width = 1.dp,
+                                        color = if (isSelected) {
+                                            Color.Transparent
+                                        } else {
+                                            if (isDark) Color(0x38FFFFFF) else Color(0x24000000)
+                                        },
+                                        shape = pillShape
+                                    )
+                                    .semantics {
+                                        role = Role.Button
+                                        selected = isSelected
+                                    }
+                                    .clickable {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        viewModel.onFilterSelected(filter)
+                                    }
+                                    .padding(horizontal = 13.dp, vertical = 7.dp)
+                            ) {
+                                Text(
+                                    text = pillLabel,
+                                    fontSize = 12.sp,
+                                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+                                    color = if (isSelected) Color.White else (if (isDark) IosDarkLabelPrimary else IosLabelPrimary),
+                                    style = TextStyle(fontFeatureSettings = "tnum")
+                                )
+                            }
+                        }
+
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .padding(horizontal = 4.dp)
+                                    .width(1.dp)
+                                    .height(18.dp)
+                                    .background(
+                                        if (isDark) IosDarkSeparator else IosSeparator,
+                                        RoundedCornerShape(1.dp)
+                                    )
+                            )
+                        }
+
+                        items(SectorFilter.values()) { sector ->
+                            val isSelected = uiState.sectorFilter == sector
+                            val pillShape = RoundedCornerShape(12.dp)
+
+                            val pillScale by animateFloatAsState(
+                                targetValue = if (isSelected) 1.04f else 1.0f,
+                                animationSpec = if (reduceMotion) snap() else AppleSprings.Pop,
+                                label = "sector_pill_scale"
+                            )
+                            val pillBg by animateColorAsState(
+                                targetValue = if (isSelected) {
+                                    actionTint.copy(alpha = 0.16f)
+                                } else {
+                                    if (isDark) Color(0xFF2C2C2E) else Color.White
+                                },
+                                animationSpec = if (reduceMotion) snap() else AppleSprings.SnappyColor,
+                                label = "sector_pill_bg"
+                            )
+
+                            Box(
+                                modifier = Modifier
+                                    .graphicsLayer {
+                                        scaleX = pillScale
+                                        scaleY = pillScale
+                                    }
+                                    .clip(pillShape)
+                                    .background(pillBg, pillShape)
+                                    .border(
+                                        width = 1.dp,
+                                        color = if (isSelected) {
+                                            actionTint
+                                        } else {
+                                            if (isDark) Color(0x38FFFFFF) else Color(0x24000000)
+                                        },
+                                        shape = pillShape
+                                    )
+                                    .semantics {
+                                        role = Role.Button
+                                        selected = isSelected
+                                    }
+                                    .clickable {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        viewModel.onSectorFilterSelected(sector)
+                                    }
+                                    .padding(horizontal = 13.dp, vertical = 7.dp)
+                            ) {
+                                Text(
+                                    text = sector.label,
+                                    fontSize = 12.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (isSelected) {
+                                        actionTint
+                                    } else {
+                                        if (isDark) IosDarkLabelSecondary else IosLabelSecondary
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // 6. Vehicle Expiry List
+                if (uiState.filteredList.isEmpty()) {
+                    item(key = "dashboard_empty_state") {
+                        EmptyStateView(
+                            hasQuery = uiState.hasActiveFilter,
+                            hasPortfolio = uiState.summary.soonestExpiring.isNotEmpty(),
+                            onClearSearch = { viewModel.resetFilters() },
+                            onAddCustomerClicked = { showAddChooserSheet = true },
+                            onNavigateToSettings = onNavigateToSettings
                         )
+                    }
+                } else {
+                    items(
+                        items = uiState.filteredList,
+                        key = { it.vehicle.regNo },
+                        contentType = { "vehicle_card" }
+                    ) { item ->
+                        val isSelected = uiState.selectedRegNos.contains(item.vehicle.regNo)
+                        Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                            VehicleExpiryCard(
+                                item = item,
+                                onClick = { onNavigateToVehicleDetail(item.vehicle.regNo) },
+                                isSelectionMode = uiState.isSelectionMode,
+                                isSelected = isSelected,
+                                onToggleSelect = { viewModel.toggleSelect(item.vehicle.regNo) },
+                                onLongClick = { viewModel.enterSelectionMode(item.vehicle.regNo) }
+                            )
+                        }
                     }
                 }
             }
         }
-    }
 
         // Ambient Bottom Scrim for Selection Bar
         AnimatedVisibility(
             visible = uiState.isSelectionMode,
-            enter = fadeIn(animationSpec = tween(200)),
-            exit = fadeOut(animationSpec = tween(150)),
+            enter = if (reduceMotion) EnterTransition.None else fadeIn(animationSpec = tween(200)),
+            exit = if (reduceMotion) ExitTransition.None else fadeOut(animationSpec = tween(150)),
             modifier = Modifier.align(Alignment.BottomCenter)
         ) {
             val scrimColor = if (isDark) Color(0xFF000000) else Color(0xFFF2F2F7)
@@ -1058,14 +1124,18 @@ fun DashboardScreen(
         // Floating Selection Bar (Slides up when in selection mode)
         AnimatedVisibility(
             visible = uiState.isSelectionMode,
-            enter = slideInVertically(
-                initialOffsetY = { it },
-                animationSpec = spring(dampingRatio = 0.82f, stiffness = 400f)
-            ) + fadeIn(),
-            exit = slideOutVertically(
-                targetOffsetY = { it },
-                animationSpec = spring(dampingRatio = 0.82f, stiffness = 400f)
-            ) + fadeOut(),
+            enter = if (reduceMotion) EnterTransition.None else (
+                slideInVertically(
+                    initialOffsetY = { it },
+                    animationSpec = spring(dampingRatio = 0.82f, stiffness = 400f)
+                ) + fadeIn()
+            ),
+            exit = if (reduceMotion) ExitTransition.None else (
+                slideOutVertically(
+                    targetOffsetY = { it },
+                    animationSpec = spring(dampingRatio = 0.82f, stiffness = 400f)
+                ) + fadeOut()
+            ),
             modifier = Modifier.align(Alignment.BottomCenter)
         ) {
             LiquidGlassSelectionBar(
@@ -1093,11 +1163,13 @@ fun LiquidGlassMetricCard(
     val isDark = isSystemInDarkTheme()
     val haptic = LocalHapticFeedback.current
     val cardShape = RoundedCornerShape(16.dp)
+    val animatedCount = rememberAnimatedCount(count)
 
     Column(
         modifier = modifier
             .liquidGlass(shape = cardShape, elevation = 3.dp, isDark = isDark)
             .clip(cardShape)
+            .semantics { role = Role.Button }
             .clickable {
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 onClick()
@@ -1106,7 +1178,7 @@ fun LiquidGlassMetricCard(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = count.toString(),
+            text = animatedCount.toString(),
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
             color = accentColor,
@@ -1124,6 +1196,7 @@ fun LiquidGlassMetricCard(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun VehicleExpiryCard(
     item: VehicleWithPolicies,
@@ -1134,118 +1207,185 @@ fun VehicleExpiryCard(
     onLongClick: () -> Unit = {}
 ) {
     val isDark = isSystemInDarkTheme()
+    val reduceMotion = LocalReduceMotion.current
     val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
     val labelSecondary = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
+    val actionBlue = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
+    val actionGreen = if (isDark) AppleDarkSystemGreen else AppleSystemGreen
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
     val policy = item.currentPolicy
-    val daysRemaining = policy?.computeDaysRemaining() ?: 0
+    val daysRemaining = policy?.computeDaysRemaining() ?: 0L
     val status = policy?.computeCurrentStatus() ?: com.policydesk.app.domain.model.PolicyStatus.ACTIVE
     val mobile = item.vehicle.customer.mobile
+    val urgentColor = when {
+        policy == null -> labelSecondary
+        daysRemaining < 0 -> if (isDark) AppleDarkSystemRed else AppleSystemRed
+        daysRemaining <= 7 -> if (isDark) AppleDarkSystemDeepOrange else AppleSystemDeepOrange
+        else -> labelSecondary
+    }
 
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val pressScale by animateFloatAsState(
+        targetValue = if (isPressed && !reduceMotion) 0.962f else 1f,
+        animationSpec = if (reduceMotion) snap() else AppleSprings.CardPress,
+        label = "vehicle_card_press"
+    )
+    val selectionCheckScale by animateFloatAsState(
+        targetValue = if (isSelected) 1.06f else 1f,
+        animationSpec = if (reduceMotion) snap() else AppleSprings.Pop,
+        label = "vehicle_select_pop"
+    )
+    val selectedBorderColor by animateColorAsState(
+        targetValue = if (isSelectionMode && isSelected) actionBlue else Color.Transparent,
+        animationSpec = if (reduceMotion) snap() else AppleSprings.SnappyColor,
+        label = "vehicle_select_border"
+    )
+
+    val cardShape = RoundedCornerShape(18.dp)
+
+    // Non-nested card: outer LiquidGlassCard is visual container; primary Column & quick actions are siblings
     LiquidGlassCard(
-        shape = RoundedCornerShape(18.dp),
-        elevation = 3.dp,
-        onClick = {
-            if (isSelectionMode) onToggleSelect() else onClick()
-        },
-        onLongClick = {
-            if (!isSelectionMode) onLongClick()
-        }
+        modifier = Modifier
+            .graphicsLayer {
+                scaleX = pressScale
+                scaleY = pressScale
+            }
+            .then(
+                if (isSelectionMode && isSelected) {
+                    Modifier.border(1.5.dp, selectedBorderColor, cardShape)
+                } else Modifier
+            ),
+        shape = cardShape,
+        elevation = 3.dp
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .semantics {
+                    role = Role.Button
+                    if (isSelectionMode) selected = isSelected
+                }
+                .combinedClickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    onClickLabel = if (isSelectionMode) "Toggle selection for ${item.vehicle.regNo}" else "Open details for ${item.vehicle.regNo}",
+                    onLongClickLabel = if (!isSelectionMode) "Select ${item.vehicle.regNo}" else null,
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        if (isSelectionMode) onToggleSelect() else onClick()
+                    },
+                    onLongClick = if (!isSelectionMode) {
+                        {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            onLongClick()
+                        }
+                    } else null
+                )
         ) {
             Row(
-                modifier = Modifier
-                    .weight(1f, fill = false)
-                    .padding(end = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                AnimatedVisibility(
-                    visible = isSelectionMode,
-                    enter = fadeIn() + expandHorizontally(),
-                    exit = fadeOut() + shrinkHorizontally()
+                Row(
+                    modifier = Modifier
+                        .weight(1f, fill = false)
+                        .padding(end = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(24.dp)
-                            .clip(CircleShape)
-                            .background(
-                                if (isSelected) (if (isDark) AppleDarkSystemBlue else AppleSystemBlue)
-                                else Color.Transparent
-                            )
-                            .border(
-                                width = 2.dp,
-                                color = if (isSelected) Color.Transparent else (if (isDark) Color(0x66FFFFFF) else Color(0x33000000)),
-                                shape = CircleShape
-                            ),
-                        contentAlignment = Alignment.Center
+                    AnimatedVisibility(
+                        visible = isSelectionMode,
+                        enter = if (reduceMotion) EnterTransition.None else (fadeIn() + expandHorizontally()),
+                        exit = if (reduceMotion) ExitTransition.None else (fadeOut() + shrinkHorizontally())
                     ) {
-                        if (isSelected) {
-                            Icon(
-                                imageVector = AppleIcons.Checkmark,
-                                contentDescription = "Selected",
-                                tint = Color.White,
-                                modifier = Modifier.size(13.dp)
+                        Box(
+                            modifier = Modifier
+                                .size(24.dp)
+                                .graphicsLayer {
+                                    scaleX = selectionCheckScale
+                                    scaleY = selectionCheckScale
+                                }
+                                .clip(CircleShape)
+                                .background(
+                                    if (isSelected) aaBlueFill(isDark) else Color.Transparent
+                                )
+                                .border(
+                                    width = 2.dp,
+                                    color = if (isSelected) Color.Transparent else (if (isDark) Color(0x66FFFFFF) else Color(0x33000000)),
+                                    shape = CircleShape
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (isSelected) {
+                                Icon(
+                                    imageVector = AppleIcons.Checkmark,
+                                    contentDescription = "Selected",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(13.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    // Authentic Indian HSRP Number Plate (Private, Commercial or EV)
+                    HsrpNumberPlate(
+                        regNo = item.vehicle.regNo,
+                        makeModel = item.vehicle.makeModel,
+                        style = item.vehicle.plateStyle
+                    )
+                }
+
+                DaysRemainingBadge(
+                    daysRemaining = daysRemaining,
+                    status = status
+                )
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                    Text(
+                        text = item.vehicle.customer.name,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = labelPrimary,
+                        letterSpacing = (-0.3).sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    item.vehicle.makeModel?.let { make ->
+                        if (make.isNotBlank()) {
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = make,
+                                fontSize = 13.sp,
+                                color = labelSecondary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                     }
                 }
 
-                // Authentic Indian HSRP Number Plate (Private, Commercial or EV)
-                HsrpNumberPlate(
-                    regNo = item.vehicle.regNo,
-                    makeModel = item.vehicle.makeModel,
-                    style = item.vehicle.plateStyle
-                )
-            }
-
-            DaysRemainingBadge(
-                daysRemaining = daysRemaining,
-                status = status
-            )
-        }
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Top
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = item.vehicle.customer.name,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = labelPrimary,
-                    letterSpacing = (-0.3).sp
-                )
-                item.vehicle.makeModel?.let { make ->
-                    if (make.isNotBlank()) {
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = make,
-                            fontSize = 13.sp,
-                            color = labelSecondary
-                        )
-                    }
+                if (policy != null) {
+                    Text(
+                        text = UiFormatters.formatCurrency(policy.totalPremium),
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = actionBlue,
+                        letterSpacing = (-0.3).sp,
+                        style = TextStyle(fontFeatureSettings = "tnum")
+                    )
                 }
-            }
-
-            if (policy != null) {
-                Text(
-                    text = UiFormatters.formatCurrency(policy.totalPremium),
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = if (isDark) AppleDarkSystemBlue else AppleSystemBlue,
-                    letterSpacing = (-0.3).sp,
-                    style = TextStyle(fontFeatureSettings = "tnum")
-                )
             }
         }
 
@@ -1257,6 +1397,7 @@ fun VehicleExpiryCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(
+                modifier = Modifier.weight(1f).padding(end = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
@@ -1264,21 +1405,26 @@ fun VehicleExpiryCard(
                     text = policy?.insurer ?: "No Active Policy",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
-                    color = labelSecondary
+                    color = labelSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false)
                 )
                 if (policy != null) {
                     Text(
                         text = "Exp ${UiFormatters.formatDate(policy.expiryDate)}",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
-                        color = if (daysRemaining <= 7) AppleSystemRed else labelSecondary,
+                        color = urgentColor,
+                        maxLines = 1,
                         style = TextStyle(fontFeatureSettings = "tnum")
                     )
                 }
             }
 
-            // Quick Direct Action Shortcuts (WhatsApp & Phone)
-            if (mobile.isNotBlank()) {
+            // Quick Direct Action Shortcuts (WhatsApp & Phone) — sibling controls, never nested
+            val hasPhoneDigits = mobile.any { it.isDigit() }
+            if (hasPhoneDigits) {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -1288,6 +1434,7 @@ fun VehicleExpiryCard(
                             .size(40.dp)
                             .clip(CircleShape)
                             .background(if (isDark) Color(0x3330D158) else Color(0x1F34C759))
+                            .semantics { role = Role.Button }
                             .clickable {
                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 val cleanMobile = mobile.filter { it.isDigit() }
@@ -1310,8 +1457,8 @@ fun VehicleExpiryCard(
                     ) {
                         Icon(
                             imageVector = AppleIcons.WhatsApp,
-                            contentDescription = "WhatsApp reminder",
-                            tint = if (isDark) AppleDarkSystemGreen else AppleSystemGreen,
+                            contentDescription = "Send WhatsApp reminder for ${item.vehicle.regNo}",
+                            tint = actionGreen,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -1321,6 +1468,7 @@ fun VehicleExpiryCard(
                             .size(40.dp)
                             .clip(CircleShape)
                             .background(if (isDark) Color(0x330A84FF) else Color(0x1F007AFF))
+                            .semantics { role = Role.Button }
                             .clickable {
                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$mobile"))
@@ -1330,8 +1478,8 @@ fun VehicleExpiryCard(
                     ) {
                         Icon(
                             imageVector = AppleIcons.Phone,
-                            contentDescription = "Call customer",
-                            tint = if (isDark) AppleDarkSystemBlue else AppleSystemBlue,
+                            contentDescription = "Call ${item.vehicle.customer.name}",
+                            tint = actionBlue,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -1346,34 +1494,32 @@ fun EmptyStateView(
     hasQuery: Boolean,
     onClearSearch: () -> Unit = {},
     onAddCustomerClicked: () -> Unit = {},
-    onNavigateToSettings: () -> Unit = {}
+    onNavigateToSettings: () -> Unit = {},
+    hasPortfolio: Boolean = false
 ) {
     val isDark = isSystemInDarkTheme()
     val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
     val labelSecondary = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
+    val iconTint = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
 
-    Box(
+    LiquidGlassCard(
         modifier = Modifier
-            .fillMaxSize()
-            .padding(32.dp),
-        contentAlignment = Alignment.Center
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        shape = RoundedCornerShape(20.dp),
+        elevation = 2.dp
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Box(
-                modifier = Modifier
-                    .size(64.dp)
-                    .background(if (isDark) Color(0x33545458) else Color.White.copy(alpha = 0.75f), CircleShape)
-                    .border(1.dp, if (isDark) Color(0x33FFFFFF) else Color.White.copy(alpha = 0.9f), CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = AppleIcons.Car,
-                    contentDescription = null,
-                    tint = if (isDark) Color(0xFF8E8E93) else IosLabelTertiary,
-                    modifier = Modifier.size(32.dp)
-                )
-            }
-            Spacer(modifier = Modifier.height(16.dp))
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 14.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            EmptyStateHaloBadge(
+                icon = AppleIcons.Car,
+                tint = iconTint
+            )
+            Spacer(modifier = Modifier.height(14.dp))
             Text(
                 text = if (hasQuery) "No matching policies found" else "No vehicles added yet",
                 fontSize = 17.sp,
@@ -1383,7 +1529,11 @@ fun EmptyStateView(
             )
             Spacer(modifier = Modifier.height(6.dp))
             Text(
-                text = if (hasQuery) "Try searching for a different registration, customer or phone number" else "Tap below to add via Form, Spreadsheet, or PDF.",
+                text = when {
+                    hasQuery && hasPortfolio -> "Try clearing your active search or category filters."
+                    hasQuery -> "No vehicles match the active search or filter."
+                    else -> "Tap below to add via Form, Spreadsheet, or PDF."
+                },
                 fontSize = 13.sp,
                 color = labelSecondary,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -1392,7 +1542,7 @@ fun EmptyStateView(
             if (hasQuery) {
                 Spacer(modifier = Modifier.height(16.dp))
                 AppleSecondaryButton(
-                    text = "Clear Search",
+                    text = "Reset Filters",
                     onClick = onClearSearch,
                     icon = AppleIcons.Clear,
                     height = 40.dp,
