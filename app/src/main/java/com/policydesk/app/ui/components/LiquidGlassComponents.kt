@@ -815,62 +815,65 @@ fun LiquidGlassSearchBar(
                     )
                 }
             }
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = { focusRequester.requestFocus() }
-            )
-            .padding(start = 12.dp, end = 6.dp, top = 6.dp, bottom = 6.dp)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(30.dp)
+            modifier = Modifier.fillMaxWidth()
         ) {
-            Icon(
-                imageVector = AppleIcons.Search,
-                contentDescription = null,
-                tint = iconTint,
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
-                    .size(18.dp)
-                    .graphicsLayer {
-                        val s = iconScale.value
-                        scaleX = s
-                        scaleY = s
+                    .weight(1f)
+                    .pointerInput(focusRequester) {
+                        detectTapGestures { focusRequester.requestFocus() }
                     }
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Box(
-                modifier = Modifier.weight(1f),
-                contentAlignment = Alignment.CenterStart
+                    .padding(start = 12.dp, top = 6.dp, bottom = 6.dp)
+                    .height(30.dp)
             ) {
-                if (query.isEmpty()) {
-                    Text(
-                        text = placeholder,
-                        fontSize = 14.sp,
-                        color = placeholderColor,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                Icon(
+                    imageVector = AppleIcons.Search,
+                    contentDescription = null,
+                    tint = iconTint,
+                    modifier = Modifier
+                        .size(18.dp)
+                        .graphicsLayer {
+                            val s = iconScale.value
+                            scaleX = s
+                            scaleY = s
+                        }
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Box(
+                    modifier = Modifier.weight(1f),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    if (query.isEmpty()) {
+                        Text(
+                            text = placeholder,
+                            fontSize = 14.sp,
+                            color = placeholderColor,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    BasicTextField(
+                        value = query,
+                        onValueChange = onQueryChange,
+                        textStyle = TextStyle(
+                            fontSize = 14.sp,
+                            color = primaryText,
+                            fontWeight = FontWeight.Normal
+                        ),
+                        singleLine = true,
+                        cursorBrush = SolidColor(accentBlue),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                        keyboardActions = KeyboardActions(onSearch = { onSearchAction() }),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .focusRequester(focusRequester)
+                            .onFocusChanged { isFocused = it.isFocused }
                     )
                 }
-                BasicTextField(
-                    value = query,
-                    onValueChange = onQueryChange,
-                    textStyle = TextStyle(
-                        fontSize = 14.sp,
-                        color = primaryText,
-                        fontWeight = FontWeight.Normal
-                    ),
-                    singleLine = true,
-                    cursorBrush = SolidColor(accentBlue),
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    keyboardActions = KeyboardActions(onSearch = { onSearchAction() }),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .focusRequester(focusRequester)
-                        .onFocusChanged { isFocused = it.isFocused }
-                )
             }
             AnimatedVisibility(
                 visible = query.isNotEmpty(),
@@ -879,6 +882,7 @@ fun LiquidGlassSearchBar(
             ) {
                 Box(
                     modifier = Modifier
+                        .padding(end = 6.dp)
                         .size(30.dp)
                         .clip(CircleShape)
                         .clickable(
