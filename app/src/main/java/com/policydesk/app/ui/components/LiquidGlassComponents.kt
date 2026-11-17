@@ -1834,10 +1834,27 @@ fun HsrpRegistrationTextField(
                 fontWeight = FontWeight.SemiBold,
                 color = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
             )
+            val stateName = remember(value) {
+                com.policydesk.app.domain.model.RegistrationNormalizer.getStateName(value)
+            }
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(5.dp)
             ) {
+                if (stateName != null) {
+                    Text(
+                        text = stateName,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
+                    )
+                    Text(
+                        text = "•",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isDark) IosDarkLabelTertiary else IosLabelTertiary
+                    )
+                }
                 Box(
                     modifier = Modifier
                         .size(7.dp)
@@ -1977,7 +1994,15 @@ fun HsrpRegistrationTextField(
 
                     BasicTextField(
                         value = value,
-                        onValueChange = onValueChange,
+                        onValueChange = { input ->
+                            val filtered = com.policydesk.app.domain.model.RegistrationNormalizer.filterProgressiveInput(input)
+                            if (filtered != value) {
+                                onValueChange(filtered)
+                            } else if (input.length > value.length) {
+                                // User attempted to enter an invalid character (e.g. letter instead of digit for RTO)
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            }
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
                             .onFocusChanged { focusState ->

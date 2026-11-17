@@ -418,8 +418,10 @@ class AddPolicyViewModel @Inject constructor(
     }
 
     fun onRegNoChanged(raw: String) {
-        val normalized = RegistrationNormalizer.normalize(raw)
-        val isUnusual = normalized.isNotEmpty() && !RegistrationNormalizer.isStandardFormat(normalized)
+        val normalized = RegistrationNormalizer.filterProgressiveInput(raw)
+        // Suppress premature warnings while user is actively typing (length < 9)
+        val isFullPlate = normalized.length >= 9
+        val isUnusual = isFullPlate && !RegistrationNormalizer.isStandardFormat(normalized)
         _formState.update {
             it.copy(
                 regNo = normalized,

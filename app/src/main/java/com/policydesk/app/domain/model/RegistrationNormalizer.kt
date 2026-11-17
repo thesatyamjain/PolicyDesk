@@ -164,6 +164,139 @@ object RegistrationNormalizer {
         }
         return sb.toString()
     }
+
+    /**
+     * Progressive typing filter for Indian vehicle registration numbers.
+     * Enforces syntactical rules as characters are typed:
+     * - Pos 0-1: State Code letters (or 2-digit year for BH series)
+     * - Pos 2: MUST be digit (RTO code) for standard plates, or 'B' for BH series
+     * - Pos 3: Digit for standard plate (or series letter for 1-digit RTO)
+     * - Pos 4+: Series letters (max 3), followed strictly by number digits (max 4)
+     * - Max length: 11 characters
+     */
+    fun filterProgressiveInput(raw: String): String {
+        if (raw.isEmpty()) return ""
+        val clean = StringBuilder()
+        for (i in 0 until raw.length) {
+            val ch = raw[i]
+            val upper = if (ch in 'a'..'z') (ch.code - 32).toChar() else ch
+            if (upper !in 'A'..'Z' && upper !in '0'..'9') continue
+            if (clean.length >= 11) break
+
+            val nextChar = upper
+            val len = clean.length
+
+            if (len == 0) {
+                clean.append(nextChar)
+            } else if (len == 1) {
+                val firstIsDigit = clean[0].isDigit()
+                if (firstIsDigit && nextChar.isDigit()) {
+                    clean.append(nextChar)
+                } else if (!firstIsDigit && nextChar.isLetter()) {
+                    clean.append(nextChar)
+                }
+            } else {
+                val isBh = clean[0].isDigit() && clean[1].isDigit()
+                if (isBh) {
+                    when (len) {
+                        2 -> if (nextChar == 'B') clean.append(nextChar)
+                        3 -> if (nextChar == 'H') clean.append(nextChar)
+                        in 4..7 -> if (nextChar.isDigit()) clean.append(nextChar)
+                        in 8..9 -> if (nextChar.isLetter()) clean.append(nextChar)
+                    }
+                } else {
+                    // Standard Indian format
+                    if (len == 2) {
+                        // After 2 state letters, Pos 2 MUST BE A DIGIT (RTO Code)
+                        if (nextChar.isDigit()) clean.append(nextChar)
+                    } else if (len == 3) {
+                        // Pos 3: Can be 2nd RTO digit (e.g. '4' in MP04) or letter if 1-digit RTO (e.g. DL1C)
+                        clean.append(nextChar)
+                    } else {
+                        // Determine where RTO digits end
+                        var rtoEnd = 2
+                        while (rtoEnd < clean.length && clean[rtoEnd].isDigit() && (rtoEnd - 2) < 2) {
+                            rtoEnd++
+                        }
+
+                        if (rtoEnd == clean.length) {
+                            clean.append(nextChar)
+                        } else {
+                            var seriesEnd = rtoEnd
+                            while (seriesEnd < clean.length && clean[seriesEnd].isLetter() && (seriesEnd - rtoEnd) < 3) {
+                                seriesEnd++
+                            }
+
+                            if (seriesEnd == clean.length) {
+                                if (seriesEnd - rtoEnd < 3) {
+                                    clean.append(nextChar)
+                                } else {
+                                    if (nextChar.isDigit()) clean.append(nextChar)
+                                }
+                            } else {
+                                val digitsCount = clean.length - seriesEnd
+                                if (digitsCount < 4 && nextChar.isDigit()) {
+                                    clean.append(nextChar)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return clean.toString()
+    }
+
+    /**
+     * Resolves the Indian State / Union Territory name from the plate prefix.
+     */
+    fun getStateName(raw: String): String? {
+        val clean = normalize(raw)
+        if (clean.length < 2) return null
+        if (clean.length >= 4 && clean[0].isDigit() && clean[1].isDigit() && clean[2] == 'B' && clean[3] == 'H') {
+            return "Bharat Series (BH)"
+        }
+        val prefix = clean.take(2).uppercase()
+        return when (prefix) {
+            "AN" -> "Andaman & Nicobar"
+            "AP" -> "Andhra Pradesh"
+            "AR" -> "Arunachal Pradesh"
+            "AS" -> "Assam"
+            "BR" -> "Bihar"
+            "CG" -> "Chhattisgarh"
+            "CH" -> "Chandigarh"
+            "DD", "DN" -> "DNH & Daman Diu"
+            "DL" -> "Delhi"
+            "GA" -> "Goa"
+            "GJ" -> "Gujarat"
+            "HP" -> "Himachal Pradesh"
+            "HR" -> "Haryana"
+            "JH" -> "Jharkhand"
+            "JK" -> "Jammu & Kashmir"
+            "KA" -> "Karnataka"
+            "KL" -> "Kerala"
+            "LA" -> "Ladakh"
+            "LD" -> "Lakshadweep"
+            "MH" -> "Maharashtra"
+            "ML" -> "Meghalaya"
+            "MN" -> "Manipur"
+            "MP" -> "Madhya Pradesh"
+            "MZ" -> "Mizoram"
+            "NL" -> "Nagaland"
+            "OD", "OR" -> "Odisha"
+            "PB" -> "Punjab"
+            "PY" -> "Puducherry"
+            "RJ" -> "Rajasthan"
+            "SK" -> "Sikkim"
+            "TN" -> "Tamil Nadu"
+            "TR" -> "Tripura"
+            "TS" -> "Telangana"
+            "UK", "UA" -> "Uttarakhand"
+            "UP" -> "Uttar Pradesh"
+            "WB" -> "West Bengal"
+            else -> null
+        }
+    }
 }
 
 object FieldValidators {

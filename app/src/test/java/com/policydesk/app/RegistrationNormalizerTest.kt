@@ -68,6 +68,39 @@ class RegistrationNormalizerTest {
     }
 
     @Test
+    fun filterProgressiveInput_blocks_letters_after_state_code() {
+        // Typing "MP" followed by letters must reject the letter (RTO must be numbers)
+        assertEquals("MP", RegistrationNormalizer.filterProgressiveInput("MPH"))
+        assertEquals("MP", RegistrationNormalizer.filterProgressiveInput("MPABCD"))
+        assertEquals("MP0", RegistrationNormalizer.filterProgressiveInput("MP0"))
+        assertEquals("MP04", RegistrationNormalizer.filterProgressiveInput("MP04"))
+        assertEquals("MP04H", RegistrationNormalizer.filterProgressiveInput("MP04H"))
+        assertEquals("MP04HD", RegistrationNormalizer.filterProgressiveInput("MP04HD"))
+        assertEquals("MP04HD0522", RegistrationNormalizer.filterProgressiveInput("mp 04 hd 0522"))
+        
+        // Cannot type letters once number digits start
+        assertEquals("MP04HD0522", RegistrationNormalizer.filterProgressiveInput("MP04HD0522A"))
+        assertEquals("MP04HD0522", RegistrationNormalizer.filterProgressiveInput("MP04HD0522999"))
+    }
+
+    @Test
+    fun filterProgressiveInput_supports_bharat_series() {
+        assertEquals("22", RegistrationNormalizer.filterProgressiveInput("22"))
+        assertEquals("22B", RegistrationNormalizer.filterProgressiveInput("22B"))
+        assertEquals("22BH", RegistrationNormalizer.filterProgressiveInput("22BH"))
+        assertEquals("22BH1234", RegistrationNormalizer.filterProgressiveInput("22BH1234"))
+        assertEquals("22BH1234AA", RegistrationNormalizer.filterProgressiveInput("22bh1234aa"))
+    }
+
+    @Test
+    fun getStateName_identifies_indian_states_and_bh() {
+        assertEquals("Madhya Pradesh", RegistrationNormalizer.getStateName("MP04HD0522"))
+        assertEquals("Delhi", RegistrationNormalizer.getStateName("DL01AB1234"))
+        assertEquals("Maharashtra", RegistrationNormalizer.getStateName("MH12DE1234"))
+        assertEquals("Bharat Series (BH)", RegistrationNormalizer.getStateName("22BH1234AA"))
+    }
+
+    @Test
     fun fieldValidators_mobile_and_name_and_policy() {
         assertTrue(FieldValidators.isValidMobile("9876543210"))
         assertTrue(FieldValidators.isValidMobile("+919876543210"))
