@@ -76,6 +76,7 @@ object GoogleDriveManager {
 
     const val SNAPSHOT_FILE_NAME = "policydesk_backup.json"
     const val VAULT_FOLDER_NAME = "PolicyDesk Vault"
+    const val DOCUMENTS_FOLDER_NAME = "Policy Documents"
     const val DRIVE_FILE_SCOPE = "https://www.googleapis.com/auth/drive.file"
 
     private const val PREFS_NAME = "policydesk_drive_prefs"
@@ -280,6 +281,234 @@ object GoogleDriveManager {
     }
 
     /**
+     * Resolves or creates the "Policy Documents" subfolder within the PolicyDesk Vault folder.
+     */
+    private suspend fun getOrCreateDocumentsFolder(token: String, vaultFolderId: String): Result<String> = withContext(Dispatchers.IO) {
+        runCatching {
+            val query = "mimeType = 'application/vnd.google-apps.folder' and name = '$DOCUMENTS_FOLDER_NAME' and '$vaultFolderId' in parents and trashed = false"
+            val encodedQuery = URLEncoder.encode(query, "UTF-8")
+            val searchUrl = URL("https://www.googleapis.com/drive/v3/files?q=$encodedQuery&spaces=drive&fields=files(id,name)")
+
+            var conn = (searchUrl.openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                setRequestProperty("Authorization", "Bearer $token")
+                connectTimeout = 15000
+                readTimeout = 15000
+            }
+
+            val searchResponse = if (conn.responseCode in 200..299) {
+                conn.inputStream.bufferedReader().use { it.readText() }
+            } else {
+                val err = conn.errorStream?.bufferedReader()?.use { it.readText() }
+                throw IllegalStateException("Failed to query Documents folder: HTTP ${conn.responseCode} $err")
+            }
+
+            val filesArray = JSONObject(searchResponse).optJSONArray("files")
+            if (filesArray != null && filesArray.length() > 0) {
+                return@runCatching filesArray.getJSONObject(0).getString("id")
+            }
+
+            // Create "Policy Documents" subfolder inside vault folder
+            val createUrl = URL("https://www.googleapis.com/drive/v3/files")
+            conn = (createUrl.openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                setRequestProperty("Authorization", "Bearer $token")
+                setRequestProperty("Content-Type", "application/json; charset=UTF-8")
+                doOutput = true
+                connectTimeout = 15000
+                readTimeout = 15000
+            }
+
+            val parentsArray = JSONArray().apply { put(vaultFolderId) }
+            val folderMeta = JSONObject().apply {
+                put("name", DOCUMENTS_FOLDER_NAME)
+                put("parents", parentsArray)
+                put("mimeType", "application/vnd.google-apps.folder")
+            }
+            conn.outputStream.bufferedWriter().use { it.write(folderMeta.toString()) }
+
+            val createResponse = if (conn.responseCode in 200..299) {
+                conn.inputStream.bufferedReader().use { it.readText() }
+            } else {
+                val err = conn.errorStream?.bufferedReader()?.use { it.readText() }
+                throw IllegalStateException("Failed to create Documents folder: HTTP ${conn.responseCode} $err")
+            }
+
+            JSONObject(createResponse).getString("id")
+        }
+    }
+
+    /**
+     * Incrementally syncs locally stored policy PDFs into the "Policy Documents" subfolder in Google Drive.
+     * Only uploads PDFs that are not already present on Google Drive.
+     */
+    suspend fun syncDocumentsToDrive(context: Context, token: String, vaultFolderId: String): Result<Int> = withContext(Dispatchers.IO) {
+        runCatching {
+            val policiesDir = File(context.filesDir, "policies")
+            if (!policiesDir.exists()) return@runCatching 0
+
+            val localFiles = policiesDir.listFiles { file ->
+                file.isFile && file.extension.equals("pdf", ignoreCase = true) && file.length() > 0
+            } ?: emptyArray()
+
+            if (localFiles.isEmpty()) return@runCatching 0
+
+            val docsFolderId = getOrCreateDocumentsFolder(token, vaultFolderId).getOrThrow()
+
+            // Query existing remote files in Policy Documents subfolder
+            val query = "'$docsFolderId' in parents and trashed = false"
+            val encodedQuery = URLEncoder.encode(query, "UTF-8")
+            val searchUrl = URL("https://www.googleapis.com/drive/v3/files?q=$encodedQuery&spaces=drive&fields=files(id,name)&pageSize=1000")
+
+            val conn = (searchUrl.openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                setRequestProperty("Authorization", "Bearer $token")
+                connectTimeout = 15000
+                readTimeout = 15000
+            }
+
+            val remoteNames = mutableSetOf<String>()
+            if (conn.responseCode in 200..299) {
+                val resp = conn.inputStream.bufferedReader().use { it.readText() }
+                val filesArr = JSONObject(resp).optJSONArray("files")
+                if (filesArr != null) {
+                    for (i in 0 until filesArr.length()) {
+                        val obj = filesArr.getJSONObject(i)
+                        remoteNames.add(obj.optString("name"))
+                    }
+                }
+            }
+
+            var uploadedCount = 0
+            for (file in localFiles) {
+                if (file.name in remoteNames) continue
+
+                runCatching {
+                    // 1. Create file metadata
+                    val createUrl = URL("https://www.googleapis.com/drive/v3/files")
+                    val metaConn = (createUrl.openConnection() as HttpURLConnection).apply {
+                        requestMethod = "POST"
+                        setRequestProperty("Authorization", "Bearer $token")
+                        setRequestProperty("Content-Type", "application/json; charset=UTF-8")
+                        doOutput = true
+                        connectTimeout = 15000
+                        readTimeout = 15000
+                    }
+
+                    val parents = JSONArray().apply { put(docsFolderId) }
+                    val meta = JSONObject().apply {
+                        put("name", file.name)
+                        put("parents", parents)
+                        put("mimeType", "application/pdf")
+                    }
+                    metaConn.outputStream.bufferedWriter().use { it.write(meta.toString()) }
+
+                    if (metaConn.responseCode !in 200..299) return@runCatching
+                    val createResp = metaConn.inputStream.bufferedReader().use { it.readText() }
+                    val fileId = JSONObject(createResp).getString("id")
+
+                    // 2. Upload PDF content
+                    val uploadUrl = URL("https://www.googleapis.com/upload/drive/v3/files/$fileId?uploadType=media")
+                    val uploadConn = (uploadUrl.openConnection() as HttpURLConnection).apply {
+                        requestMethod = "PATCH"
+                        setRequestProperty("Authorization", "Bearer $token")
+                        setRequestProperty("Content-Type", "application/pdf")
+                        doOutput = true
+                        connectTimeout = 30000
+                        readTimeout = 60000
+                    }
+
+                    file.inputStream().use { input ->
+                        input.copyTo(uploadConn.outputStream)
+                    }
+
+                    if (uploadConn.responseCode in 200..299) {
+                        uploadedCount++
+                    }
+                }
+            }
+            uploadedCount
+        }
+    }
+
+    /**
+     * Downloads any missing policy PDFs from Google Drive's "Policy Documents" folder to local device storage.
+     */
+    suspend fun downloadMissingDocumentsFromDrive(context: Context, token: String, vaultFolderId: String): Result<Int> = withContext(Dispatchers.IO) {
+        runCatching {
+            val docsQuery = "mimeType = 'application/vnd.google-apps.folder' and name = '$DOCUMENTS_FOLDER_NAME' and '$vaultFolderId' in parents and trashed = false"
+            val encodedDocsQuery = URLEncoder.encode(docsQuery, "UTF-8")
+            val searchDocsUrl = URL("https://www.googleapis.com/drive/v3/files?q=$encodedDocsQuery&spaces=drive&fields=files(id,name)")
+
+            val docsConn = (searchDocsUrl.openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                setRequestProperty("Authorization", "Bearer $token")
+                connectTimeout = 15000
+                readTimeout = 15000
+            }
+
+            if (docsConn.responseCode !in 200..299) return@runCatching 0
+            val docsResp = docsConn.inputStream.bufferedReader().use { it.readText() }
+            val docsArr = JSONObject(docsResp).optJSONArray("files") ?: return@runCatching 0
+            if (docsArr.length() == 0) return@runCatching 0
+
+            val docsFolderId = docsArr.getJSONObject(0).getString("id")
+
+            // Query all PDFs inside Policy Documents folder
+            val filesQuery = "'$docsFolderId' in parents and trashed = false"
+            val encodedFilesQuery = URLEncoder.encode(filesQuery, "UTF-8")
+            val filesUrl = URL("https://www.googleapis.com/drive/v3/files?q=$encodedFilesQuery&spaces=drive&fields=files(id,name)&pageSize=1000")
+
+            val filesConn = (filesUrl.openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                setRequestProperty("Authorization", "Bearer $token")
+                connectTimeout = 15000
+                readTimeout = 15000
+            }
+
+            if (filesConn.responseCode !in 200..299) return@runCatching 0
+            val filesResp = filesConn.inputStream.bufferedReader().use { it.readText() }
+            val filesList = JSONObject(filesResp).optJSONArray("files") ?: return@runCatching 0
+
+            val policiesDir = File(context.filesDir, "policies").apply {
+                if (!exists()) mkdirs()
+            }
+
+            var downloadedCount = 0
+            for (i in 0 until filesList.length()) {
+                val fObj = filesList.getJSONObject(i)
+                val id = fObj.getString("id")
+                val name = fObj.getString("name")
+
+                val localFile = File(policiesDir, name)
+                if (localFile.exists() && localFile.length() > 0) continue
+
+                runCatching {
+                    val downloadUrl = URL("https://www.googleapis.com/drive/v3/files/$id?alt=media")
+                    val downConn = (downloadUrl.openConnection() as HttpURLConnection).apply {
+                        requestMethod = "GET"
+                        setRequestProperty("Authorization", "Bearer $token")
+                        connectTimeout = 15000
+                        readTimeout = 60000
+                    }
+
+                    if (downConn.responseCode in 200..299) {
+                        downConn.inputStream.use { input ->
+                            java.io.FileOutputStream(localFile).use { output ->
+                                input.copyTo(output)
+                            }
+                        }
+                        if (localFile.exists() && localFile.length() > 0) {
+                            downloadedCount++
+                        }
+                    }
+                }
+            }
+            downloadedCount
+        }
+    }
+
+    /**
      * Uploads the policy snapshot bundle directly into the "PolicyDesk Vault" folder on Google Drive.
      * Incorporates anti-wipe safeguard and local rolling snapshot preservation.
      */
@@ -384,6 +613,12 @@ object GoogleDriveManager {
             saveLocalRollingSnapshot(context, snapshotJson)
             setLastSyncTime(context, System.currentTimeMillis())
             setLastBackupCount(context, newVehiclesCount)
+
+            // Incrementally backup policy PDF documents to Google Drive Vault
+            runCatching {
+                syncDocumentsToDrive(context, token, folderId)
+            }
+            Unit
         }
     }
 
@@ -492,6 +727,11 @@ object GoogleDriveManager {
             saveLocalRollingSnapshot(context, content)
             setLastSyncTime(context, System.currentTimeMillis())
             setLastBackupCount(context, vehicleCount)
+
+            // Download missing policy PDF documents from Google Drive Vault
+            runCatching {
+                downloadMissingDocumentsFromDrive(context, token, folderId)
+            }
 
             content
         }
