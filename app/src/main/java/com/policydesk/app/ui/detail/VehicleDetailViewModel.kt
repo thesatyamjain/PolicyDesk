@@ -1,5 +1,7 @@
 package com.policydesk.app.ui.detail
 
+import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -7,6 +9,7 @@ import com.policydesk.app.domain.model.FieldValidators
 import com.policydesk.app.domain.model.RegistrationNormalizer
 import com.policydesk.app.domain.model.VehicleWithPolicies
 import com.policydesk.app.domain.repository.VehicleRepository
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -29,6 +32,7 @@ sealed interface DetailUiEvent {
 
 @HiltViewModel
 class VehicleDetailViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val repository: VehicleRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
@@ -109,6 +113,37 @@ class VehicleDetailViewModel @Inject constructor(
             )
             repository.saveVehicleAndPolicy(vehicleWithPolicies.vehicle, updated)
             _uiEvent.emit(DetailUiEvent.ShowToast("Premium updated successfully"))
+        }
+    }
+
+    fun attachPolicyDocument(uri: Uri) {
+        viewModelScope.launch {
+            val vehicleWithPolicies = vehicleData.value ?: return@launch
+            val policy = vehicleWithPolicies.currentPolicy ?: return@launch
+            val savedId = com.policydesk.app.data.storage.PolicyDocumentManager.savePolicyDocument(
+                context = context,
+                sourceUri = uri,
+                policyId = policy.id
+            )
+            if (savedId != null) {
+                val updated = policy.copy(attachmentId = savedId)
+                repository.saveVehicleAndPolicy(vehicleWithPolicies.vehicle, updated)
+                _uiEvent.emit(DetailUiEvent.ShowToast("Policy PDF saved & stored in app"))
+            } else {
+                _uiEvent.emit(DetailUiEvent.ShowToast("Failed to save policy PDF"))
+            }
+        }
+    }
+
+    fun removePolicyDocument() {
+        viewModelScope.launch {
+            val vehicleWithPolicies = vehicleData.value ?: return@launch
+            val policy = vehicleWithPolicies.currentPolicy ?: return@launch
+            val attachmentId = policy.attachmentId ?: return@launch
+            com.policydesk.app.data.storage.PolicyDocumentManager.deletePolicyDocument(context, attachmentId)
+            val updated = policy.copy(attachmentId = null)
+            repository.saveVehicleAndPolicy(vehicleWithPolicies.vehicle, updated)
+            _uiEvent.emit(DetailUiEvent.ShowToast("Policy PDF removed"))
         }
     }
 }

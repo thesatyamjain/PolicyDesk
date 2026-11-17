@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
+    <files-path name="policy_documents" path="policies/" />
     <cache-path name="shared_backups" path="backups/" />
     <cache-path name="ota_updates" path="updates/" />
     <cache-path name="camera_photos" path="photos/" />

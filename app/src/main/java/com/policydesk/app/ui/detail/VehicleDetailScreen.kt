@@ -7,7 +7,10 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import com.policydesk.app.data.storage.PolicyDocumentManager
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.animateFloatAsState
@@ -117,6 +120,12 @@ import com.policydesk.app.ui.components.LiquidGlassGroupedSection
 import com.policydesk.app.ui.components.LocalScrollToTopDispatcher
 import com.policydesk.app.ui.components.UiFormatters
 import com.policydesk.app.ui.theme.AppleIcons
+import com.policydesk.app.ui.theme.AppleDarkSystemBlue
+import com.policydesk.app.ui.theme.AppleDarkSystemGreen
+import com.policydesk.app.ui.theme.AppleDarkSystemRed
+import com.policydesk.app.ui.theme.AppleSystemBlue
+import com.policydesk.app.ui.theme.AppleSystemGreen
+import com.policydesk.app.ui.theme.AppleSystemRed
 import com.policydesk.app.ui.theme.IosDarkLabelPrimary
 import com.policydesk.app.ui.theme.IosDarkLabelSecondary
 import com.policydesk.app.ui.theme.IosDarkSeparator
@@ -333,6 +342,12 @@ fun VehicleDetailScreen(
     val haptic = LocalHapticFeedback.current
     val coroutineScope = rememberCoroutineScope()
     val animatorsEnabled = rememberAnimatorsEnabled()
+
+    val pdfPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let { viewModel.attachPolicyDocument(it) }
+    }
 
     var showMenu by remember { mutableStateOf(false) }
     var showCloseDialog by remember { mutableStateOf(false) }
@@ -764,6 +779,29 @@ fun VehicleDetailScreen(
                                     else -> status.displayName
                                 }
                                 DetailRow(label = "Policy Status", value = statusText)
+
+                                // ORIGINAL POLICY DOCUMENT (PDF)
+                                val hasDoc = remember(policy.attachmentId) {
+                                    PolicyDocumentManager.hasLocalDocument(context, policy.attachmentId)
+                                }
+                                val docSize = remember(policy.attachmentId) {
+                                    policy.attachmentId?.let { PolicyDocumentManager.getDocumentSizeFormatted(context, it) }
+                                }
+
+                                if (hasDoc && policy.attachmentId != null) {
+                                    PolicyDocumentRow(
+                                        attachmentId = policy.attachmentId,
+                                        docSize = docSize,
+                                        regNo = vehicle.regNo,
+                                        customerName = vehicle.customer.name,
+                                        insurer = policy.insurer,
+                                        onRemove = { viewModel.removePolicyDocument() }
+                                    )
+                                } else {
+                                    AttachPolicyDocumentRow(
+                                        onClick = { pdfPickerLauncher.launch("application/pdf") }
+                                    )
+                                }
                             }
                         }
 
@@ -1514,6 +1552,316 @@ fun PolicyHistoryItem(policy: Policy) {
                         color = green
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PolicyDocumentRow(
+    attachmentId: String,
+    docSize: String?,
+    regNo: String,
+    customerName: String,
+    insurer: String,
+    onRemove: () -> Unit
+) {
+    val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
+    val isDark = isSystemInDarkTheme()
+
+    val cardBg = if (isDark) Color(0xFF1E1E24) else Color(0xFFF2F4F8)
+    val cardBorder = if (isDark) Color(0x33FFFFFF) else Color(0x1F000000)
+    val textPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
+    val textSecondary = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
+
+    var showMenu by remember { mutableStateOf(false) }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(cardBg)
+            .border(0.75.dp, cardBorder, RoundedCornerShape(12.dp))
+            .clickable(
+                role = Role.Button,
+                onClickLabel = "Open Policy Document",
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    PolicyDocumentManager.openPolicyDocument(context, attachmentId)
+                }
+            )
+            .padding(12.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            // Left: PDF Icon + Info
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.weight(1f)
+            ) {
+                // PDF Squircle Badge
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clip(RoundedCornerShape(9.dp))
+                        .background(Color(0xFFFF3B30).copy(alpha = 0.15f))
+                        .border(1.dp, Color(0xFFFF3B30).copy(alpha = 0.35f), RoundedCornerShape(9.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = AppleIcons.DocText,
+                        contentDescription = "PDF Document",
+                        tint = Color(0xFFFF3B30),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = "Policy Document (PDF)",
+                            fontSize = 13.5.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = textPrimary
+                        )
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(if (isDark) AppleDarkSystemGreen.copy(alpha = 0.2f) else AppleSystemGreen.copy(alpha = 0.15f))
+                                .padding(horizontal = 5.dp, vertical = 1.dp)
+                        ) {
+                            Text(
+                                text = "Stored",
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isDark) AppleDarkSystemGreen else AppleSystemGreen
+                            )
+                        }
+                    }
+                    Text(
+                        text = "Stored offline in app${if (docSize != null) " • $docSize" else ""} • Tap to view",
+                        fontSize = 11.sp,
+                        color = textSecondary
+                    )
+                }
+            }
+
+            // Right: Actions (Share + More)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                // Share Button
+                Box(
+                    modifier = Modifier
+                        .size(34.dp)
+                        .clip(CircleShape)
+                        .background(if (isDark) Color(0x22FFFFFF) else Color(0x0F000000))
+                        .clickable(
+                            role = Role.Button,
+                            onClickLabel = "Share Policy PDF",
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                PolicyDocumentManager.sharePolicyDocument(
+                                    context = context,
+                                    attachmentId = attachmentId,
+                                    regNo = regNo,
+                                    customerName = customerName,
+                                    insurer = insurer
+                                )
+                            }
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = AppleIcons.Share,
+                        contentDescription = "Share PDF",
+                        tint = if (isDark) AppleDarkSystemBlue else AppleSystemBlue,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+
+                // More Menu Button (Remove)
+                Box {
+                    Box(
+                        modifier = Modifier
+                            .size(34.dp)
+                            .clip(CircleShape)
+                            .background(if (isDark) Color(0x22FFFFFF) else Color(0x0F000000))
+                            .clickable(
+                                role = Role.Button,
+                                onClickLabel = "Document Options",
+                                onClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    showMenu = true
+                                }
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = AppleIcons.Ellipsis,
+                            contentDescription = "Options",
+                            tint = textSecondary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { showMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Open with PDF Viewer", fontSize = 13.sp) },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = AppleIcons.Eye,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            },
+                            onClick = {
+                                showMenu = false
+                                PolicyDocumentManager.openPolicyDocument(context, attachmentId)
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Share PDF Document", fontSize = 13.sp) },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = AppleIcons.Share,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            },
+                            onClick = {
+                                showMenu = false
+                                PolicyDocumentManager.sharePolicyDocument(
+                                    context = context,
+                                    attachmentId = attachmentId,
+                                    regNo = regNo,
+                                    customerName = customerName,
+                                    insurer = insurer
+                                )
+                            }
+                        )
+                        HorizontalDivider()
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    text = "Remove PDF from App",
+                                    fontSize = 13.sp,
+                                    color = if (isDark) AppleDarkSystemRed else AppleSystemRed
+                                )
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = AppleIcons.Trash,
+                                    contentDescription = null,
+                                    tint = if (isDark) AppleDarkSystemRed else AppleSystemRed,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            },
+                            onClick = {
+                                showMenu = false
+                                onRemove()
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AttachPolicyDocumentRow(
+    onClick: () -> Unit
+) {
+    val haptic = LocalHapticFeedback.current
+    val isDark = isSystemInDarkTheme()
+    val textPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
+    val textSecondary = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(if (isDark) Color(0xFF19191E) else Color(0xFFF7F8FA))
+            .border(
+                width = 0.75.dp,
+                color = if (isDark) Color(0x2EFFFFFF) else Color(0x19000000),
+                shape = RoundedCornerShape(12.dp)
+            )
+            .clickable(
+                role = Role.Button,
+                onClickLabel = "Attach Policy PDF",
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onClick()
+                }
+            )
+            .padding(horizontal = 12.dp, vertical = 10.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(34.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background((if (isDark) AppleDarkSystemBlue else AppleSystemBlue).copy(alpha = 0.15f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = AppleIcons.DocText,
+                        contentDescription = null,
+                        tint = if (isDark) AppleDarkSystemBlue else AppleSystemBlue,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                    Text(
+                        text = "Attach Original Policy PDF",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = textPrimary
+                    )
+                    Text(
+                        text = "Save offline copy to view or share anytime",
+                        fontSize = 11.sp,
+                        color = textSecondary
+                    )
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background((if (isDark) AppleDarkSystemBlue else AppleSystemBlue).copy(alpha = 0.15f))
+                    .padding(horizontal = 10.dp, vertical = 5.dp)
+            ) {
+                Text(
+                    text = "+ Attach",
+                    fontSize = 11.5.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
+                )
             }
         }
     }

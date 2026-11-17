@@ -517,6 +517,12 @@ class PdfReviewViewModel @Inject constructor(
                 UUID.randomUUID().toString()
             }
 
+            // Automatically persist the original PDF to private app storage
+            val currentDocUri = state.pdfUri ?: state.queue.getOrNull(state.queueIndex)
+            val savedDocId = if (currentDocUri != null) {
+                com.policydesk.app.data.storage.PolicyDocumentManager.savePolicyDocument(context, currentDocUri, policyId)
+            } else null
+
             val policy = Policy(
                 id = policyId,
                 vehicleRegNo = normalizedReg,
@@ -528,6 +534,7 @@ class PdfReviewViewModel @Inject constructor(
                 commissionPercentage = state.commissionPercentage.toDoubleOrNull(),
                 commissionAmount = state.commissionAmount.toDoubleOrNull(),
                 source = PolicySource.PDF,
+                attachmentId = savedDocId,
                 saleType = if (isRenewal && !isSamePolicyNo) SaleType.RENEWAL else SaleType.NEW_BUSINESS,
                 saleDate = now,
                 countsAsSale = true
