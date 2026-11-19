@@ -303,6 +303,9 @@ object FieldValidators {
     // 10 digits starting with 6, 7, 8, 9 with optional +91 prefix
     private val MOBILE_REGEX = Regex("^(?:\\+91)?[6-9][0-9]{9}$")
     private val EMAIL_REGEX = Regex("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")
+    private val BUSINESS_ACRONYMS = setOf("PVT", "LTD", "LLP", "INC", "CORP", "CO", "MFG", "IND", "ENGG", "M/S")
+    private val ROMAN_NUMERALS = setOf("I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X")
+    private val WHITESPACE_REGEX = Regex("\\s+")
 
     fun isValidName(name: String): Boolean = name.trim().length >= 2
 
@@ -367,19 +370,16 @@ object FieldValidators {
         val trimmed = name.trim()
         if (trimmed.isEmpty()) return ""
 
-        val businessAcronyms = setOf("PVT", "LTD", "LLP", "INC", "CORP", "CO", "MFG", "IND", "ENGG", "M/S")
-        val romanNumerals = setOf("I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X")
-
-        return trimmed.split(Regex("\\s+")).filter { it.isNotBlank() }.joinToString(" ") { word ->
+        return trimmed.split(WHITESPACE_REGEX).filter { it.isNotBlank() }.joinToString(" ") { word ->
             val upper = word.uppercase()
-            if (upper in businessAcronyms) {
+            if (upper in BUSINESS_ACRONYMS) {
                 upper
-            } else if (upper in romanNumerals) {
+            } else if (upper in ROMAN_NUMERALS) {
                 upper
             } else if (word.contains('.')) {
                 word.split('.').joinToString(".") { subToken ->
                     if (subToken.isBlank()) ""
-                    else if (subToken.uppercase() in businessAcronyms) subToken.uppercase()
+                    else if (subToken.uppercase() in BUSINESS_ACRONYMS) subToken.uppercase()
                     else if (subToken.length == 1) subToken.uppercase()
                     else subToken.lowercase().replaceFirstChar { it.uppercase() }
                 }

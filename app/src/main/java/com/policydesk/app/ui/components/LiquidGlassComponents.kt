@@ -1,8 +1,5 @@
 package com.policydesk.app.ui.components
 
-import android.graphics.Bitmap
-import android.graphics.BitmapShader
-import android.graphics.Shader
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -92,7 +89,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
@@ -308,32 +304,10 @@ private val LightBorderBrush = Brush.verticalGradient(
 )
 
 /**
- * Procedural Frosted Satin Micro-Grain Texture (visionOS / Apple Liquid Glass)
- * 24x24 hardware-tiled Skia ShaderBrush providing microscopic light diffusion.
- */
-internal val FrostedGlassNoiseBrush: Brush = object : ShaderBrush() {
-    private val shader by lazy {
-        val size = 24
-        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-        val random = java.util.Random(42)
-        for (y in 0 until size) {
-            for (x in 0 until size) {
-                val v = random.nextInt(256)
-                val alpha = (random.nextFloat() * 10).toInt() // 0-4% alpha micro-stipple
-                bitmap.setPixel(x, y, android.graphics.Color.argb(alpha, v, v, v))
-            }
-        }
-        BitmapShader(bitmap, Shader.TileMode.REPEAT, Shader.TileMode.REPEAT)
-    }
-    override fun createShader(size: Size): Shader = shader
-}
-
-/**
  * Modifier that applies True Apple Liquid Glass (matching My Warranties / visionOS):
  * 1. Dual-layer ambient & contact edge shadow with Apple diffuse elevation
  * 2. 4-stop diagonal meniscus refraction gradient with 90%-95% fail-safe opacity
  * 3. 1.1dp dual-incident vertical specular border (Zenith highlight -> Nadir catch)
- * 4. Micro-diffusion frosted satin texture
  */
 fun Modifier.liquidGlass(
     shape: Shape = RoundedCornerShape(18.dp),
@@ -375,7 +349,7 @@ fun Modifier.liquidGlass(
                 Color(0xFF202024).copy(alpha = fillAlphaTop)
             ) else listOf(
                 Color.White.copy(alpha = fillAlphaTop),
-                Color(0xFFF9F9FB).copy(alpha = fillAlphaTop * 0.98f),
+                Color.White.copy(alpha = 0.99f),
                 Color(0xFFF2F2F7).copy(alpha = fillAlphaBottom),
                 Color.White.copy(alpha = fillAlphaTop)
             ),
@@ -403,11 +377,6 @@ fun Modifier.liquidGlass(
             brush = meniscusBrush,
             shape = shape
         )
-        .drawWithContent {
-            // Tactile frosted satin micro-grain texture on the glass surface
-            drawRect(brush = FrostedGlassNoiseBrush)
-            drawContent()
-        }
         .border(
             width = 1.1.dp,
             brush = borderBrush,
@@ -480,21 +449,6 @@ fun LiquidGlassCard(
                 }
                 .liquidGlass(shape = shape, elevation = elevation, isDark = isDark)
                 .clip(shape)
-                .drawWithContent {
-                    // Overhead specular meniscus light sheen on glass surface
-                    drawRect(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(
-                                Color.White.copy(alpha = if (isDark) 0.08f else 0.16f),
-                                Color.Transparent
-                            ),
-                            startY = 0f,
-                            endY = 24.dp.toPx()
-                        ),
-                        size = Size(size.width, 24.dp.toPx())
-                    )
-                    drawContent()
-                }
                 .then(clickModifier)
                 .padding(16.dp),
             content = content
@@ -1710,58 +1664,11 @@ fun HsrpNumberPlate(
 
     Row(
         modifier = modifier
-            .shadow(
-                elevation = 2.dp,
-                shape = plateShape,
-                ambientColor = Color(0x33000000),
-                spotColor = Color(0x22000000)
-            )
             .clip(plateShape)
             .background(palette.bg, plateShape)
-            .drawWithContent {
-                // 1. Retro-reflective pressed-aluminum daylight sheen
-                drawRect(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            Color.White.copy(alpha = 0.28f), // Top specular sheen
-                            Color.White.copy(alpha = 0.06f),
-                            Color.Transparent,
-                            Color.Black.copy(alpha = 0.08f)  // Nadir catch
-                        )
-                    )
-                )
-
-                // 2. Micro-prismatic retro-reflective sheeting texture (Type IV HSRP security honeycomb lattice)
-                val latticeStep = 5.dp.toPx()
-                val latticeColor = palette.text.copy(alpha = 0.035f)
-                var lx = -size.height
-                while (lx < size.width) {
-                    drawLine(
-                        color = latticeColor,
-                        start = Offset(lx, 0f),
-                        end = Offset(lx + size.height, size.height),
-                        strokeWidth = 0.6f
-                    )
-                    drawLine(
-                        color = latticeColor,
-                        start = Offset(lx + size.height, 0f),
-                        end = Offset(lx, size.height),
-                        strokeWidth = 0.6f
-                    )
-                    lx += latticeStep
-                }
-
-                drawContent()
-            }
             .border(
                 width = 1.25.dp,
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        palette.border.copy(alpha = 0.70f),
-                        palette.border,
-                        palette.border.copy(alpha = 0.95f)
-                    )
-                ),
+                color = palette.border,
                 shape = plateShape
             )
             .height(29.dp),
@@ -2025,41 +1932,6 @@ fun HsrpRegistrationTextField(
                 )
                 .clip(plateShape)
                 .background(palette.bg, plateShape)
-                .drawWithContent {
-                    // 1. Stamped metal retro-reflective ambient sheen
-                    drawRect(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(
-                                Color.White.copy(alpha = 0.24f),
-                                Color.White.copy(alpha = 0.05f),
-                                Color.Transparent,
-                                Color.Black.copy(alpha = 0.08f)
-                            )
-                        )
-                    )
-
-                    // 2. Micro-prismatic retro-reflective sheeting texture (Type IV HSRP security honeycomb lattice)
-                    val latticeStep = 7.dp.toPx()
-                    val latticeColor = palette.text.copy(alpha = 0.035f)
-                    var lx = -size.height
-                    while (lx < size.width) {
-                        drawLine(
-                            color = latticeColor,
-                            start = Offset(lx, 0f),
-                            end = Offset(lx + size.height, size.height),
-                            strokeWidth = 0.7f
-                        )
-                        drawLine(
-                            color = latticeColor,
-                            start = Offset(lx + size.height, 0f),
-                            end = Offset(lx, size.height),
-                            strokeWidth = 0.7f
-                        )
-                        lx += latticeStep
-                    }
-
-                    drawContent()
-                }
                 .border(
                     width = if (isFocused || isError) 2.dp else 1.25.dp,
                     color = activeBorder,
