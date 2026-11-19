@@ -50,7 +50,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -297,27 +299,98 @@ fun OnboardingScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    // Icon Squircle
+                    // Hero Optical Glass Icon with Realistic visionOS Physical Lighting
                     Box(
-                        modifier = Modifier
-                            .size(84.dp)
-                            .background(
-                                color = page.accentColor.copy(alpha = if (isDark) 0.22f else 0.12f),
-                                shape = RoundedCornerShape(24.dp)
-                            )
-                            .border(
-                                width = 1.25.dp,
-                                color = page.accentColor.copy(alpha = if (isDark) 0.42f else 0.26f),
-                                shape = RoundedCornerShape(24.dp)
-                            ),
+                        modifier = Modifier.size(112.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = page.icon,
-                            contentDescription = null,
-                            tint = page.accentColor,
-                            modifier = Modifier.size(40.dp)
+                        // 1. Ambient Light Bloom (soft diffuse radiant glow behind the glass token)
+                        Box(
+                            modifier = Modifier
+                                .size(108.dp)
+                                .background(
+                                    brush = Brush.radialGradient(
+                                        colors = listOf(
+                                            page.accentColor.copy(alpha = if (isDark) 0.35f else 0.22f),
+                                            page.accentColor.copy(alpha = if (isDark) 0.10f else 0.05f),
+                                            Color.Transparent
+                                        )
+                                    ),
+                                    shape = CircleShape
+                                )
                         )
+
+                        // 2. Thick Curved Meniscus Glass Slab with Dual-Incident Specular Rim
+                        val heroSquircle = RoundedCornerShape(26.dp)
+                        Box(
+                            modifier = Modifier
+                                .size(86.dp)
+                                .shadow(
+                                    elevation = 8.dp,
+                                    shape = heroSquircle,
+                                    ambientColor = page.accentColor.copy(alpha = if (isDark) 0.50f else 0.22f),
+                                    spotColor = page.accentColor.copy(alpha = if (isDark) 0.50f else 0.22f)
+                                )
+                                .clip(heroSquircle)
+                                .background(
+                                    brush = Brush.linearGradient(
+                                        colors = if (isDark) listOf(
+                                            Color.White.copy(alpha = 0.20f),
+                                            page.accentColor.copy(alpha = 0.38f),
+                                            page.accentColor.copy(alpha = 0.16f),
+                                            Color(0xFF0F0F14).copy(alpha = 0.90f)
+                                        ) else listOf(
+                                            Color.White.copy(alpha = 0.98f),
+                                            page.accentColor.copy(alpha = 0.22f),
+                                            page.accentColor.copy(alpha = 0.10f),
+                                            Color.White.copy(alpha = 0.85f)
+                                        ),
+                                        start = Offset(0f, 0f),
+                                        end = Offset(240f, 240f)
+                                    ),
+                                    shape = heroSquircle
+                                )
+                                .border(
+                                    width = 1.25.dp,
+                                    brush = Brush.verticalGradient(
+                                        colors = if (isDark) listOf(
+                                            Color.White.copy(alpha = 0.75f), // Razor-sharp top specular highlight
+                                            page.accentColor.copy(alpha = 0.45f), // Refractive mid edge
+                                            Color.White.copy(alpha = 0.10f)  // Nadir catch
+                                        ) else listOf(
+                                            Color.White.copy(alpha = 0.98f),
+                                            page.accentColor.copy(alpha = 0.40f),
+                                            Color.Black.copy(alpha = 0.08f)
+                                        )
+                                    ),
+                                    shape = heroSquircle
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            // 3. Inner Top Specular Light Arc
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(36.dp)
+                                    .align(Alignment.TopCenter)
+                                    .background(
+                                        brush = Brush.verticalGradient(
+                                            colors = listOf(
+                                                Color.White.copy(alpha = if (isDark) 0.22f else 0.35f),
+                                                Color.Transparent
+                                            )
+                                        )
+                                    )
+                            )
+
+                            // 4. Vibrant Foreground Glyph with Luminance
+                            Icon(
+                                imageVector = page.icon,
+                                contentDescription = null,
+                                tint = if (isDark) Color.White else page.accentColor,
+                                modifier = Modifier.size(42.dp)
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(22.dp))
@@ -365,9 +438,25 @@ fun OnboardingScreen(
                                 ) {
                                     Box(
                                         modifier = Modifier
-                                            .size(20.dp)
+                                            .size(22.dp)
+                                            .clip(CircleShape)
                                             .background(
-                                                color = page.accentColor.copy(alpha = 0.16f),
+                                                brush = Brush.verticalGradient(
+                                                    colors = listOf(
+                                                        page.accentColor.copy(alpha = if (isDark) 0.32f else 0.22f),
+                                                        page.accentColor.copy(alpha = if (isDark) 0.16f else 0.10f)
+                                                    )
+                                                ),
+                                                shape = CircleShape
+                                            )
+                                            .border(
+                                                width = 0.8.dp,
+                                                brush = Brush.verticalGradient(
+                                                    colors = listOf(
+                                                        Color.White.copy(alpha = if (isDark) 0.40f else 0.65f),
+                                                        page.accentColor.copy(alpha = if (isDark) 0.20f else 0.30f)
+                                                    )
+                                                ),
                                                 shape = CircleShape
                                             ),
                                         contentAlignment = Alignment.Center
@@ -375,7 +464,7 @@ fun OnboardingScreen(
                                         Icon(
                                             imageVector = AppleIcons.Checkmark,
                                             contentDescription = null,
-                                            tint = page.accentColor,
+                                            tint = if (isDark) Color.White else page.accentColor,
                                             modifier = Modifier.size(12.dp)
                                         )
                                     }

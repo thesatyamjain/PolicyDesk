@@ -289,17 +289,17 @@ private val LightGlassBrush = Brush.linearGradient(
 
 private val DarkBorderBrush = Brush.verticalGradient(
     colors = listOf(
-        Color.White.copy(alpha = 0.35f),
-        Color.White.copy(alpha = (0.35f + 0.06f) * 0.45f),
-        Color.White.copy(alpha = 0.06f)
+        Color.White.copy(alpha = 0.45f), // Crisp zenith specular rim highlight
+        Color.White.copy(alpha = 0.18f), // Mid-level refraction
+        Color.White.copy(alpha = 0.05f)  // Nadir ambient catch
     )
 )
 
 private val LightBorderBrush = Brush.verticalGradient(
     colors = listOf(
-        Color.White.copy(alpha = 0.90f),
-        Color.White.copy(alpha = 0.35f),
-        Color.White.copy(alpha = 0.20f)
+        Color.White.copy(alpha = 0.95f),
+        Color.White.copy(alpha = 0.40f),
+        Color.White.copy(alpha = 0.15f)
     )
 )
 
@@ -449,6 +449,21 @@ fun LiquidGlassCard(
                 }
                 .liquidGlass(shape = shape, elevation = elevation, isDark = isDark)
                 .clip(shape)
+                .drawWithContent {
+                    // Overhead specular meniscus light sheen on glass surface
+                    drawRect(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = if (isDark) 0.08f else 0.16f),
+                                Color.Transparent
+                            ),
+                            startY = 0f,
+                            endY = 24.dp.toPx()
+                        ),
+                        size = Size(size.width, 24.dp.toPx())
+                    )
+                    drawContent()
+                }
                 .then(clickModifier)
                 .padding(16.dp),
             content = content
@@ -1664,11 +1679,37 @@ fun HsrpNumberPlate(
 
     Row(
         modifier = modifier
+            .shadow(
+                elevation = 2.dp,
+                shape = plateShape,
+                ambientColor = Color(0x33000000),
+                spotColor = Color(0x22000000)
+            )
             .clip(plateShape)
             .background(palette.bg, plateShape)
+            .drawWithContent {
+                // Retro-reflective pressed-aluminum daylight sheen
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            Color.White.copy(alpha = 0.28f), // Top specular sheen
+                            Color.White.copy(alpha = 0.06f),
+                            Color.Transparent,
+                            Color.Black.copy(alpha = 0.08f)  // Nadir catch
+                        )
+                    )
+                )
+                drawContent()
+            }
             .border(
                 width = 1.25.dp,
-                color = palette.border,
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        palette.border.copy(alpha = 0.70f),
+                        palette.border,
+                        palette.border.copy(alpha = 0.95f)
+                    )
+                ),
                 shape = plateShape
             )
             .height(29.dp),
@@ -1694,13 +1735,23 @@ fun HsrpNumberPlate(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                // Chromium Ashoka Chakra Hologram Badge (Hot-stamped)
+                // Hot-stamped Chromium Ashoka Chakra Hologram Badge (Metallic prismatic foil)
                 Canvas(modifier = Modifier.size(7.5.dp)) {
                     val radius = size.minDimension / 2f
                     val center = Offset(size.width / 2f, size.height / 2f)
 
+                    // Chromium holographic metallic rim with chromatic reflection
                     drawCircle(
-                        color = Color(0xFFFDE047),
+                        brush = Brush.linearGradient(
+                            colors = listOf(
+                                Color(0xFFF1F5F9), // Silver specular
+                                Color(0xFFFDE047), // Gold flash
+                                Color(0xFF67E8F9), // Cyan flash
+                                Color(0xFFF1F5F9)
+                            ),
+                            start = Offset(0f, 0f),
+                            end = Offset(size.width, size.height)
+                        ),
                         radius = radius,
                         center = center
                     )
@@ -1710,7 +1761,14 @@ fun HsrpNumberPlate(
                         center = center
                     )
                     drawCircle(
-                        color = Color(0xFFFDE047),
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                Color(0xFFFFFFFF),
+                                Color(0xFFFDE047)
+                            ),
+                            center = center,
+                            radius = radius * 0.30f
+                        ),
                         radius = radius * 0.30f,
                         center = center
                     )
@@ -1734,13 +1792,23 @@ fun HsrpNumberPlate(
             }
         }
 
-        // Left Snap-Lock Rivet Screw (symmetric with right rivet)
+        // Left Domed Stainless Steel Snap-Lock Rivet Screw with Specular Glint
         Box(
             modifier = Modifier
                 .padding(start = 5.dp)
                 .size(3.5.dp)
                 .clip(CircleShape)
-                .background(palette.text.copy(alpha = 0.35f))
+                .background(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            Color.White.copy(alpha = 0.85f),
+                            palette.text.copy(alpha = 0.45f),
+                            palette.text.copy(alpha = 0.70f)
+                        ),
+                        center = Offset(1.2f, 1.2f),
+                        radius = 4f
+                    )
+                )
                 .clearAndSetSemantics {}
         )
 
@@ -1774,13 +1842,23 @@ fun HsrpNumberPlate(
             )
         }
 
-        // Right Snap-Lock Rivet Screw (symmetric with left rivet)
+        // Right Domed Stainless Steel Snap-Lock Rivet Screw with Specular Glint
         Box(
             modifier = Modifier
                 .padding(end = 5.dp)
                 .size(3.5.dp)
                 .clip(CircleShape)
-                .background(palette.text.copy(alpha = 0.35f))
+                .background(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            Color.White.copy(alpha = 0.85f),
+                            palette.text.copy(alpha = 0.45f),
+                            palette.text.copy(alpha = 0.70f)
+                        ),
+                        center = Offset(1.2f, 1.2f),
+                        radius = 4f
+                    )
+                )
                 .clearAndSetSemantics {}
         )
     }
@@ -1882,13 +1960,33 @@ fun HsrpRegistrationTextField(
             }
         }
 
-        // Unified HSRP Plate Input Box
+        // Unified HSRP Plate Input Box with Authentic Pressed Aluminum Lighting
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(52.dp)
+                .shadow(
+                    elevation = if (isFocused) 4.dp else 2.dp,
+                    shape = plateShape,
+                    ambientColor = if (isFocused) AppleSystemBlue.copy(alpha = 0.25f) else Color(0x22000000),
+                    spotColor = if (isFocused) AppleSystemBlue.copy(alpha = 0.25f) else Color(0x18000000)
+                )
                 .clip(plateShape)
                 .background(palette.bg, plateShape)
+                .drawWithContent {
+                    // Stamped metal retro-reflective ambient sheen
+                    drawRect(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = 0.24f),
+                                Color.White.copy(alpha = 0.05f),
+                                Color.Transparent,
+                                Color.Black.copy(alpha = 0.08f)
+                            )
+                        )
+                    )
+                    drawContent()
+                }
                 .border(
                     width = if (isFocused || isError) 2.dp else 1.25.dp,
                     color = activeBorder,
@@ -1919,13 +2017,22 @@ fun HsrpRegistrationTextField(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
-                        // Hot-stamped Chromium Ashoka Chakra Hologram Badge
+                        // Hot-stamped Chromium Ashoka Chakra Hologram Badge (Metallic prismatic foil)
                         Canvas(modifier = Modifier.size(9.dp)) {
                             val radius = size.minDimension / 2f
                             val center = Offset(size.width / 2f, size.height / 2f)
 
                             drawCircle(
-                                color = Color(0xFFFDE047),
+                                brush = Brush.linearGradient(
+                                    colors = listOf(
+                                        Color(0xFFF1F5F9),
+                                        Color(0xFFFDE047),
+                                        Color(0xFF67E8F9),
+                                        Color(0xFFF1F5F9)
+                                    ),
+                                    start = Offset(0f, 0f),
+                                    end = Offset(size.width, size.height)
+                                ),
                                 radius = radius,
                                 center = center
                             )
@@ -1935,7 +2042,14 @@ fun HsrpRegistrationTextField(
                                 center = center
                             )
                             drawCircle(
-                                color = Color(0xFFFDE047),
+                                brush = Brush.radialGradient(
+                                    colors = listOf(
+                                        Color(0xFFFFFFFF),
+                                        Color(0xFFFDE047)
+                                    ),
+                                    center = center,
+                                    radius = radius * 0.32f
+                                ),
                                 radius = radius * 0.32f,
                                 center = center
                             )
@@ -1952,7 +2066,7 @@ fun HsrpRegistrationTextField(
                                     y = center.y + (radius * 0.72f * kotlin.math.sin(angle)).toFloat()
                                 )
                                 drawLine(
-                                    color = Color(0xFFFDE047),
+                                    color = Color(0xFFE2E8F0),
                                     start = start,
                                     end = end,
                                     strokeWidth = 1f
