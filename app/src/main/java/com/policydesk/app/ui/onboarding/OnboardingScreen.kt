@@ -49,6 +49,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusDirection
@@ -350,6 +351,11 @@ fun OnboardingScreen(
                                     ),
                                     shape = heroSquircle
                                 )
+                                .drawWithContent {
+                                    // Tactile frosted satin micro-grain texture on the glass token
+                                    drawRect(brush = com.policydesk.app.ui.components.FrostedGlassNoiseBrush)
+                                    drawContent()
+                                }
                                 .border(
                                     width = 1.25.dp,
                                     brush = Brush.verticalGradient(
