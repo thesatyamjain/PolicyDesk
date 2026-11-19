@@ -23,7 +23,7 @@ data class CustomerEmbedded(
 ) {
     fun toDomain() = Customer(
         title = title,
-        name = name,
+        name = com.policydesk.app.domain.model.FieldValidators.formatNameTitleCase(name),
         mobile = mobile,
         email = email,
         address = address
@@ -32,7 +32,7 @@ data class CustomerEmbedded(
     companion object {
         fun fromDomain(c: Customer) = CustomerEmbedded(
             title = c.title,
-            name = c.name,
+            name = com.policydesk.app.domain.model.FieldValidators.formatNameTitleCase(c.name),
             mobile = c.mobile,
             email = c.email,
             address = c.address
