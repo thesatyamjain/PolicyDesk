@@ -1,6 +1,7 @@
 package com.policydesk.app.ui.dashboard
 
 import android.content.Context
+import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.policydesk.app.data.drive.GoogleDriveManager
@@ -34,6 +35,7 @@ enum class SectorFilter(val label: String) {
     PRIVATE("Private Insurers")
 }
 
+@Immutable
 data class DashboardUiState(
     val summary: DashboardSummary = DashboardSummary(),
     val searchQuery: String = "",

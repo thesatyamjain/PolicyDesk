@@ -1,11 +1,13 @@
 package com.policydesk.app.domain.model
 
+import androidx.compose.runtime.Immutable
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 import java.util.UUID
 
+@Immutable
 data class Customer(
     val title: String? = null,
     val name: String,
@@ -14,6 +16,7 @@ data class Customer(
     val address: String
 )
 
+@Immutable
 data class Vehicle(
     val regNo: String,
     val customer: Customer,
@@ -28,6 +31,7 @@ data class Vehicle(
     val plateStyle: NumberPlateStyle? = null
 )
 
+@Immutable
 data class Policy(
     val id: String = UUID.randomUUID().toString(),
     val vehicleRegNo: String,
@@ -68,36 +72,41 @@ data class Policy(
     }
 }
 
+@Immutable
 data class VehicleWithPolicies(
     val vehicle: Vehicle,
     val policies: List<Policy>
 ) {
     /**
      * The most recent non-closed policy is the current policy. Earlier ones are history.
+     * Evaluated once lazily per instance for zero-allocation recomposition performance.
      */
-    val currentPolicy: Policy?
-        get() = policies
+    val currentPolicy: Policy? by lazy {
+        policies
             .filter { it.closeReason.isNullOrBlank() && it.renewedOn == null }
             .maxWithOrNull(compareBy<Policy> { it.expiryDate }.thenBy { it.saleDate })
             ?: policies.maxWithOrNull(compareBy<Policy> { it.expiryDate }.thenBy { it.saleDate })
+    }
 
-    val policyHistory: List<Policy>
-        get() = policies
+    val policyHistory: List<Policy> by lazy {
+        policies
             .filter { it.id != currentPolicy?.id }
             .sortedByDescending { it.expiryDate }
+    }
 
-    val earliestDate: Long
-        get() {
-            val firstPolicyDate = policies.minOfOrNull {
-                it.startDate ?: it.saleDate.takeIf { s -> s > 0 } ?: (it.expiryDate - 365L * 24 * 60 * 60 * 1000L)
-            }
-            return firstPolicyDate ?: vehicle.createdAt
+    val earliestDate: Long by lazy {
+        val firstPolicyDate = policies.minOfOrNull {
+            it.startDate ?: it.saleDate.takeIf { s -> s > 0 } ?: (it.expiryDate - 365L * 24 * 60 * 60 * 1000L)
         }
+        firstPolicyDate ?: vehicle.createdAt
+    }
 
-    val totalLifetimePremium: Double
-        get() = policies.sumOf { it.totalPremium }
+    val totalLifetimePremium: Double by lazy {
+        policies.sumOf { it.totalPremium }
+    }
 }
 
+@Immutable
 data class CustomerGroup(
     val mobile: String,
     val name: String,
@@ -107,8 +116,9 @@ data class CustomerGroup(
     val totalPolicies: Int,
     val totalActivePremium: Double
 ) {
-    val clientSinceDate: Long
-        get() = vehicles.minOfOrNull { it.earliestDate } ?: System.currentTimeMillis()
+    val clientSinceDate: Long by lazy {
+        vehicles.minOfOrNull { it.earliestDate } ?: System.currentTimeMillis()
+    }
 }
 
 data class ExistingClientInfo(

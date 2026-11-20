@@ -1,5 +1,8 @@
 package com.policydesk.app.domain.model
 
+import androidx.compose.runtime.Immutable
+
+@Immutable
 data class DashboardSummary(
     val overdueCount: Int = 0,
     val next7DaysCount: Int = 0,
@@ -8,6 +11,7 @@ data class DashboardSummary(
     val soonestExpiring: List<VehicleWithPolicies> = emptyList()
 )
 
+@Immutable
 data class MonthViewData(
     val year: Int,
     val month: Int,

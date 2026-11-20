@@ -1,5 +1,6 @@
 package com.policydesk.app.ui.customers
 
+import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.policydesk.app.domain.model.CustomerGroup
@@ -13,6 +14,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
 
+@Immutable
 data class CustomersUiState(
     val customers: List<CustomerGroup> = emptyList(),
     val searchQuery: String = "",
