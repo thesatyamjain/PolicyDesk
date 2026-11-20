@@ -1777,6 +1777,9 @@ internal fun hsrpPlateColors(style: NumberPlateStyle): HsrpPlateColors = when (s
     NumberPlateStyle.COMMERCIAL_EV -> CommercialEvPalette
 }
 
+private val HsrpPlateShape = RoundedCornerShape(6.dp)
+private val HsrpInputPlateShape = RoundedCornerShape(10.dp)
+
 /**
  * Authentic High-Security Registration Plate (HSRP) for Indian Motor Vehicles
  * Renders the blue IND band with emblem, symmetric snap-lock rivets, and embossed registration.
@@ -1800,7 +1803,7 @@ fun HsrpNumberPlate(
         VehiclePlateClassifier.detectStyle(makeModel)
     }
 
-    val plateShape = RoundedCornerShape(6.dp)
+    val plateShape = HsrpPlateShape
     val palette = hsrpPlateColors(resolvedStyle)
 
     val clean = regNo.replace(" ", "").uppercase()
@@ -2014,7 +2017,7 @@ fun HsrpRegistrationTextField(
         else -> palette.border
     }
 
-    val plateShape = RoundedCornerShape(10.dp)
+    val plateShape = HsrpInputPlateShape
 
     Column(
         modifier = modifier.fillMaxWidth(),

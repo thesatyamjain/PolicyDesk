@@ -101,6 +101,12 @@ import com.policydesk.app.ui.theme.IosLabelPrimary
 import com.policydesk.app.ui.theme.IosLabelSecondary
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
+import java.time.LocalDate
+
+private val CustomerCardShape = RoundedCornerShape(18.dp)
+private val FleetBadgeShape = RoundedCornerShape(8.dp)
+private val ActionButtonShape = RoundedCornerShape(10.dp)
+private val FleetVehicleRowShape = RoundedCornerShape(12.dp)
 
 /**
  * Design Read: High-density Apple Liquid Glass Client Hub with HSRP vehicle fleets and tactile 1-tap dialer/messaging actions.
@@ -475,7 +481,7 @@ fun CustomerCard(
     )
 
     LiquidGlassCard(
-        shape = RoundedCornerShape(18.dp),
+        shape = CustomerCardShape,
         elevation = 3.dp
     ) {
         // Client Header
@@ -531,7 +537,7 @@ fun CustomerCard(
             // Fleet Count Badge
             Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
+                    .clip(FleetBadgeShape)
                     .background(
                         if (customer.vehicles.size > 1) {
                             if (isDark) Color(0x330A84FF) else Color(0x1F007AFF)
@@ -576,7 +582,7 @@ fun CustomerCard(
                     Box(
                         modifier = Modifier
                             .height(36.dp)
-                            .clip(RoundedCornerShape(10.dp))
+                            .clip(ActionButtonShape)
                             .background(if (isDark) Color(0x330A84FF) else Color(0x1F007AFF))
                             .semantics { role = Role.Button }
                             .clickable(onClickLabel = "Call ${customer.name}") {
@@ -612,7 +618,7 @@ fun CustomerCard(
                     Box(
                         modifier = Modifier
                             .height(36.dp)
-                            .clip(RoundedCornerShape(10.dp))
+                            .clip(ActionButtonShape)
                             .background(if (isDark) Color(0x3330D158) else Color(0x1F34C759))
                             .semantics { role = Role.Button }
                             .clickable(onClickLabel = waTargetDesc) {
@@ -644,7 +650,7 @@ fun CustomerCard(
             // Expand Fleet Toggle
             Row(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
+                    .clip(FleetBadgeShape)
                     .semantics {
                         role = Role.Button
                         stateDescription = if (expanded) "Expanded" else "Collapsed"
@@ -704,21 +710,22 @@ fun CustomerCard(
                     .padding(top = 10.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                val todayEpochDay = remember { LocalDate.now().toEpochDay() }
                 customer.vehicles.forEach { item ->
                     val vehicle = item.vehicle
                     val policy = item.currentPolicy
-                    val daysLeft = policy?.computeDaysRemaining() ?: 0L
-                    val policyStatus = policy?.computeCurrentStatus() ?: com.policydesk.app.domain.model.PolicyStatus.ACTIVE
+                    val daysLeft = policy?.computeDaysRemaining(todayEpochDay) ?: 0L
+                    val policyStatus = policy?.computeCurrentStatus(todayEpochDay) ?: com.policydesk.app.domain.model.PolicyStatus.ACTIVE
 
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
+                            .clip(FleetVehicleRowShape)
                             .background(if (isDark) Color(0x332C2C2E) else Color(0x66FFFFFF))
                             .border(
                                 0.5.dp,
                                 if (isDark) Color(0x33FFFFFF) else Color(0x22000000),
-                                RoundedCornerShape(12.dp)
+                                FleetVehicleRowShape
                             )
                             .semantics { role = Role.Button }
                             .clickable(onClickLabel = "Open ${vehicle.regNo} details") {

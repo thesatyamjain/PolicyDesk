@@ -130,6 +130,13 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
+import java.time.LocalDate
+
+private val VehicleCardShape = RoundedCornerShape(18.dp)
+private val VehicleInnerContentShape = RoundedCornerShape(12.dp)
+private val MetricCardShape = RoundedCornerShape(16.dp)
+private val FilterPillShape = RoundedCornerShape(12.dp)
+private val VerticalDividerShape = RoundedCornerShape(1.dp)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -931,7 +938,7 @@ fun DashboardScreen(
                     ) {
                         items(ExpiryFilter.values()) { filter ->
                             val isSelected = uiState.activeFilter == filter
-                            val pillShape = RoundedCornerShape(12.dp)
+                            val pillShape = FilterPillShape
 
                             val pillScale by animateFloatAsState(
                                 targetValue = if (isSelected) 1.04f else 1.0f,
@@ -998,14 +1005,14 @@ fun DashboardScreen(
                                     .height(18.dp)
                                     .background(
                                         if (isDark) IosDarkSeparator else IosSeparator,
-                                        RoundedCornerShape(1.dp)
+                                        VerticalDividerShape
                                     )
                             )
                         }
 
                         items(SectorFilter.values()) { sector ->
                             val isSelected = uiState.sectorFilter == sector
-                            val pillShape = RoundedCornerShape(12.dp)
+                            val pillShape = FilterPillShape
 
                             val pillScale by animateFloatAsState(
                                 targetValue = if (isSelected) 1.04f else 1.0f,
@@ -1162,7 +1169,7 @@ fun LiquidGlassMetricCard(
 ) {
     val isDark = isSystemInDarkTheme()
     val haptic = LocalHapticFeedback.current
-    val cardShape = RoundedCornerShape(16.dp)
+    val cardShape = MetricCardShape
     val animatedCount = rememberAnimatedCount(count)
 
     Column(
@@ -1215,8 +1222,9 @@ fun VehicleExpiryCard(
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
     val policy = item.currentPolicy
-    val daysRemaining = policy?.computeDaysRemaining() ?: 0L
-    val status = policy?.computeCurrentStatus() ?: com.policydesk.app.domain.model.PolicyStatus.ACTIVE
+    val todayEpochDay = remember { LocalDate.now().toEpochDay() }
+    val daysRemaining = remember(policy, todayEpochDay) { policy?.computeDaysRemaining(todayEpochDay) ?: 0L }
+    val status = remember(policy, todayEpochDay) { policy?.computeCurrentStatus(todayEpochDay) ?: com.policydesk.app.domain.model.PolicyStatus.ACTIVE }
     val mobile = item.vehicle.customer.mobile
     val urgentColor = when {
         policy == null -> labelSecondary
@@ -1243,7 +1251,7 @@ fun VehicleExpiryCard(
         label = "vehicle_select_border"
     )
 
-    val cardShape = RoundedCornerShape(18.dp)
+    val cardShape = VehicleCardShape
 
     // Non-nested card: outer LiquidGlassCard is visual container; primary Column & quick actions are siblings
     LiquidGlassCard(
@@ -1263,7 +1271,7 @@ fun VehicleExpiryCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
+                .clip(VehicleInnerContentShape)
                 .semantics {
                     role = Role.Button
                     if (isSelectionMode) selected = isSelected

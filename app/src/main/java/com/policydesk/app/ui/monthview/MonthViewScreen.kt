@@ -103,6 +103,8 @@ private data class CalendarDayCellModel(
 )
 
 private val DAY_HEADER_FORMATTER = DateTimeFormatter.ofPattern("d MMM yyyy", Locale.ENGLISH)
+private val CalendarCardShape = RoundedCornerShape(18.dp)
+private val CalendarDayShape = RoundedCornerShape(10.dp)
 
 private fun LazyItemScope.modeItemModifier(reduceMotion: Boolean): Modifier {
     return if (reduceMotion) {
@@ -573,7 +575,7 @@ private fun StaticCalendarGridCard(
 
         LiquidGlassCard(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(18.dp),
+            shape = CalendarCardShape,
             elevation = 2.dp
         ) {
             for (r in 0 until rows) {
@@ -623,7 +625,7 @@ private fun CalendarDayCell(
     val activeBlue = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
     val urgentRed = if (isDark) AppleDarkSystemRed else AppleSystemRed
     val normalGreen = if (isDark) AppleDarkSystemGreen else AppleSystemGreen
-    val dayShape = remember { RoundedCornerShape(10.dp) }
+    val dayShape = CalendarDayShape
 
     val targetBg = when {
         isSelected -> aaBlueFill(isDark)

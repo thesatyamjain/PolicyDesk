@@ -52,11 +52,18 @@ data class Policy(
     val saleDate: Long = System.currentTimeMillis(),
     val countsAsSale: Boolean = true
 ) {
-    fun computeDaysRemaining(todayEpochDay: Long = LocalDate.now().toEpochDay()): Long {
-        val expiryLocalDate = Instant.ofEpochMilli(expiryDate)
+    val expiryLocalDate: LocalDate by lazy {
+        Instant.ofEpochMilli(expiryDate)
             .atZone(ZoneId.systemDefault())
             .toLocalDate()
-        return ChronoUnit.DAYS.between(LocalDate.ofEpochDay(todayEpochDay), expiryLocalDate)
+    }
+
+    val expiryEpochDay: Long by lazy {
+        expiryLocalDate.toEpochDay()
+    }
+
+    fun computeDaysRemaining(todayEpochDay: Long = LocalDate.now().toEpochDay()): Long {
+        return expiryEpochDay - todayEpochDay
     }
 
     fun computeCurrentStatus(todayEpochDay: Long = LocalDate.now().toEpochDay()): PolicyStatus {

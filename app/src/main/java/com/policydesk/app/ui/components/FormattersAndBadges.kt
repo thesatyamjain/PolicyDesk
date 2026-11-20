@@ -147,6 +147,10 @@ object UiFormatters {
     }
 }
 
+private val DaysBadgeShape = RoundedCornerShape(8.dp)
+private val RenewalBannerShape = RoundedCornerShape(16.dp)
+private val RenewalPillShape = RoundedCornerShape(6.dp)
+
 /**
  * Apple Liquid Glass Status Capsule
  * Features translucent frosted tint, subtle specular border, and high-contrast typography.
@@ -201,7 +205,7 @@ fun DaysRemainingBadge(
         )
     }
 
-    val badgeShape = RoundedCornerShape(8.dp)
+    val badgeShape = DaysBadgeShape
     val borderAlpha = if (isDark) 0.40f else 0.28f
 
     Box(
@@ -296,9 +300,9 @@ fun ExistingClientRenewalBanner(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RenewalBannerShape)
             .background(cardBg)
-            .border(1.dp, borderColor, RoundedCornerShape(16.dp))
+            .border(1.dp, borderColor, RenewalBannerShape)
             .padding(14.dp)
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -344,7 +348,7 @@ fun ExistingClientRenewalBanner(
 
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
+                        .clip(RenewalPillShape)
                         .background(accentColor.copy(alpha = 0.15f))
                         .padding(horizontal = 8.dp, vertical = 3.dp)
                 ) {
