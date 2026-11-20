@@ -1,5 +1,8 @@
 package com.policydesk.app.ui.components
 
+import android.graphics.Bitmap
+import android.graphics.BitmapShader
+import android.graphics.Shader
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -89,6 +92,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
@@ -303,6 +307,110 @@ private val LightBorderBrush = Brush.verticalGradient(
     )
 )
 
+// --- Realistic Physical Lighting & Texture Caches (Zero GC churn, 120 FPS hardware accelerated) ---
+
+/**
+ * 1. Card Overhead Specular Meniscus Light Sheen
+ * Simulates overhead ambient light hitting the top edge of rounded curved glass.
+ */
+private val DarkCardSheenBrush = Brush.verticalGradient(
+    colors = listOf(
+        Color(0x14FFFFFF), // White with 0.08 alpha
+        Color.Transparent
+    )
+)
+private val LightCardSheenBrush = Brush.verticalGradient(
+    colors = listOf(
+        Color(0x29FFFFFF), // White with 0.16 alpha
+        Color.Transparent
+    )
+)
+
+/**
+ * 2. HSRP Pressed Aluminum Daylight Sheen
+ * Specular reflection gradient across stamped metal plates.
+ */
+private val HsrpPlateDaylightSheenBrush = Brush.verticalGradient(
+    colors = listOf(
+        Color(0x47FFFFFF), // White with 0.28 alpha (top specular)
+        Color(0x0FFFFFFF), // White with 0.06 alpha
+        Color.Transparent,
+        Color(0x14000000)  // Black with 0.08 alpha (nadir catch)
+    )
+)
+
+/**
+ * 3. HSRP Registration Input Field Ambient Sheen
+ */
+private val HsrpInputSheenBrush = Brush.verticalGradient(
+    colors = listOf(
+        Color(0x3DFFFFFF), // White with 0.24 alpha
+        Color(0x0DFFFFFF), // White with 0.05 alpha
+        Color.Transparent,
+        Color(0x14000000)  // Black with 0.08 alpha
+    )
+)
+
+/**
+ * 4. Procedural Frosted Satin Micro-Grain Texture (visionOS / Apple Liquid Glass)
+ * 16x16 hardware-tiled Skia ShaderBrush providing microscopic light diffusion.
+ * Statically pre-allocated; zero runtime GC churn, fits inside GPU L1 texture cache.
+ */
+internal val FrostedGlassNoiseBrush: Brush by lazy {
+    val size = 16
+    val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+    val random = java.util.Random(1337)
+    for (y in 0 until size) {
+        for (x in 0 until size) {
+            val v = 255 // Pure white specular micro-dust
+            val alpha = (random.nextFloat() * 6).toInt() // 0-2.3% silky satin sheen
+            bitmap.setPixel(x, y, android.graphics.Color.argb(alpha, v, v, v))
+        }
+    }
+    val shader = BitmapShader(bitmap, Shader.TileMode.REPEAT, Shader.TileMode.REPEAT)
+    object : ShaderBrush() {
+        override fun createShader(size: Size): Shader = shader
+    }
+}
+
+/**
+ * 5. Type IV Micro-Prismatic Retro-Reflective Honeycomb Lattice Brushes
+ * Tiled hardware BitmapShaders replacing expensive per-frame CPU loops.
+ */
+internal val HsrpDarkLatticeBrush: Brush by lazy {
+    val size = 12
+    val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+    val canvas = android.graphics.Canvas(bitmap)
+    val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+        color = android.graphics.Color.argb(9, 17, 19, 23) // 3.5% alpha dark lattice
+        strokeWidth = 1f
+        style = android.graphics.Paint.Style.STROKE
+    }
+    canvas.drawLine(0f, 0f, size.toFloat(), size.toFloat(), paint)
+    canvas.drawLine(0f, size.toFloat(), size.toFloat(), 0f, paint)
+    val shader = BitmapShader(bitmap, Shader.TileMode.REPEAT, Shader.TileMode.REPEAT)
+    object : ShaderBrush() {
+        override fun createShader(size: Size): Shader = shader
+    }
+}
+
+internal val HsrpLightLatticeBrush: Brush by lazy {
+    val size = 12
+    val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+    val canvas = android.graphics.Canvas(bitmap)
+    val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+        color = android.graphics.Color.argb(12, 255, 255, 255) // 5% alpha light lattice for EV green plates
+        strokeWidth = 1f
+        style = android.graphics.Paint.Style.STROKE
+    }
+    canvas.drawLine(0f, 0f, size.toFloat(), size.toFloat(), paint)
+    canvas.drawLine(0f, size.toFloat(), size.toFloat(), 0f, paint)
+    val shader = BitmapShader(bitmap, Shader.TileMode.REPEAT, Shader.TileMode.REPEAT)
+    object : ShaderBrush() {
+        override fun createShader(size: Size): Shader = shader
+    }
+}
+
 /**
  * Modifier that applies True Apple Liquid Glass (matching My Warranties / visionOS):
  * 1. Dual-layer ambient & contact edge shadow with Apple diffuse elevation
@@ -449,6 +557,14 @@ fun LiquidGlassCard(
                 }
                 .liquidGlass(shape = shape, elevation = elevation, isDark = isDark)
                 .clip(shape)
+                .drawWithContent {
+                    // Overhead specular meniscus light sheen on glass surface (Pre-allocated, zero runtime allocation)
+                    drawRect(
+                        brush = if (isDark) DarkCardSheenBrush else LightCardSheenBrush,
+                        size = Size(size.width, 24.dp.toPx())
+                    )
+                    drawContent()
+                }
                 .then(clickModifier)
                 .padding(16.dp),
             content = content
@@ -1601,34 +1717,64 @@ internal data class HsrpPlateColors(
     val bg: Color,
     val text: Color,
     val border: Color,
-    val placeholder: Color
+    val placeholder: Color,
+    val borderBrush: Brush,
+    val isLightPlate: Boolean
+)
+
+private val DarkBorderGradient = Brush.verticalGradient(
+    listOf(
+        Color(0xFF1C1C1E).copy(alpha = 0.70f),
+        Color(0xFF1C1C1E),
+        Color(0xFF1C1C1E).copy(alpha = 0.95f)
+    )
+)
+private val GreenBorderGradient = Brush.verticalGradient(
+    listOf(
+        Color(0xFF083D1B).copy(alpha = 0.70f),
+        Color(0xFF083D1B),
+        Color(0xFF083D1B).copy(alpha = 0.95f)
+    )
+)
+
+private val PrivateWhitePalette = HsrpPlateColors(
+    bg = Color(0xFFFAFAFA),
+    text = Color(0xFF111317),
+    border = Color(0xFF1C1C1E),
+    placeholder = Color(0xFF5A5A60),
+    borderBrush = DarkBorderGradient,
+    isLightPlate = true
+)
+private val CommercialYellowPalette = HsrpPlateColors(
+    bg = Color(0xFFFFD60A),
+    text = Color(0xFF111317),
+    border = Color(0xFF1C1C1E),
+    placeholder = Color(0xFF4A3E00),
+    borderBrush = DarkBorderGradient,
+    isLightPlate = true
+)
+private val EvGreenPalette = HsrpPlateColors(
+    bg = Color(0xFF0F6830),
+    text = Color(0xFFFFFFFF),
+    border = Color(0xFF083D1B),
+    placeholder = Color(0xFFD1FAE5),
+    borderBrush = GreenBorderGradient,
+    isLightPlate = false
+)
+private val CommercialEvPalette = HsrpPlateColors(
+    bg = Color(0xFF0F5E2C),
+    text = Color(0xFFFFD60A),
+    border = Color(0xFF083D1B),
+    placeholder = Color(0xFFFEF08A),
+    borderBrush = GreenBorderGradient,
+    isLightPlate = false
 )
 
 internal fun hsrpPlateColors(style: NumberPlateStyle): HsrpPlateColors = when (style) {
-    NumberPlateStyle.PRIVATE_WHITE -> HsrpPlateColors(
-        bg = Color(0xFFFAFAFA),
-        text = Color(0xFF111317),
-        border = Color(0xFF1C1C1E),
-        placeholder = Color(0xFF5A5A60)
-    )
-    NumberPlateStyle.COMMERCIAL_YELLOW -> HsrpPlateColors(
-        bg = Color(0xFFFFD60A),
-        text = Color(0xFF111317),
-        border = Color(0xFF1C1C1E),
-        placeholder = Color(0xFF4A3E00)
-    )
-    NumberPlateStyle.EV_GREEN -> HsrpPlateColors(
-        bg = Color(0xFF0F6830),
-        text = Color(0xFFFFFFFF),
-        border = Color(0xFF083D1B),
-        placeholder = Color(0xFFD1FAE5)
-    )
-    NumberPlateStyle.COMMERCIAL_EV -> HsrpPlateColors(
-        bg = Color(0xFF0F5E2C),
-        text = Color(0xFFFFD60A),
-        border = Color(0xFF083D1B),
-        placeholder = Color(0xFFFEF08A)
-    )
+    NumberPlateStyle.PRIVATE_WHITE -> PrivateWhitePalette
+    NumberPlateStyle.COMMERCIAL_YELLOW -> CommercialYellowPalette
+    NumberPlateStyle.EV_GREEN -> EvGreenPalette
+    NumberPlateStyle.COMMERCIAL_EV -> CommercialEvPalette
 }
 
 /**
@@ -1664,11 +1810,26 @@ fun HsrpNumberPlate(
 
     Row(
         modifier = modifier
+            .shadow(
+                elevation = 1.5.dp,
+                shape = plateShape,
+                ambientColor = Color(0x22000000),
+                spotColor = Color(0x14000000)
+            )
             .clip(plateShape)
             .background(palette.bg, plateShape)
+            .drawWithContent {
+                // 1. Retro-reflective pressed-aluminum daylight sheen (Static pre-allocated brush)
+                drawRect(brush = HsrpPlateDaylightSheenBrush)
+
+                // 2. Micro-prismatic retro-reflective sheeting texture (Type IV HSRP security honeycomb lattice via GPU tile)
+                drawRect(brush = if (palette.isLightPlate) HsrpDarkLatticeBrush else HsrpLightLatticeBrush)
+
+                drawContent()
+            }
             .border(
                 width = 1.25.dp,
-                color = palette.border,
+                brush = palette.borderBrush,
                 shape = plateShape
             )
             .height(29.dp),
@@ -1932,6 +2093,15 @@ fun HsrpRegistrationTextField(
                 )
                 .clip(plateShape)
                 .background(palette.bg, plateShape)
+                .drawWithContent {
+                    // 1. Stamped metal retro-reflective ambient sheen (Static pre-allocated brush)
+                    drawRect(brush = HsrpInputSheenBrush)
+
+                    // 2. Micro-prismatic retro-reflective sheeting texture (GPU tiled lattice)
+                    drawRect(brush = if (palette.isLightPlate) HsrpDarkLatticeBrush else HsrpLightLatticeBrush)
+
+                    drawContent()
+                }
                 .border(
                     width = if (isFocused || isError) 2.dp else 1.25.dp,
                     color = activeBorder,
