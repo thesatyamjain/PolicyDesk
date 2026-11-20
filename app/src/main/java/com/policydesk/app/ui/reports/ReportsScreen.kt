@@ -103,12 +103,16 @@ import com.policydesk.app.ui.navigation.LocalReduceMotion
 import com.policydesk.app.ui.navigation.aaBlueFill
 import com.policydesk.app.ui.navigation.rememberIsListScrolled
 import com.policydesk.app.ui.theme.AppleDarkSystemBlue
+import com.policydesk.app.ui.theme.AppleDarkSystemDeepOrange
 import com.policydesk.app.ui.theme.AppleDarkSystemGreen
+import com.policydesk.app.ui.theme.AppleDarkSystemOrange
 import com.policydesk.app.ui.theme.AppleDarkSystemPurple
 import com.policydesk.app.ui.theme.AppleDarkSystemRed
 import com.policydesk.app.ui.theme.AppleIcons
 import com.policydesk.app.ui.theme.AppleSystemBlue
+import com.policydesk.app.ui.theme.AppleSystemDeepOrange
 import com.policydesk.app.ui.theme.AppleSystemGreen
+import com.policydesk.app.ui.theme.AppleSystemOrange
 import com.policydesk.app.ui.theme.AppleSystemPurple
 import com.policydesk.app.ui.theme.AppleSystemRed
 import com.policydesk.app.ui.theme.IosDarkLabelPrimary
@@ -948,96 +952,622 @@ fun AnalyticsTabContent(
     topPadding: androidx.compose.ui.unit.Dp = 16.dp
 ) {
     val analytics = aggregate.analytics
+    val sales = aggregate.sales
+    val performance = aggregate.performance
     val isDark = isSystemInDarkTheme()
     val labelPrimary = if (isDark) IosDarkLabelPrimary else IosLabelPrimary
     val labelSecondary = if (isDark) IosDarkLabelSecondary else IosLabelSecondary
     val accentBlue = if (isDark) AppleDarkSystemBlue else AppleSystemBlue
+    val accentGreen = if (isDark) AppleDarkSystemGreen else AppleSystemGreen
+    val accentOrange = if (isDark) AppleDarkSystemOrange else AppleSystemOrange
+    val accentDeepOrange = if (isDark) AppleDarkSystemDeepOrange else AppleSystemDeepOrange
+    val redAccent = if (isDark) AppleDarkSystemRed else StatusOverdueRed
     val periodLabel = formatReportPeriodChipLabel(aggregate.period)
 
     LazyColumn(
         state = listState,
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = topPadding, bottom = 140.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        // Book Size Card
+        // 1. Active Portfolio Book & Risk Ratio (Hero Card)
         item(key = "analytics_book_size") {
             LiquidGlassCard(modifier = Modifier.fillMaxWidth()) {
-                Text("Active Book Size", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = labelPrimary)
-                Spacer(modifier = Modifier.height(10.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column {
-                        Text("Active Vehicles", fontSize = 11.sp, color = labelSecondary)
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Text(
-                            text = "${analytics.bookSizeVehicles}",
-                            fontSize = 18.sp,
+                            text = "Active Portfolio Book",
+                            fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
-                            color = labelPrimary,
-                            style = TextStyle(fontFeatureSettings = "tnum")
+                            color = labelPrimary
                         )
+                        val totalTracked = analytics.bookSizePremium + analytics.premiumAtRisk
+                        val healthPct = if (totalTracked > 0) (analytics.bookSizePremium / totalTracked) * 100.0 else 100.0
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(
+                                    if (healthPct >= 85) {
+                                        if (isDark) Color(0x3330D158) else Color(0x1F34C759)
+                                    } else {
+                                        if (isDark) Color(0x33FF9F0A) else Color(0x1FFF9500)
+                                    }
+                                )
+                                .padding(horizontal = 8.dp, vertical = 3.dp)
+                        ) {
+                            Text(
+                                text = "${String.format(Locale.US, "%.1f", healthPct)}% In-Force",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (healthPct >= 85) accentGreen else accentOrange,
+                                style = TextStyle(fontFeatureSettings = "tnum")
+                            )
+                        }
                     }
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text("Book Value", fontSize = 11.sp, color = labelSecondary)
-                        Text(
-                            text = UiFormatters.formatCurrency(analytics.bookSizePremium),
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = accentBlue,
-                            style = TextStyle(fontFeatureSettings = "tnum")
-                        )
+
+                    // Main Metric Highlights
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column {
+                            Text("Active Vehicles", fontSize = 11.sp, color = labelSecondary)
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "${analytics.bookSizeVehicles}",
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = labelPrimary,
+                                style = TextStyle(fontFeatureSettings = "tnum")
+                            )
+                        }
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text("Total Book Value", fontSize = 11.sp, color = labelSecondary)
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = UiFormatters.formatCurrency(analytics.bookSizePremium),
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = accentBlue,
+                                style = TextStyle(fontFeatureSettings = "tnum")
+                            )
+                        }
+                    }
+
+                    // Visual Portfolio Health Track (In-force vs At Risk)
+                    val totalTracked = analytics.bookSizePremium + analytics.premiumAtRisk
+                    if (totalTracked > 0.0) {
+                        val inForceFrac = (analytics.bookSizePremium / totalTracked).toFloat().coerceIn(0.01f, 0.99f)
+                        Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(6.dp)
+                                    .clip(RoundedCornerShape(3.dp))
+                                    .background(if (isDark) Color(0xFF2C2C2E) else Color(0xFFE5E5EA))
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .weight(inForceFrac)
+                                        .fillMaxHeight()
+                                        .background(accentBlue)
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f - inForceFrac)
+                                        .fillMaxHeight()
+                                        .background(redAccent)
+                                )
+                            }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "In-Force: ${UiFormatters.formatCurrency(analytics.bookSizePremium)}",
+                                    fontSize = 10.5.sp,
+                                    color = labelSecondary,
+                                    style = TextStyle(fontFeatureSettings = "tnum")
+                                )
+                                Text(
+                                    text = "At Risk: ${UiFormatters.formatCurrency(analytics.premiumAtRisk)}",
+                                    fontSize = 10.5.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = redAccent,
+                                    style = TextStyle(fontFeatureSettings = "tnum")
+                                )
+                            }
+                        }
+                    }
+
+                    // Secondary Sub-stats (Avg Premium / Vehicle, Period Commission)
+                    val avgTicket = if (analytics.bookSizeVehicles > 0) analytics.bookSizePremium / analytics.bookSizeVehicles else 0.0
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(if (isDark) Color(0x332C2C2E) else Color(0x66F2F2F7))
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text("Avg Premium / Vehicle", fontSize = 10.5.sp, color = labelSecondary)
+                            Text(
+                                text = UiFormatters.formatCurrency(avgTicket),
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = labelPrimary,
+                                style = TextStyle(fontFeatureSettings = "tnum")
+                            )
+                        }
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text("Commission in $periodLabel", fontSize = 10.5.sp, color = labelSecondary)
+                            Text(
+                                text = UiFormatters.formatCurrency(analytics.commissionEarned),
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = accentGreen,
+                                style = TextStyle(fontFeatureSettings = "tnum")
+                            )
+                        }
                     }
                 }
             }
         }
 
-        // Renewal Pipeline
-        item(key = "analytics_pipeline") {
+        // 2. 12-Month Sales & Revenue Velocity Trend Card
+        if (sales.monthlyTrends.isNotEmpty()) {
+            item(key = "analytics_monthly_trend") {
+                MonthlySalesTrendCard(trends = sales.monthlyTrends)
+            }
+        }
+
+        // 3. Upcoming Renewal Pipeline Forecasting (Visual Velocity Meters)
+        item(key = "analytics_pipeline_forecast") {
             LiquidGlassCard(modifier = Modifier.fillMaxWidth()) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Upcoming Renewal Pipeline", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = labelPrimary)
-                    DetailRow(
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Upcoming Renewal Pipeline",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = labelPrimary
+                        )
+                        val totalPipePolicies = analytics.renewalPipeline12Months.first
+                        Text(
+                            text = "$totalPipePolicies Due in 12m",
+                            fontSize = 11.sp,
+                            color = labelSecondary,
+                            style = TextStyle(fontFeatureSettings = "tnum")
+                        )
+                    }
+
+                    val maxPipePremium = listOf(
+                        analytics.renewalPipeline3Months.second,
+                        analytics.renewalPipeline6Months.second,
+                        analytics.renewalPipeline12Months.second
+                    ).maxOrNull()?.coerceAtLeast(1.0) ?: 1.0
+
+                    // 3-Month Horizon (Urgent Pipeline)
+                    PipelineHorizonMeter(
                         label = "Next 3 Months",
-                        value = "${analytics.renewalPipeline3Months.first} ${if (analytics.renewalPipeline3Months.first == 1) "policy" else "policies"} (${UiFormatters.formatCurrency(analytics.renewalPipeline3Months.second)})"
+                        tag = "Immediate",
+                        tagColor = accentDeepOrange,
+                        policyCount = analytics.renewalPipeline3Months.first,
+                        premium = analytics.renewalPipeline3Months.second,
+                        progress = (analytics.renewalPipeline3Months.second / maxPipePremium).toFloat().coerceIn(0.04f, 1f),
+                        barColor = accentDeepOrange,
+                        isDark = isDark,
+                        labelPrimary = labelPrimary,
+                        labelSecondary = labelSecondary
                     )
-                    DetailRow(
+
+                    // 6-Month Horizon (Mid-Term Pipeline)
+                    PipelineHorizonMeter(
                         label = "Next 6 Months",
-                        value = "${analytics.renewalPipeline6Months.first} ${if (analytics.renewalPipeline6Months.first == 1) "policy" else "policies"} (${UiFormatters.formatCurrency(analytics.renewalPipeline6Months.second)})"
+                        tag = "Mid-Term",
+                        tagColor = accentOrange,
+                        policyCount = analytics.renewalPipeline6Months.first,
+                        premium = analytics.renewalPipeline6Months.second,
+                        progress = (analytics.renewalPipeline6Months.second / maxPipePremium).toFloat().coerceIn(0.04f, 1f),
+                        barColor = accentOrange,
+                        isDark = isDark,
+                        labelPrimary = labelPrimary,
+                        labelSecondary = labelSecondary
                     )
-                    DetailRow(
+
+                    // 12-Month Horizon (Annual Horizon)
+                    PipelineHorizonMeter(
                         label = "Next 12 Months",
-                        value = "${analytics.renewalPipeline12Months.first} ${if (analytics.renewalPipeline12Months.first == 1) "policy" else "policies"} (${UiFormatters.formatCurrency(analytics.renewalPipeline12Months.second)})"
+                        tag = "Annual",
+                        tagColor = accentBlue,
+                        policyCount = analytics.renewalPipeline12Months.first,
+                        premium = analytics.renewalPipeline12Months.second,
+                        progress = (analytics.renewalPipeline12Months.second / maxPipePremium).toFloat().coerceIn(0.04f, 1f),
+                        barColor = accentBlue,
+                        isDark = isDark,
+                        labelPrimary = labelPrimary,
+                        labelSecondary = labelSecondary
                     )
                 }
             }
         }
 
-        // Renewal Performance Summary
-        item(key = "analytics_retention") {
+        // 4. Renewal Retention & Conversion Performance
+        item(key = "analytics_retention_gauges") {
             LiquidGlassCard(modifier = Modifier.fillMaxWidth()) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Retention Metrics ($periodLabel)", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = labelPrimary)
-                    DetailRow(
-                        label = "Overall Renewal Rate",
-                        value = "${String.format(Locale.US, "%.1f", analytics.renewalRatePercent)}%"
-                    )
-                    DetailRow(
-                        label = "On-Time Renewal Rate",
-                        value = "${String.format(Locale.US, "%.1f", analytics.onTimeRatePercent)}%"
-                    )
-                    DetailRow(
-                        label = "Premium at Risk (Overdue)",
-                        value = UiFormatters.formatCurrency(analytics.premiumAtRisk)
-                    )
-                    DetailRow(
-                        label = "Period Commission Earned",
-                        value = UiFormatters.formatCurrency(analytics.commissionEarned)
-                    )
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Retention & Conversion ($periodLabel)",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = labelPrimary
+                        )
+                        val rateColor = when {
+                            performance.renewalRatePercent >= 80 -> accentGreen
+                            performance.renewalRatePercent >= 60 -> accentOrange
+                            else -> redAccent
+                        }
+                        Text(
+                            text = "${String.format(Locale.US, "%.1f", performance.renewalRatePercent)}% Renewal Rate",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = rateColor,
+                            style = TextStyle(fontFeatureSettings = "tnum")
+                        )
+                    }
+
+                    // Progress Bar: Overall Renewal Rate
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("Overall Renewed", fontSize = 11.5.sp, color = labelSecondary)
+                            Text(
+                                text = "${performance.renewedOnTime + performance.renewedLate} of ${performance.policiesDue} due",
+                                fontSize = 11.5.sp,
+                                color = labelSecondary,
+                                style = TextStyle(fontFeatureSettings = "tnum")
+                            )
+                        }
+                        val renewalRateColor = when {
+                            performance.renewalRatePercent >= 80 -> accentGreen
+                            performance.renewalRatePercent >= 60 -> accentOrange
+                            else -> redAccent
+                        }
+                        LinearProgressIndicator(
+                            progress = { (performance.renewalRatePercent / 100.0).toFloat().coerceIn(0f, 1f) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(7.dp)
+                                .clip(RoundedCornerShape(3.5.dp)),
+                            color = renewalRateColor,
+                            trackColor = if (isDark) Color(0xFF2C2C2E) else Color(0xFFE5E5EA)
+                        )
+                    }
+
+                    // Progress Bar: On-Time Conversion Rate
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("On-Time Renewals", fontSize = 11.5.sp, color = labelSecondary)
+                            Text(
+                                text = "${String.format(Locale.US, "%.1f", performance.onTimeRatePercent)}%",
+                                fontSize = 11.5.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = accentBlue,
+                                style = TextStyle(fontFeatureSettings = "tnum")
+                            )
+                        }
+                        LinearProgressIndicator(
+                            progress = { (performance.onTimeRatePercent / 100.0).toFloat().coerceIn(0f, 1f) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(5.dp)
+                                .clip(RoundedCornerShape(2.5.dp)),
+                            color = accentBlue,
+                            trackColor = if (isDark) Color(0xFF2C2C2E) else Color(0xFFE5E5EA)
+                        )
+                    }
+
+                    // 4-Stat Conversion Breakdown Grid
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(if (isDark) Color(0x332C2C2E) else Color(0x66F2F2F7))
+                            .padding(10.dp),
+                        horizontalArrangement = Arrangement.SpaceAround
+                    ) {
+                        RetentionStatItem(label = "Due", value = "${performance.policiesDue}", color = labelPrimary)
+                        RetentionStatItem(label = "On Time", value = "${performance.renewedOnTime}", color = accentGreen)
+                        RetentionStatItem(label = "Late", value = "${performance.renewedLate}", color = accentOrange)
+                        RetentionStatItem(label = "Missed", value = "${performance.missed}", color = redAccent)
+                    }
                 }
             }
         }
+
+        // 5. Insurer Market Share & Distribution (Visual Concentration Bars)
+        if (sales.insurerBreakdown.isNotEmpty() || sales.splitByInsurer.isNotEmpty()) {
+            item(key = "analytics_insurer_share") {
+                LiquidGlassCard(modifier = Modifier.fillMaxWidth()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Insurer Portfolio Share ($periodLabel)",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = labelPrimary
+                            )
+                            val count = sales.insurerBreakdown.size.takeIf { it > 0 } ?: sales.splitByInsurer.size
+                            Text(
+                                text = "$count Carriers",
+                                fontSize = 11.sp,
+                                color = labelSecondary
+                            )
+                        }
+
+                        if (sales.insurerBreakdown.isNotEmpty()) {
+                            sales.insurerBreakdown.forEachIndexed { index, item ->
+                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = item.insurer,
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = labelPrimary,
+                                            modifier = Modifier.weight(1f).padding(end = 8.dp),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        Text(
+                                            text = UiFormatters.formatCurrency(item.totalPremium),
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = accentBlue,
+                                            style = TextStyle(fontFeatureSettings = "tnum")
+                                        )
+                                    }
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        val countStr = "${item.policyCount} ${if (item.policyCount == 1) "policy" else "policies"}"
+                                        val shareStr = "${String.format(Locale.US, "%.1f", item.sharePercent)}% share"
+                                        Text(
+                                            text = "$countStr • $shareStr",
+                                            fontSize = 11.sp,
+                                            color = labelSecondary,
+                                            style = TextStyle(fontFeatureSettings = "tnum")
+                                        )
+                                        if (item.totalCommission > 0.0) {
+                                            Text(
+                                                text = "Comm: ${UiFormatters.formatCurrency(item.totalCommission)}",
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = accentGreen,
+                                                style = TextStyle(fontFeatureSettings = "tnum")
+                                            )
+                                        }
+                                    }
+
+                                    // Visual share track
+                                    val trackProgress = (item.sharePercent / 100.0).toFloat().coerceIn(0.02f, 1f)
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(4.dp)
+                                            .clip(RoundedCornerShape(2.dp))
+                                            .background(if (isDark) Color(0xFF2C2C2E) else Color(0xFFE5E5EA))
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth(trackProgress)
+                                                .fillMaxHeight()
+                                                .clip(RoundedCornerShape(2.dp))
+                                                .background(accentBlue)
+                                        )
+                                    }
+                                }
+
+                                if (index < sales.insurerBreakdown.size - 1) {
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                }
+                            }
+                        } else {
+                            sales.splitByInsurer.forEach { (insurer, prem) ->
+                                DetailRow(label = insurer, value = UiFormatters.formatCurrency(prem))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 6. Sector Distribution (PSU vs Private Carriers)
+        if (sales.splitBySector.isNotEmpty()) {
+            val totalSectorPrem = sales.splitBySector.values.sum().coerceAtLeast(1.0)
+            item(key = "analytics_sector_share") {
+                LiquidGlassCard(modifier = Modifier.fillMaxWidth()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text(
+                            text = "Sector Diversification ($periodLabel)",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = labelPrimary
+                        )
+
+                        // Multi-segment horizontal bar
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(8.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(if (isDark) Color(0xFF2C2C2E) else Color(0xFFE5E5EA))
+                        ) {
+                            sales.splitBySector.forEach { (sector, prem) ->
+                                val weight = (prem / totalSectorPrem).toFloat().coerceAtLeast(0.02f)
+                                val color = if (sector == com.policydesk.app.domain.model.Sector.PSU) accentBlue else (if (isDark) AppleDarkSystemPurple else AppleSystemPurple)
+                                Box(
+                                    modifier = Modifier
+                                        .weight(weight)
+                                        .fillMaxHeight()
+                                        .background(color)
+                                )
+                            }
+                        }
+
+                        // Sector Legend Row
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            sales.splitBySector.forEach { (sector, prem) ->
+                                val pct = (prem / totalSectorPrem) * 100.0
+                                val color = if (sector == com.policydesk.app.domain.model.Sector.PSU) accentBlue else (if (isDark) AppleDarkSystemPurple else AppleSystemPurple)
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(color))
+                                    Spacer(modifier = Modifier.width(5.dp))
+                                    Text(
+                                        text = "${sector.displayName}: ${UiFormatters.formatCurrency(prem)} (${String.format(Locale.US, "%.0f", pct)}%)",
+                                        fontSize = 11.5.sp,
+                                        color = labelSecondary,
+                                        style = TextStyle(fontFeatureSettings = "tnum")
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PipelineHorizonMeter(
+    label: String,
+    tag: String,
+    tagColor: Color,
+    policyCount: Int,
+    premium: Double,
+    progress: Float,
+    barColor: Color,
+    isDark: Boolean,
+    labelPrimary: Color,
+    labelSecondary: Color
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    text = label,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = labelPrimary
+                )
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(tagColor.copy(alpha = if (isDark) 0.22f else 0.12f))
+                        .padding(horizontal = 5.dp, vertical = 1.5.dp)
+                ) {
+                    Text(
+                        text = tag,
+                        fontSize = 9.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = tagColor
+                    )
+                }
+            }
+            Text(
+                text = UiFormatters.formatCurrency(premium),
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                color = barColor,
+                style = TextStyle(fontFeatureSettings = "tnum")
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "$policyCount ${if (policyCount == 1) "policy" else "policies"}",
+                fontSize = 11.sp,
+                color = labelSecondary,
+                style = TextStyle(fontFeatureSettings = "tnum")
+            )
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(4.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(if (isDark) Color(0xFF2C2C2E) else Color(0xFFE5E5EA))
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(progress)
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(barColor)
+            )
+        }
+    }
+}
+
+@Composable
+private fun RetentionStatItem(
+    label: String,
+    value: String,
+    color: Color
+) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = value,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Bold,
+            color = color,
+            style = TextStyle(fontFeatureSettings = "tnum")
+        )
+        Text(
+            text = label,
+            fontSize = 10.5.sp,
+            color = if (isSystemInDarkTheme()) IosDarkLabelSecondary else IosLabelSecondary
+        )
     }
 }
 
